@@ -6,6 +6,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Level_Name } from "src/common/shared/enums";
 import { PaymentStatus } from "../types";
 import { OrderService } from "src/common/shared/services/order.service";
+import { toObjectId } from "src/common/utils/mongoose.utils";
 
 @Injectable()
 export class OrderRepo extends AbstractRepo<Order> implements OrderService {
@@ -16,46 +17,61 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
     }
 
     async findPendingOrder(userId: string, levelName: Level_Name, session?: ClientSession): Promise<Order | null> {
+        // Convert userId to ObjectId
+        const userIdObjectId = toObjectId(userId);
+
         return await this.orderModel.findOne({
-            userId,
+            userId: userIdObjectId,
             levelName,
             paymentStatus: PaymentStatus.PENDING
         }).session(session || null);
     }
 
     async findCompletedOrder(userId: string, levelName: Level_Name, session?: ClientSession): Promise<Order | null> {
+        // Convert userId to ObjectId
+        const userIdObjectId = toObjectId(userId);
+
         return await this.orderModel.findOne({
-            userId,
+            userId: userIdObjectId,
             levelName,
             paymentStatus: PaymentStatus.COMPLETED
         }).session(session || null);
     }
 
     async findUserCompletedOrders(userId: string, session?: ClientSession): Promise<Order[]> {
+        // Convert userId to ObjectId
+        const userIdObjectId = toObjectId(userId);
+
         return await this.orderModel.find({
-            userId,
+            userId: userIdObjectId,
             paymentStatus: PaymentStatus.COMPLETED
         }).session(session || null);
     }
 
     async updateOrderStatus(orderId: string, status: PaymentStatus, paymentId?: string, session?: ClientSession): Promise<Order | null> {
+        // Convert orderId to ObjectId
+        const orderIdObjectId = toObjectId(orderId);
+
         const updateData: any = { paymentStatus: status };
         if (paymentId) {
             updateData.paymentId = paymentId;
         }
 
         return await this.orderModel.findByIdAndUpdate(
-            orderId,
+            orderIdObjectId,
             updateData,
             { new: true, session: session || null }
         );
     }
 
     async upsertOrder(userId: string, levelName: Level_Name, amountCents: number, session?: ClientSession): Promise<Order> {
+        // Convert userId to ObjectId
+        const userIdObjectId = toObjectId(userId);
+
         const order = await this.orderModel.findOneAndUpdate(
-            { userId, levelName },
-            { 
-                userId,
+            { userId: userIdObjectId, levelName },
+            {
+                userId: userIdObjectId,
                 levelName,
                 amountCents,
                 paymentStatus: PaymentStatus.PENDING,
@@ -63,7 +79,7 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
             },
             { new: true, upsert: true, session: session || null }
         );
-        
+
         return order;
     }
 } 

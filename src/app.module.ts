@@ -10,7 +10,7 @@ import { PaymentModule } from './payment/paymob.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt.guard';
 import { RolesGuard } from './auth/guards/role.guard';
-import { VerifiedGuard } from './auth/guards/verifed-user.guard';
+import { VerifiedGuard } from './auth/guards/verified-user.guard';
 
 @Module({
   imports: [AuthModule, UserModule, PaymentModule, FileUploadModule, ConfigModule, DatabaseModule],

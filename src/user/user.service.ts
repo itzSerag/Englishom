@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { OrderService } from 'src/common/shared/services/order.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Level_Name } from 'src/common/shared/enums';
+import { log } from 'console';
 
 @Injectable()
 export class UserService {
@@ -38,9 +39,6 @@ export class UserService {
     return this.userRepo.findOne({ _id: id });
   }
 
-  async getUserCompletedOrders(userId: string) {
-    return await this.orderService.findUserCompletedOrders(userId);
-  }
 
   async findAll() {
     return await this.userRepo.find({});
@@ -54,11 +52,20 @@ export class UserService {
     return await this.userRepo.findOneAndUpdate({ _id }, updateUserDto)
   }
 
+  async getUserCompletedOrders(userId: string) {
+    const userLevels = await this.orderService.findUserCompletedOrders(userId);
+    // i want the levelnames only
+    const levelNames = userLevels.map((level) => level.levelName);
+    return levelNames;
+  }
+
+
   async getCompletedDaysInLevel(userId: string, levelName: Level_Name) {
 
     const userLevels = await this.getUserCompletedOrders(userId);
+    log('userLevels', userLevels);
     // if level name not included within userLevels throw an error
-    if (userLevels.includes(levelName)) {
+    if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 
@@ -69,7 +76,7 @@ export class UserService {
   async markDayAsCompleted(userId: string, levelName: Level_Name, dayNumber: number) {
 
     const userLevels = await this.getUserCompletedOrders(userId);
-    if (userLevels.includes(levelName)) {
+    if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 
@@ -80,7 +87,7 @@ export class UserService {
   async markTaskAsCompleted(userId: string, levelName: Level_Name, dayNumber: number, taskName: string) {
 
     const userLevels = await this.getUserCompletedOrders(userId);
-    if (userLevels.includes(levelName)) {
+    if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 
@@ -90,7 +97,7 @@ export class UserService {
   async getCompletedTasksInDay(userId: string, levelName: Level_Name, dayNumber: number) {
 
     const userLevels = await this.getUserCompletedOrders(userId);
-    if (userLevels.includes(levelName)) {
+    if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 

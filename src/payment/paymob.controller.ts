@@ -6,38 +6,43 @@ import {
   BadRequestException,
   InternalServerErrorException,
   Logger,
-  Query,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
 import { Level_Name } from '../common/shared/enums';
 import { UserService } from 'src/user/user.service';
+import { CurrentUser } from 'src/auth/decorator/get-curr-user.decorator';
+import { User } from 'src/user/models/user.schema';
+import { ConfigService } from '@nestjs/config';
+import { log } from 'console';
+import { Public } from 'src/auth/decorator/public.decorator';
 
 @Controller('payment')
 export class PaymobController {
   private readonly logger = new Logger(PaymobController.name);
 
   constructor(
+    private readonly configService: ConfigService,
     private paymobService: PaymobService,
     private userService: UserService,
   ) { }
 
-  @Post('/callback')
-  async callbackPost(@Body() data: any, @Query() dataQuery: any) {
+  @Public()
+  @Post('callback')
+  async callbackPost(@Body() data: any) {
     const success = data.obj?.success;
     const orderId = data.obj?.id;
     const userEmail = data.obj?.order?.shipping_data.email;
 
+    //
+    log("SERAFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
-    this.logger.log(`dataBody ${JSON.stringify(data)}`);
-    this.logger.log(`dataQuery ${JSON.stringify(dataQuery)}`);
     try {
       const userData = await this.paymobService.handlePaymobCallback(
         orderId,
         success,
         data.obj.amount_cents,
-        userEmail,
-        data
+        userEmail
       );
 
       return { userData };
@@ -48,38 +53,90 @@ export class PaymobController {
     }
   }
 
-  @Post('/process-payment')
+  @Post('process-payment')
   async processPayment(
     @Body() paymentIntention: PaymentRequestDTO,
-    @Req() req: any,
+    @CurrentUser() user: User,
   ) {
-    const user = req.user;
-    const integration_id = parseInt(process.env.PAYMOB_INTEGRATION_ID, 10);
+
+    const integration_id = this.configService.get<number>('PAYMOB_INTEGRATION_ID')
 
     if (isNaN(integration_id)) {
       throw new BadRequestException('Invalid integration ID');
     }
 
     try {
-      // Read the JSON object and pass it to the service method
-      // const levelsData = __readCoursesData();
-      // For simplicity, we'll hard-code the level data
+
+
+      // HARD CODED FOR NOW
+
       const levelsData = {
         Levels: [
           {
-            name: 'BEGINNER',
-            price: 10000,
-            description: 'Beginner level',
+            id: 1,
+            name: 'LEVEL_A1',
+            description:
+              'Level A1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a beginner level.',
+            stage_1_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            stage_2_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            price: 100
           },
           {
-            name: 'INTERMEDIATE',
-            price: 15000,
-            description: 'Intermediate level',
+            id: 2,
+            name: 'LEVEL_A2',
+            description:
+              'Level A2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a above beginner level.',
+            stage_1_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            stage_2_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            price: 200
           },
           {
-            name: 'ADVANCED',
-            price: 20000,
-            description: 'Advanced level',
+            id: 3,
+            name: 'LEVEL_B1',
+            description:
+              'Level B1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a intermediate level.',
+            stage_1_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            stage_2_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            price: 300
+          },
+          {
+            id: 4,
+            name: 'LEVEL_B2',
+            description:
+              'Level B2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a above intermediate level.',
+            stage_1_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            stage_2_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            price: 400
+          },
+          {
+            id: 5,
+            name: 'LEVEL_C1',
+            description:
+              'Level C1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a advanced level.',
+            stage_1_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            stage_2_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            price: 500
+          },
+          {
+            id: 6,
+            name: 'LEVEL_C2',
+            description:
+              'Level C2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a native level.',
+            stage_1_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            stage_2_description:
+              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
+            price: 600
           }
         ]
       };
@@ -136,7 +193,7 @@ export class PaymobController {
     }
   }
 
-  @Post('/refund')
+  @Post('refund')
   async refundOrder(@Req() req: any, @Body('levelName') levelName: Level_Name) {
     try {
       const user = req.user;
@@ -172,6 +229,6 @@ export class PaymobController {
     }
   }
 
-  
-  
+
+
 }

@@ -11,6 +11,7 @@ import { CurrentUser } from './decorator/get-curr-user.decorator';
 import { User } from 'src/user/models/user.schema';
 import { Response } from 'express';
 import { plainToClass } from 'class-transformer';
+import { ResetPasswordDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -33,6 +34,7 @@ export class AuthController {
     return {
       access_token,
       user: plainToClass(UserDto, user, { excludeExtraneousValues: true }),
+      levels: []
     }
   }
 
@@ -44,16 +46,29 @@ export class AuthController {
 
     const user = await this.authService.login(loginDto)
     const access_token = await this.authService.generateToken(user);
+    const levels = await this.authService.getUserLevels(user._id.toString());
+
     return {
       access_token,
-      user: plainToClass(UserDto, user, { excludeExtraneousValues: true }),
+      user: new UserDto(user),
+      levels: levels
     }
   }
 
   @Public()
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    return await this.authService.verifyOtp(verifyOtpDto);
+    const user = await this.authService.verifyOtp(verifyOtpDto);
+
+    const access_token = await this.authService.generateToken({
+      ...user,
+      isVerified: true // manually patch to avoid refetch
+    });
+
+    return {
+      access_token,
+      user: new UserDto({ ...user, isVerified: true })
+    };
   }
 
   @Public()
@@ -110,8 +125,8 @@ export class AuthController {
 
     try {
 
-      await this.authService.findOrCreateOAuthUser(user);
-      const jwt = await this.authService.generateToken(user);
+      const newUser: User = await this.authService.findOrCreateOAuthUser(user);
+      const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/ar/callback?token=${jwt}`);
 
     } catch (err) {
@@ -119,5 +134,22 @@ export class AuthController {
       return res.redirect(`${process.env.WEBSITE_URL}/ar/callback?error=auth_failed`);
     }
 
+  }
+
+  @Post('reset-password')
+  async resetPassword(@CurrentUser() user: User, resetPasswordDto: ResetPasswordDto) {
+    await this.authService.resetPassword(user, resetPasswordDto);
+
+    return {
+      message: 'Password reset successful',
+    };
+  }
+
+  @Post('logout')
+  async logout(@CurrentUser() user: User) {
+    await this.authService.logout(user);
+    return {
+      message: 'Logout successful',
+    };
   }
 }

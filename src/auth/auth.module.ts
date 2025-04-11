@@ -14,6 +14,7 @@ import { DatabaseModule } from 'src/common/database/database.module';
 import { Otp, OtpSchema } from './models/otp.schema';
 import { GoogleStrategy } from './strategy/google.strategy';
 import { FacebookStrategy } from './strategy/facebook.strategy';
+import { Course, CourseSchema } from './models/admin-course';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { FacebookStrategy } from './strategy/facebook.strategy';
     MailModule,
     ConfigModule,
     DatabaseModule.forFeature([
-      { name: Otp.name, schema: OtpSchema }
+      { name: Otp.name, schema: OtpSchema },
+      { name: Course.name, schema: CourseSchema }
     ]),
     forwardRef(() => UserModule), // Use forwardRef here
     JwtModule.registerAsync({

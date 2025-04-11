@@ -7,10 +7,10 @@ import { DatabaseModule } from 'src/common/database/database.module';
 import { User, UserSchema } from './models/user.schema';
 import { PaymentModule } from 'src/payment/paymob.module';
 import { AuthModule } from 'src/auth/auth.module';
-import { Day } from './models/day.schema';
+import { Day, DaySchema } from './models/day.schema';
 import { Task, TaskSchema } from './models/task.schema';
-import { UserProgress } from './models/user-progress.schema';
-import { UserTask } from './models/user-task.schema';
+import { UserProgress, UserProgressSchema } from './models/user-progress.schema';
+import { UserTask, UserTaskSchema } from './models/user-task.schema';
 import { Level, LevelSchema } from './models/level.schema';
 
 // filepath: /mnt/DATA/Englishom/src/user/user.module.ts
@@ -19,10 +19,10 @@ import { Level, LevelSchema } from './models/level.schema';
     DatabaseModule,
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
-      { name: UserProgress.name, schema: UserSchema },
-      { name: Day.name, schema: UserSchema },
-      { name: Task.name, schema: UserSchema },
-      { name: UserTask.name, schema: UserSchema },
+      { name: UserProgress.name, schema: UserProgressSchema },
+      { name: Day.name, schema: DaySchema },
+      { name: Task.name, schema: TaskSchema },
+      { name: UserTask.name, schema: UserTaskSchema },
       { name: Task.name, schema: TaskSchema },
       { name: Level.name, schema: LevelSchema },
 

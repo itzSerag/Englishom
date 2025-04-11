@@ -1,6 +1,6 @@
 import { IsString, Length } from 'class-validator';
 
-export class RestPasswordDto {
+export class ResetPasswordDto {
     @IsString()
     @Length(6, 20)
     oldPassword: string;

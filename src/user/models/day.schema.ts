@@ -4,7 +4,7 @@ import { Level_Name } from 'src/common/shared/enums';
 
 @Schema()
 export class Day extends AbstractDocument {
-    @Prop({ required: true })
+    @Prop({ required: true, type: Number })
     dayNumber: number;
 
     @Prop({ type: String, enum: Level_Name, required: true })

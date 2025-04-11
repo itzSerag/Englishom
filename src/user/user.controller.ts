@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ConflictException, ValidationPipe, Query, BadRequestException, InternalServerErrorException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ConflictException, ValidationPipe, Query, BadRequestException, InternalServerErrorException, UseGuards, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,11 +10,19 @@ import { GetCompletedTasksDto } from './dto/get-completed-tasks.dto';
 import { UserFinishDayDto } from './dto/user-finish-day.dto';
 import { UserTaskDto } from './dto/user-task.dto';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
+import { log } from 'console';
 
 
-@Controller('user')
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) { }
+
+
+  @Get('me')
+  @UseInterceptors(ClassSerializerInterceptor)
+  async getMe(@CurrentUser() user: User) {
+    return new UserDto(user);
+  }
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
@@ -25,55 +33,64 @@ export class UserController {
     return new UserDto(user);
   }
 
+  // HAVE TO DO SOME PAGINATION HERE
   @UseGuards(AdminGuard)
-  @Get()
+  @UseInterceptors(ClassSerializerInterceptor)
+  @Get('all')
   async findAll() {
-    return await this.userService.findAll();
-  }
+    const users = await this.userService.findAll();
+    return users.map(user => new UserDto(user));
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findById(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.findOneAndUpdate(id, updateUserDto);
-  }
-
-  @UseGuards(AdminGuard)
-  @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return await this.userService.deleteUser(id);
   }
 
   @Get('levels')
   async getUserLevels(@CurrentUser() user: User) {
 
+    log('user', user);
     return await this.userService.getUserCompletedOrders(user._id.toString());
   }
 
-  @Get('/completed-days')
-  async getCompletedDaysInLevel(
-    @Query(ValidationPipe) dto: GetCompletedDaysDto,
-    @CurrentUser('_id') userId: string,
-  ) {
-    return this.userService.getCompletedDaysInLevel(userId, dto.levelName);
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+
+
+    return this.userService.findOneAndUpdate(id, updateUserDto);
   }
 
-  @Get('/completed-tasks')
+  @UseGuards(AdminGuard)
+  @Delete(':id')
+  async remove(@CurrentUser() user: User, @Param('id') id: string) {
+
+    if (id === 'admin' && user._id.toString() === id) {
+      throw new BadRequestException('Admin cannot be deleted');
+    }
+
+    return await this.userService.deleteUser(id);
+  }
+
+  @Get('completed-days')
+  async getCompletedDaysInLevel(
+    @Query(ValidationPipe) dto: GetCompletedDaysDto,
+    @CurrentUser() user: User,
+  ) {
+
+    return await this.userService.getCompletedDaysInLevel(user._id.toString(), dto.levelName);
+  }
+
+  @Get('completed-tasks')
   async getCompletedTasksInDay(
     @Query(ValidationPipe) dto: GetCompletedTasksDto,
     @CurrentUser('_id') userId: string,
   ) {
-    return this.userService.getCompletedTasksInDay(
+    return await this.userService.getCompletedTasksInDay(
       userId,
       dto.levelName,
       dto.day,
     );
   }
 
-  @Post('/complete-day')
+  @Post('complete-day')
   async markDayAsCompleted(
     @Body(ValidationPipe) finishDayDto: UserFinishDayDto,
     @CurrentUser('_id') userId: string,
@@ -92,24 +109,28 @@ export class UserController {
     }
   }
 
-  @Post('/complete-task')
+  @Post('complete-task')
   async markTaskAsCompleted(
-    @Body(ValidationPipe) taskDto: UserTaskDto,
-    @CurrentUser('_id') userId: string,
+    @Body() taskDto: UserTaskDto,
+    @CurrentUser() user: User,
   ) {
-    try {
-      return await this.userService.markTaskAsCompleted(
-        userId,
-        taskDto.levelName,
-        taskDto.day,
-        taskDto.taskName,
-      );
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Failed to mark task as completed');
-    }
+
+    return await this.userService.markTaskAsCompleted(
+      user._id.toString(),
+      taskDto.levelName,
+      taskDto.day,
+      taskDto.taskName,
+    );
+
   }
 
+
+
+
+  /// MUST BE AT THE END AND ADMIN ONLY
+  @UseGuards(AdminGuard)
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.userService.findById(id);
+  }
 }

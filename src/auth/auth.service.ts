@@ -7,10 +7,10 @@ import { UserRepo } from 'src/user/repo/repo.user';
 import { UserService } from 'src/user/user.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt'
-import { UserDto } from 'src/common/shared/dto/user-dto';
 import { EmailService } from 'src/common/mail/mail.service';
 import { OtpRepo } from './repo/repo.otp';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResetPasswordDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -38,7 +38,9 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const user = await this.userRepo.findOne({ email: loginDto.email });
-
+    if (user.strategy !== 'local') {
+      throw new ConflictException('This email has signed-up with a different method ' + user.strategy);
+    }
     const isValid = user && await bcrypt.compare(loginDto.password, user.password);
 
     if (!isValid) {
@@ -46,6 +48,26 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async logout(user: User) {
+    // FRONTEND LOGOUT
+    return true
+  }
+
+  async resetPassword(user: User, restPasswordDto: ResetPasswordDto) {
+
+    // hash the new password
+
+    //compare the old password and new password
+    const isValid = await bcrypt.compare(restPasswordDto.oldPassword, user.password);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid old password');
+    }
+
+    const hashedPassword = await bcrypt.hash(restPasswordDto.newPassword, 10);
+    return await this.userRepo.findOneAndUpdate({ _id: user._id }, { password: hashedPassword });
+
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
@@ -69,15 +91,7 @@ export class AuthService {
     ]);
 
 
-    const access_token = await this.generateToken({
-      ...user,
-      isVerified: true // manually patch to avoid refetch
-    });
-
-    return {
-      access_token,
-      user: new UserDto({ ...user, isVerified: true })
-    };
+    return user;
   }
 
 
@@ -87,6 +101,9 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
+    if (user.isVerified) {
+      throw new ConflictException('User already verified');
+    }
     await this.otpRepo.delete({ email });
 
     await this.generateAndSendOtp(email);
@@ -106,13 +123,13 @@ export class AuthService {
   }
 
   async findOrCreateOAuthUser(profile: any) {
-    const { email, provider, facebookId, googleId, firstName, lastName } = profile;
+    const { email, provider, firstName, lastName } = profile;
 
     const user = await this.userService.findByEmail(email);
 
     if (!user) {
       // Create new user
-      const password = facebookId || googleId || Math.random().toString(36).slice(-8); // fallback password
+      const password = Math.random().toString(36).slice(-8); // fallback password
       const newUser = await this.userRepo.create({
         email,
         firstName,
@@ -122,9 +139,8 @@ export class AuthService {
         isVerified: true,
       });
 
-      return {
-        user: new UserDto(newUser),
-      };
+      return newUser
+
     }
 
     if (user.strategy !== provider) {
@@ -135,6 +151,9 @@ export class AuthService {
 
   }
 
+  async getUserLevels(userId: string) {
+    return await this.userService.getUserCompletedOrders(userId);
+  }
 
   private async generateAndSendOtp(email: string) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();

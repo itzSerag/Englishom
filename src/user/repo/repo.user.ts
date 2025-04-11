@@ -8,6 +8,7 @@ import { UserProgress } from "../models/user-progress.schema";
 import { Day } from "../models/day.schema";
 import { Task } from "../models/task.schema";
 import { UserTask } from "../models/user-task.schema";
+import { toObjectId } from "src/common/utils/mongoose.utils";
 
 
 @Injectable()
@@ -25,9 +26,11 @@ export class UserRepo extends AbstractRepo<User> {
     async userProgress(userId: string, levelName: Level_Name) {
 
         try {
+            // Convert userId to ObjectId
+            const userIdObjectId = toObjectId(userId);
 
             const completedProgress = await this.userProgressModel.find({
-                userId,
+                userId: userIdObjectId,
                 completed: true,
             })
                 .populate({
@@ -39,7 +42,7 @@ export class UserRepo extends AbstractRepo<User> {
                 .lean();
 
             const completedDayNumbers = completedProgress
-                .filter(p => p.dayId) // make sure populate didn’t miss
+                .filter(p => p.dayId) // make sure populate didn't miss
                 .map(p => p.dayId.dayNumber);
 
             return completedDayNumbers;
@@ -56,12 +59,14 @@ export class UserRepo extends AbstractRepo<User> {
     async markDayAsCompleted(userId: string, levelName: Level_Name, dayNumber: number) {
 
         const day = await this.getOrCreateDay(levelName, dayNumber);
-
+        
         try {
+            // Convert userId to ObjectId
+            const userIdObjectId = toObjectId(userId);
 
             await this.userProgressModel.updateOne(
                 {
-                    userId,
+                    userId: userIdObjectId,
                     dayId: day._id,
                 },
                 {
@@ -86,6 +91,8 @@ export class UserRepo extends AbstractRepo<User> {
 
     async markTaskAsCompleted(userId: string, levelName: Level_Name, dayNumber: number, taskName: string) {
         try {
+            // Convert userId to ObjectId
+            const userIdObjectId = toObjectId(userId);
 
             const day = await this.getOrCreateDay(levelName, dayNumber);
 
@@ -98,14 +105,17 @@ export class UserRepo extends AbstractRepo<User> {
                     },
                 },
                 {
-                    upsert: true,
                     new: true,
-                    setDefaultsOnInsert: true,
+                    upsert: true,
                 }
             );
 
+            // Step 4: Update or create UserTask
             await this.userTaskModel.updateOne(
-                { userId, taskId: task._id },
+                {
+                    userId: userIdObjectId,
+                    taskId: task._id,
+                },
                 {
                     $set: {
                         completed: true,
@@ -115,7 +125,8 @@ export class UserRepo extends AbstractRepo<User> {
                 { upsert: true }
             );
 
-            return { message: 'Task completed successfully' };
+            return { message: 'Task marked as completed successfully' };
+
         } catch (error) {
             if (error instanceof ForbiddenException) throw error;
 
@@ -124,27 +135,32 @@ export class UserRepo extends AbstractRepo<User> {
         }
     }
 
-
     async getCompletedTasksInDay(userId: string, levelName: Level_Name, dayNumber: number) {
         try {
+            // Convert userId to ObjectId
+            const userIdObjectId = toObjectId(userId);
 
             const day = await this.dayModel.findOne({ levelName, dayNumber });
+            if (!day) {
+                return [];
+            }
 
-            if (!day) return [];
-
-            const completedTasks = await this.userTaskModel
-                .find({ userId, completed: true })
+            const completedTasks = await this.userTaskModel.find({
+                userId: userIdObjectId,
+                completed: true,
+            })
                 .populate({
                     path: 'taskId',
                     match: { dayId: day._id },
-                    select: 'name', // only return task name
-                });
+                    select: 'name description',
+                })
+                .select('taskId')
+                .lean();
 
-            const taskNames = completedTasks
-                .filter(entry => entry.taskId) 
-                .map(entry => entry.taskId.name);
+            return completedTasks
+                .filter(t => t.taskId) // make sure populate didn't miss
+                .map(t => t.taskId.name);
 
-            return taskNames;
         } catch (error) {
             if (error instanceof ForbiddenException) throw error;
 
@@ -153,16 +169,22 @@ export class UserRepo extends AbstractRepo<User> {
         }
     }
 
-
-
     private async getOrCreateDay(levelName: Level_Name, dayNumber: number): Promise<Day> {
-        let day = await this.dayModel.findOne({ levelName, dayNumber });
-
-        if (!day) {
-            day = await this.dayModel.create({ levelName, dayNumber });
-        }
+        // Find or create the Day
+        const day = await this.dayModel.findOneAndUpdate(
+            { levelName, dayNumber },
+            {
+                $setOnInsert: {
+                    levelName,
+                    dayNumber,
+                },
+            },
+            {
+                new: true,
+                upsert: true,
+            }
+        );
 
         return day;
     }
-
 }

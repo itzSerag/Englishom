@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ClientSession, FilterQuery, Model, Types, UpdateQuery } from 'mongoose';
 import { AbstractDocument } from '../abstract.schema';
+import { convertFilterToObjectId } from '../../utils/mongoose.utils';
 
 @Injectable()
 export abstract class AbstractRepo<TSchema extends AbstractDocument> {
@@ -9,7 +10,7 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
     constructor(private readonly model: Model<TSchema>) { }
 
     async create(document: Partial<TSchema>, session?: ClientSession): Promise<TSchema> {
-        // We check if the user already exists in the db In the service
+        
         const created = new this.model({
             ...document,
             _id: new Types.ObjectId(),
@@ -19,7 +20,10 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
     }
 
     async findOne(filterQuery: FilterQuery<TSchema>, session?: ClientSession): Promise<TSchema | null> {
-        const document = await this.model.findOne(filterQuery).session(session || null).lean<TSchema>(true);
+        // Convert string IDs to ObjectId
+        const convertedFilter = convertFilterToObjectId(filterQuery);
+        
+        const document = await this.model.findOne(convertedFilter).session(session || null).lean<TSchema>(true);
 
         if (!document) {
             return null
@@ -29,7 +33,10 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
     }
 
     async find(filterQuery: FilterQuery<TSchema>, session?: ClientSession): Promise<TSchema[] | null> {
-        const document = await this.model.find(filterQuery).session(session || null).lean<TSchema[]>(true);
+        // Convert string IDs to ObjectId
+        const convertedFilter = convertFilterToObjectId(filterQuery);
+        
+        const document = await this.model.find(convertedFilter).session(session || null).lean<TSchema[]>(true);
 
         if (!document) {
             return null
@@ -42,8 +49,11 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
         updateQuery: UpdateQuery<TSchema>,
         session?: ClientSession
     ): Promise<TSchema | null> {
+        // Convert string IDs to ObjectId
+        const convertedFilter = convertFilterToObjectId(filterQuery);
+        
         const document = await this.model
-            .findOneAndUpdate(filterQuery, updateQuery, {
+            .findOneAndUpdate(convertedFilter, updateQuery, {
                 new: true,
                 session: session || null
             })
@@ -60,8 +70,11 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
         filterQuery: FilterQuery<TSchema>,
         session?: ClientSession
     ): Promise<TSchema | null> {
+        // Convert string IDs to ObjectId
+        const convertedFilter = convertFilterToObjectId(filterQuery);
+        
         const document = await this.model
-            .findOneAndDelete(filterQuery, { session: session || null })
+            .findOneAndDelete(convertedFilter, { session: session || null })
             .lean<TSchema>(true);
 
         if (!document) {

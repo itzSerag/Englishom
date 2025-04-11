@@ -25,7 +25,7 @@ export class RolesGuard implements CanActivate {
     }
 
     // If no specific roles are required, allow any authenticated user
-    if (requiredRoles.length === 0) {
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
