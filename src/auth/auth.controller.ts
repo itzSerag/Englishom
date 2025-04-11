@@ -1,14 +1,14 @@
 import { Controller, Post, Body, ConflictException, Get, UseGuards, HttpStatus, Res, Logger, UnauthorizedException, ClassSerializerInterceptor, UseInterceptors, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from 'src/user/dto/create-user.dto';
-import { UserDto } from 'src/common/shared/dto/user-dto';
+import { CreateUserDto } from '../user/dto/create-user.dto';
+import { UserDto } from '../common/shared/dto/user-dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './decorator/public.decorator';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorator/get-curr-user.decorator';
-import { User } from 'src/user/models/user.schema';
+import { User } from '../user/models/user.schema';
 import { Response } from 'express';
 import { plainToClass } from 'class-transformer';
 import { ResetPasswordDto } from './dto';

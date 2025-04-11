@@ -2,14 +2,14 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, ConflictException, V
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserDto } from 'src/common/shared/dto/user-dto';
-import { CurrentUser } from 'src/auth/decorator/get-curr-user.decorator';
+import { UserDto } from '../common/shared/dto/user-dto';
+import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from './models/user.schema';
 import { GetCompletedDaysDto } from './dto/get-completed-days.dto';
 import { GetCompletedTasksDto } from './dto/get-completed-tasks.dto';
 import { UserFinishDayDto } from './dto/user-finish-day.dto';
 import { UserTaskDto } from './dto/user-task.dto';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { log } from 'console';
 
 

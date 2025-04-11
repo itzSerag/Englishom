@@ -11,8 +11,8 @@ import { ConfigService } from '@nestjs/config';
 import { PaymentRequest, PaymentStatus } from './types';
 import { Level_Name } from '../common/shared/enums';
 import { OrderRepo } from './repo/order.repo';
-import { TransactionService } from 'src/common/database/transaction.service';
-import { UserRepo } from 'src/user/repo/repo.user';
+import { TransactionService } from '../common/database/transaction.service';
+import { UserRepo } from '../user/repo/repo.user';
 import * as crypto from 'crypto';
 
 @Injectable()

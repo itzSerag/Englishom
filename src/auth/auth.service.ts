@@ -1,13 +1,13 @@
 import { Injectable, InternalServerErrorException, UnauthorizedException, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { IPayload } from 'src/common/shared/interfaces/payload.interface';
-import { CreateUserDto } from 'src/user/dto/create-user.dto';
-import { User } from 'src/user/models/user.schema';
-import { UserRepo } from 'src/user/repo/repo.user';
-import { UserService } from 'src/user/user.service';
+import { IPayload } from '../common/shared/interfaces/payload.interface';
+import { CreateUserDto } from '../user/dto/create-user.dto';
+import { User } from '../user/models/user.schema';
+import { UserRepo } from '../user/repo/repo.user';
+import { UserService } from '../user/user.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt'
-import { EmailService } from 'src/common/mail/mail.service';
+import { EmailService } from '../common/mail/mail.service';
 import { OtpRepo } from './repo/repo.otp';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto';

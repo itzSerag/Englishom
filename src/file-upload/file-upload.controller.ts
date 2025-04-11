@@ -17,7 +17,7 @@ import { log } from 'console';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 import { FileUploadService } from './file-upload.service';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 
 @Controller('files')
 export class FileUploadController {

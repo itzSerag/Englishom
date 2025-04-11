@@ -1,12 +1,12 @@
 // filepath: /mnt/DATA/Englishom/src/payment/paymob.module.ts
 import { Module, forwardRef } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
-import { AuthModule } from 'src/auth/auth.module';
-import { DatabaseModule } from 'src/common/database/database.module';
+import { AuthModule } from '../auth/auth.module';
+import { DatabaseModule } from '../common/database/database.module';
 import { OrderRepo } from './repo/order.repo';
 import { Order, OrderSchema } from './models/order.schema';
-import { UserModule } from 'src/user/user.module';
-import { OrderService } from 'src/common/shared/services/order.service';
+import { UserModule } from '../user/user.module';
+import { OrderService } from '../common/shared/services/order.service';
 import { PaymobController } from './paymob.controller';
 
 // filepath: /mnt/DATA/Englishom/src/payment/paymob.module.ts

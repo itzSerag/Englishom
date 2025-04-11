@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { Level_Name } from 'src/common/shared/enums';
+import { Level_Name } from '../../common/shared/enums';
 import { PaymentStatus } from '../types';
-import { User } from 'src/user/models/user.schema';
-import { AbstractDocument } from 'src/common/database/abstract.schema';
+import { User } from '../../user/models/user.schema';
+import { AbstractDocument } from '../../common/database/abstract.schema';
 
 export type OrderDocument = Order & Document;
 

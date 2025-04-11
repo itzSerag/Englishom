@@ -2,10 +2,11 @@ import { Injectable, Logger, NotFoundException, } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserRepo } from './repo/repo.user';
 import * as bcrypt from 'bcrypt';
-import { OrderService } from 'src/common/shared/services/order.service';
+import { OrderService } from '../common/shared/services/order.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Level_Name } from 'src/common/shared/enums';
+import { Level_Name } from '../common/shared/enums';
 import { log } from 'console';
+import { User } from './models/user.schema';
 
 @Injectable()
 export class UserService {

@@ -13,7 +13,7 @@ import {
 import { Level_Name } from '../../common/shared/enums';
 import { BadRequestException } from '@nestjs/common';
 import { plainToInstance, Type, ClassConstructor } from 'class-transformer';
-import { LESSONS } from 'src/common/shared/enums';
+import { LESSONS } from '../../common/shared/enums';
 
 // SUB DTOs
 class Example {

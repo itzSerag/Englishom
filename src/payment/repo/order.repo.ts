@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { AbstractRepo } from "src/common/database/repo/abstract.repo";
-import { Order } from "../models/order.schema";
+import { AbstractRepo } from "../../common/database/repo/abstract.repo";
+import { Order, OrderDocument } from "../models/order.schema";
 import { ClientSession, Model } from "mongoose";
 import { InjectModel } from "@nestjs/mongoose";
-import { Level_Name } from "src/common/shared/enums";
+import { Level_Name } from "../../common/shared/enums";
 import { PaymentStatus } from "../types";
-import { OrderService } from "src/common/shared/services/order.service";
-import { toObjectId } from "src/common/utils/mongoose.utils";
+import { OrderService } from "../../common/shared/services/order.service";
+import { toObjectId } from "../../common/utils/mongoose.utils";
 
 @Injectable()
 export class OrderRepo extends AbstractRepo<Order> implements OrderService {

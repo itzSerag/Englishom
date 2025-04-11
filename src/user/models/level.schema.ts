@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { AbstractDocument } from 'src/common/database/abstract.schema';
-import { Level_Name } from 'src/common/shared/enums';
+import { AbstractDocument } from '../../common/database/abstract.schema';
+import { Level_Name } from '../../common/shared/enums';
 
 
 @Schema()

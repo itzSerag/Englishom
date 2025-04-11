@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { User } from './user.schema';
-import { Level_Name } from 'src/common/shared/enums';
+import { Level_Name } from '../../common/shared/enums';
 
 export type UserLevelDocument = UserLevel & Document;
 

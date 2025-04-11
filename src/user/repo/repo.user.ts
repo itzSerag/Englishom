@@ -1,14 +1,14 @@
 import { ForbiddenException, Injectable, InternalServerErrorException } from "@nestjs/common";
-import { AbstractRepo } from "src/common/database/repo/abstract.repo";
-import { User } from "../models/user.schema";
+import { AbstractRepo } from "../../common/database/repo/abstract.repo";
+import { User, UserDocument } from "../models/user.schema";
 import { Model } from "mongoose";
 import { InjectModel } from "@nestjs/mongoose";
-import { Level_Name } from "src/common/shared/enums";
+import { Level_Name } from "../../common/shared/enums";
 import { UserProgress } from "../models/user-progress.schema";
 import { Day } from "../models/day.schema";
 import { Task } from "../models/task.schema";
 import { UserTask } from "../models/user-task.schema";
-import { toObjectId } from "src/common/utils/mongoose.utils";
+import { toObjectId } from "../../common/utils/mongoose.utils";
 
 
 @Injectable()

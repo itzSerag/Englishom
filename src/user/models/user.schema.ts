@@ -1,7 +1,8 @@
 // src/modules/users/schemas/user.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 import { Role } from '../../common/shared';
-import { AbstractDocument } from 'src/common/database/abstract.schema';
+import { AbstractDocument } from '../../common/database/abstract.schema';
 
 @Schema({ timestamps: true })
 export class User extends AbstractDocument {

@@ -1,6 +1,6 @@
 import { IsEnum, IsInt, IsNotEmpty, Max, Min, } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Level_Name } from 'src/common/shared/enums';
+import { Level_Name } from '../../common/shared/enums';
 
 export class GetCompletedTasksDto {
 

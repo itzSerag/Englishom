@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty } from 'class-validator';
-import { Level_Name } from 'src/common/shared/enums';
+import { Level_Name } from '../../common/shared/enums';
 
 export class GetCompletedDaysDto {
 
