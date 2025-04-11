@@ -10,10 +10,10 @@ import {
   ValidateNested,
   ValidationError,
 } from 'class-validator';
-import { LESSONS } from '../../common/enums/lessons';
-import { Level_Name } from '../../common/enums';
+import { Level_Name } from '../../common/shared/enums';
 import { BadRequestException } from '@nestjs/common';
 import { plainToInstance, Type, ClassConstructor } from 'class-transformer';
+import { LESSONS } from 'src/common/shared/enums';
 
 // SUB DTOs
 class Example {
@@ -79,7 +79,7 @@ class WRITE {
 
   @IsArray()
   @IsNotEmpty()
-  sentences: Array<string>; 
+  sentences: Array<string>;
 }
 
 class PICTURES {

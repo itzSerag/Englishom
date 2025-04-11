@@ -1,24 +1,38 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { IPayload } from 'src/common/shared/interfaces/payload.interface';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
-import { UserModel } from 'src/user/models/user.schema';
+import { User } from 'src/user/models/user.schema';
 import { UserRepo } from 'src/user/repo/repo.user';
 import { UserService } from 'src/user/user.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt'
 import { UserDto } from 'src/common/shared/dto/user-dto';
+import { EmailService } from 'src/common/mail/mail.service';
+import { OtpRepo } from './repo/repo.otp';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+
 @Injectable()
 export class AuthService {
 
-  constructor(private readonly userRepo: UserRepo,
+  constructor(
+    private readonly userRepo: UserRepo,
     private readonly userService: UserService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
+    private readonly otpRepo: OtpRepo
   ) { }
 
 
   async register(createUserDto: CreateUserDto) {
-    return await this.userService.create(createUserDto)
+    const user = await this.userService.create(createUserDto);
+
+    if (user) {
+      // Generate and send OTP
+      await this.generateAndSendOtp(user.email);
+    }
+
+    return user;
   }
 
 
@@ -31,29 +45,109 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const access_token = await this.generateToken(user)
+    return user;
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    const { email, otp } = verifyOtpDto;
+
+    const user = await this.userRepo.findOne({ email });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const otpRecord = await this.otpRepo.findOne({ email });
+
+    if (!otpRecord || otpRecord.otp !== otp) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    const [_, __] = await Promise.all([
+      this.userRepo.findOneAndUpdate({ email }, { isVerified: true }),
+      this.otpRepo.delete({ email })
+    ]);
+
+
+    const access_token = await this.generateToken({
+      ...user,
+      isVerified: true // manually patch to avoid refetch
+    });
 
     return {
       access_token,
-      user: new UserDto(user)
+      user: new UserDto({ ...user, isVerified: true })
     };
   }
 
 
-
-
-
-  async generateToken(user: UserModel) {
-
-    const payload: IPayload = { sub: user._id.toString(), email: user.email }
-
-    try {
-      return this.jwtService.sign(payload)
-    } catch (err) {
-      throw new InternalServerErrorException('Something Went Wrong, ' + err)
+  async resendOtp(email: string) {
+    const user = await this.userRepo.findOne({ email });
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
+
+    await this.otpRepo.delete({ email });
+
+    await this.generateAndSendOtp(email);
+
+    return { message: 'OTP has been sent to your email' };
   }
 
 
+  async generateToken(user: User) {
+    const payload: IPayload = { sub: user._id.toString(), email: user.email };
 
+    try {
+      return this.jwtService.sign(payload);
+    } catch (err) {
+      throw new InternalServerErrorException('Something Went Wrong, ' + err);
+    }
+  }
+
+  async findOrCreateOAuthUser(profile: any) {
+    const { email, provider, facebookId, googleId, firstName, lastName } = profile;
+
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      // Create new user
+      const password = facebookId || googleId || Math.random().toString(36).slice(-8); // fallback password
+      const newUser = await this.userRepo.create({
+        email,
+        firstName,
+        lastName,
+        password,
+        strategy: provider,
+        isVerified: true,
+      });
+
+      return {
+        user: new UserDto(newUser),
+      };
+    }
+
+    if (user.strategy !== provider) {
+      throw new ConflictException(
+        `Email already registered using another method. Please login using that method.`,
+      );
+    }
+
+  }
+
+
+  private async generateAndSendOtp(email: string) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    try {
+      await this.otpRepo.create({ email, otp });
+
+      await this.emailService.sendEmail(email, otp);
+
+    } catch (err) {
+      throw new InternalServerErrorException("Something happened while sending the otp, Please try again, " + err)
+    }
+
+    return otp;
+  }
 }

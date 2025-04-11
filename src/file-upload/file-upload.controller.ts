@@ -17,13 +17,13 @@ import { log } from 'console';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
-import { UploadService } from './file-upload.service';
+import { FileUploadService } from './file-upload.service';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('files')
-export class UploadController {
-  constructor(private uploadService: UploadService) { }
+export class FileUploadController {
+  constructor(private uploadService: FileUploadService) { }
 
   @Get('')
   async getContentByName(@Query() content: UploadFileDTO) {

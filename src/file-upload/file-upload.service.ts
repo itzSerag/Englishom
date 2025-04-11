@@ -36,10 +36,10 @@ interface JsonFile {
 }
 
 @Injectable()
-export class UploadService {
+export class FileUploadService {
     private readonly s3Config: S3Config;
     private readonly s3Client: S3Client;
-    private readonly logger = new Logger(UploadService.name);
+    private readonly logger = new Logger(FileUploadService.name);
 
     constructor(private readonly configService: ConfigService) {
         this.s3Config = this.loadS3Configuration();

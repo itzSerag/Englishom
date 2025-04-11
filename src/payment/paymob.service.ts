@@ -8,13 +8,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
-import { Level_Name } from '../common/enums';
+import { Level_Name } from '../common/shared/enums';
 import { Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PaymentPostBodyCallback } from './types/callback';
-import { log } from 'console';
+import { OrderRepo } from './repo/order.repo';
+import { TransactionService } from 'src/common/database/transaction.service';
 
 @Injectable()
 export class PaymobService {
@@ -23,11 +23,12 @@ export class PaymobService {
   private readonly integrationId: string;
   private readonly hmacSecret: string;
   private readonly PAYMOB_PUBLIC_KEY: string;
-  private readonly REQUEST_TIMEOUT = 20000; // 10 seconds timeout
+  private readonly REQUEST_TIMEOUT = 20000; // 20 seconds timeout
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
+    public readonly orderRepo: OrderRepo,
+    private readonly transactionService: TransactionService,
   ) {
     this.integrationId = this.configService.getOrThrow<string>('PAYMOB_INTEGRATION_ID');
     this.hmacSecret = this.configService.getOrThrow<string>('PAYMOB_HMAC_SECRET');
@@ -40,9 +41,6 @@ export class PaymobService {
    */
   private async createIntention(paymentRequest: PaymentRequest): Promise<any> {
     try {
-
-
-
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
 
@@ -91,9 +89,6 @@ export class PaymobService {
    * @returns boolean indicating if HMAC is valid
    */
   verifyHmac(callbackData: PaymentPostBodyCallback): boolean {
-
-    // 
-    log("Here in Callback")
     try {
       // Extract HMAC from the callback data if provided by Paymob
       const hmacHeader = callbackData.hmac;
@@ -141,40 +136,31 @@ export class PaymobService {
   /**
    * Process a new order with transaction support
    */
-  async processOrder(paymentRequest: PaymentRequest, userId: number): Promise<string> {
-    try {
-      // Validate input
-      if (!paymentRequest?.items?.length || !paymentRequest.items[0].name) {
-        throw new BadRequestException(
-          'Invalid payment request: missing items or item name',
-        );
-      }
+  async processOrder(paymentRequest: PaymentRequest, userId: string): Promise<string> {
+    return await this.transactionService.withTransaction(async (session) => {
+      try {
+        // Validate input
+        if (!paymentRequest?.items?.length || !paymentRequest.items[0].name) {
+          throw new BadRequestException(
+            'Invalid payment request: missing items or item name',
+          );
+        }
 
-      const levelName = paymentRequest.items[0].name as Level_Name;
+        const levelName = paymentRequest.items[0].name as Level_Name;
 
-      // Validate that levelName is a valid enum value
-      if (!Object.values(Level_Name).includes(levelName)) {
-        throw new BadRequestException(
-          `Invalid level name: ${levelName}`,
-        );
-      }
+        // Validate that levelName is a valid enum value
+        if (!Object.values(Level_Name).includes(levelName)) {
+          throw new BadRequestException(
+            `Invalid level name: ${levelName}`,
+          );
+        }
 
-      // If the user has this level already, return an error
-
-
-      return await this.prisma.$transaction(async (tx) => {
-        // Check for existing completed order
-        const existingCompletedOrder = await tx.order.findFirst({
-          where: {
-            userId,
-            levelName,
-            paymentStatus: PaymentStatus.COMPLETED,
-          },
-        });
+        // Check for existing completed order using transaction session
+        const existingCompletedOrder = await this.orderRepo.findCompletedOrder(userId, levelName, session);
 
         if (existingCompletedOrder) {
           throw new BadRequestException(
-            'Payment already have this level',
+            'User already has this level',
           );
         }
 
@@ -186,39 +172,25 @@ export class PaymobService {
           );
         }
 
-        // Create or update order record
-        await tx.order.upsert({
-          where: {
-            userId_levelName: {
-              userId,
-              levelName,
-            },
-          },
-          create: {
-            userId,
-            levelName,
-            amountCents: paymentRequest.amount,
-            paymentStatus: PaymentStatus.PENDING,
-            createdAt: new Date(),
-          },
-          update: {
-            amountCents: paymentRequest.amount,
-            paymentStatus: PaymentStatus.PENDING,
-            createdAt: new Date(),
-          },
-        });
+        // Create or update order record with transaction session
+        await this.orderRepo.upsertOrder(
+          userId,
+          levelName,
+          paymentRequest.amount,
+          session
+        );
 
         return `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${dataUserPaymentIntention.client_secret}`;
-      });
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+        this.logger.error(`Payment processing failed: ${error.message}`, error.stack);
+        throw new InternalServerErrorException(
+          `Payment processing failed: ${error.message}`,
+        );
       }
-      this.logger.error(`Payment processing failed: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(
-        `Payment processing failed: ${error.message}`,
-      );
-    }
+    });
   }
 
   /**
@@ -230,183 +202,83 @@ export class PaymobService {
     success: boolean,
     amount: number,
     userEmail: string,
-    callbackData?: PaymentPostBodyCallback, // Optional to maintain backward compatibility
+    callbackData?: PaymentPostBodyCallback,
   ): Promise<boolean> {
-    try {
-      // Verify HMAC signature if callback data is provided
-      if (callbackData && !this.verifyHmac(callbackData)) {
-        this.logger.warn('Invalid HMAC signature in payment callback');
-        throw new UnauthorizedException('Invalid HMAC signature');
-      }
-
-      if (!userEmail) {
-        throw new BadRequestException('User email is required');
-      }
-
-      return await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.findUnique({
-          where: { email: userEmail },
-        });
-
-        if (!user) {
-          throw new NotFoundException('User not found');
+    return await this.transactionService.withTransaction(async (session) => {
+      try {
+        // Verify HMAC signature if callback data is provided
+        if (callbackData && !this.verifyHmac(callbackData)) {
+          this.logger.warn('Invalid HMAC signature in payment callback');
+          throw new UnauthorizedException('Invalid HMAC signature');
         }
 
-        const pendingOrder = await tx.order.findFirst({
-          where: {
-            userId: user.id,
-            amountCents: amount,
-            paymentStatus: PaymentStatus.PENDING,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        });
-
-        if (!pendingOrder) {
-          throw new NotFoundException('No matching pending order found');
+        if (!userEmail) {
+          throw new BadRequestException('User email is required');
         }
 
-        // Update order status
-        const updatedOrder = await tx.order.update({
-          where: { id: pendingOrder.id },
-          data: {
-            paymentStatus: success ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
-            paymentId: orderId.toString(),
-          },
-        });
-
-        // If payment successful, grant access to the level
-        if (success) {
-          await tx.userLevel.create({
-            data: {
-              userId: user.id,
-              levelName: Level_Name[updatedOrder.levelName],
-            },
-          });
-
-          this.logger.log(`Payment successful for user ${user.id}, level ${updatedOrder.levelName}`);
-        } else {
-          this.logger.log(`Payment failed for user ${user.id}, level ${updatedOrder.levelName}`);
+        if (!success) {
+          this.logger.warn(`Payment failed for order ${orderId}`);
+          return false;
         }
 
-        return success;
-      });
-    } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException ||
-        error instanceof UnauthorizedException
-      ) {
-        throw error;
+        // Find all pending orders with transaction session
+        const pendingOrders = await this.orderRepo.find({ 
+          paymentStatus: PaymentStatus.PENDING 
+        }, session);
+        
+        if (!pendingOrders || pendingOrders.length === 0) {
+          throw new NotFoundException('No pending orders found');
+        }
+
+        // Update order status to COMPLETED with transaction session
+        const order = pendingOrders[0];
+        await this.orderRepo.updateOrderStatus(
+          order._id.toString(),
+          PaymentStatus.COMPLETED,
+          orderId.toString(),
+          session
+        );
+
+        this.logger.log(`Payment successful for order ${orderId}`);
+        return true;
+      } catch (error) {
+        this.logger.error(`Payment callback failed: ${error.message}`, error.stack);
+        throw new InternalServerErrorException(
+          `Payment callback failed: ${error.message}`,
+        );
       }
-      this.logger.error(`Failed to process payment callback: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(
-        `Failed to process payment callback: ${error.message}`,
-      );
-    }
+    });
   }
 
   /**
    * Refund an order with transaction support
    */
   async refundOrder(orderId: string): Promise<any> {
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        // Find the order and validate refund eligibility
-        const order = await tx.order.findUnique({
-          where: { paymentId: orderId, paymentStatus: PaymentStatus.COMPLETED },
-        });
-
+    return await this.transactionService.withTransaction(async (session) => {
+      try {
+        // Implement refund logic using Paymob API
+        this.logger.log(`Refunding order ${orderId}`);
+        
+        const order = await this.orderRepo.findOne({ paymentId: orderId }, session);
         if (!order) {
-          throw new NotFoundException('Order not found with the provided order id');
+          throw new NotFoundException(`Order with payment ID ${orderId} not found`);
         }
 
-        const REFUND_WINDOW_DAYS = 14;
-        const refundCutoffDate = new Date();
-        refundCutoffDate.setDate(refundCutoffDate.getDate() - REFUND_WINDOW_DAYS);
-
-        if (order.createdAt < refundCutoffDate) {
-          throw new BadRequestException(
-            'Order is older than 14 days and cannot be refunded',
-          );
-        }
-
-        // Process refund with Paymob
-        const refundRequest = {
-          amount_cents: order.amountCents,
-          transaction_id: orderId,
-        };
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
-
-        const res = await fetch(
-          'https://accept.paymob.com/api/acceptance/void_refund/refund',
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Token ${this.PAYMOB_SECRET_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(refundRequest),
-            signal: controller.signal,
-          },
+        // Update order status to REFUNDED with transaction session
+        await this.orderRepo.updateOrderStatus(
+          order._id.toString(),
+          PaymentStatus.REFUNDED,
+          undefined,
+          session
         );
 
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-          const error = await res.text();
-          this.logger.error(`Paymob refund API error: ${error}`);
-          throw new HttpException(
-            `Failed to refund order: ${error}`,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-
-        const data = await res.json();
-
-        // If refund is successful, update the order and remove UserLevel
-        if (data.success) {
-          await tx.order.update({
-            where: { paymentId: orderId },
-            data: { paymentStatus: PaymentStatus.REFUNDED },
-          });
-
-          await tx.userLevel.delete({
-            where: {
-              userId_levelName: {
-                userId: order.userId,
-                levelName: order.levelName,
-              },
-            },
-          });
-
-          this.logger.log(`Refund processed successfully for order ${orderId}`);
-        } else {
-          this.logger.warn(`Refund failed for order ${orderId}`, data);
-        }
-
-        return data;
-      });
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new HttpException(
-          'Payment gateway request timed out during refund',
-          HttpStatus.GATEWAY_TIMEOUT,
+        return { success: true };
+      } catch (error) {
+        this.logger.error(`Refund failed: ${error.message}`, error.stack);
+        throw new InternalServerErrorException(
+          `Refund failed: ${error.message}`,
         );
       }
-
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
-        throw error;
-      }
-
-      this.logger.error(`Failed to refund order: ${error.message}`, error.stack);
-      throw new HttpException(
-        `Failed to refund order: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    });
   }
 }

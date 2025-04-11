@@ -1,14 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Level_Name } from 'src/common/shared/enums';
 import { PaymentStatus } from '../types';
 import { User } from 'src/user/models/user.schema';
+import { AbstractDocument } from 'src/common/database/abstract.schema';
 
 export type OrderDocument = Order & Document;
 
 @Schema({ timestamps: true })
-export class Order {
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+export class Order extends AbstractDocument {
+    @Prop({ type: Types.ObjectId, ref: 'User', required: true })
     userId: User;
 
     @Prop({ type: String, enum: Level_Name, required: true })

@@ -1,14 +1,38 @@
-import { Module } from '@nestjs/common';
+// filepath: /mnt/DATA/Englishom/src/user/user.module.ts
+import { Module, forwardRef } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { UserRepo } from './repo/repo.user';
 import { DatabaseModule } from 'src/common/database/database.module';
-import { UserModel, UserSchema } from './models/user.schema';
+import { User, UserSchema } from './models/user.schema';
+import { PaymentModule } from 'src/payment/paymob.module';
+import { AuthModule } from 'src/auth/auth.module';
+import { Day } from './models/day.schema';
+import { Task, TaskSchema } from './models/task.schema';
+import { UserProgress } from './models/user-progress.schema';
+import { UserTask } from './models/user-task.schema';
+import { Level, LevelSchema } from './models/level.schema';
 
+// filepath: /mnt/DATA/Englishom/src/user/user.module.ts
 @Module({
-  imports: [DatabaseModule, DatabaseModule.forFeature([{ name: UserModel.name, schema: UserSchema }])],
+  imports: [
+    DatabaseModule,
+    DatabaseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: UserProgress.name, schema: UserSchema },
+      { name: Day.name, schema: UserSchema },
+      { name: Task.name, schema: UserSchema },
+      { name: UserTask.name, schema: UserSchema },
+      { name: Task.name, schema: TaskSchema },
+      { name: Level.name, schema: LevelSchema },
+
+
+    ]),
+    forwardRef(() => PaymentModule), // Use forwardRef here
+    forwardRef(() => AuthModule),   // Use forwardRef here
+  ],
   controllers: [UserController],
   providers: [UserService, UserRepo],
-  exports: [UserService, UserRepo],
+  exports: [UserService, UserRepo], // Export UserService
 })
 export class UserModule { }

@@ -18,8 +18,8 @@ export class User extends AbstractDocument {
     @Prop({ required: true })
     password: string;
 
-    @Prop({ default: 'NA', unique: true })
-    phoneNumber: string;
+    // @Prop({ default: 'NA', unique: true })
+    // phoneNumber: string;
 
     @Prop({ default: 'NA' })
     country: string;

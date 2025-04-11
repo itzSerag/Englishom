@@ -1,6 +1,6 @@
 import { IsEnum, IsNotEmpty, Matches } from 'class-validator';
-import { Level_Name } from '../../common/enums';
-import { LESSONS } from '../../common/enums/lessons';
+import { Level_Name } from '../../common/shared/enums';
+import { LESSONS } from '../../common/shared/enums';
 
 // only when upload a file 
 

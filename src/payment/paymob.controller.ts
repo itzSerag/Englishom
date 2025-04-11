@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Body,
-  UseGuards,
   Req,
   BadRequestException,
   InternalServerErrorException,
@@ -11,12 +10,8 @@ import {
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
-import { UsersService } from 'src/users/users.service';
-import { JwtAuthGuard } from 'src/auth/guard';
-import { Level_Name } from '../common/enums';
-import { __readCoursesData } from '../util/file-data-courses';
-import { CurUser } from 'src/users/decorators/get-user.decorator';
-import { User } from '@prisma/client';
+import { Level_Name } from '../common/shared/enums';
+import { UserService } from 'src/user/user.service';
 
 @Controller('payment')
 export class PaymobController {
@@ -24,7 +19,7 @@ export class PaymobController {
 
   constructor(
     private paymobService: PaymobService,
-    private userService: UsersService,
+    private userService: UserService,
   ) { }
 
   @Post('/callback')
@@ -42,6 +37,7 @@ export class PaymobController {
         success,
         data.obj.amount_cents,
         userEmail,
+        data
       );
 
       return { userData };
@@ -52,13 +48,12 @@ export class PaymobController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('/process-payment')
   async processPayment(
     @Body() paymentIntention: PaymentRequestDTO,
-    @CurUser() user: User,
+    @Req() req: any,
   ) {
-
+    const user = req.user;
     const integration_id = parseInt(process.env.PAYMOB_INTEGRATION_ID, 10);
 
     if (isNaN(integration_id)) {
@@ -67,7 +62,27 @@ export class PaymobController {
 
     try {
       // Read the JSON object and pass it to the service method
-      const levelsData = __readCoursesData();
+      // const levelsData = __readCoursesData();
+      // For simplicity, we'll hard-code the level data
+      const levelsData = {
+        Levels: [
+          {
+            name: 'BEGINNER',
+            price: 10000,
+            description: 'Beginner level',
+          },
+          {
+            name: 'INTERMEDIATE',
+            price: 15000,
+            description: 'Intermediate level',
+          },
+          {
+            name: 'ADVANCED',
+            price: 20000,
+            description: 'Advanced level',
+          }
+        ]
+      };
 
       // Find the level by its name
       const level = levelsData.Levels.find(
@@ -99,7 +114,7 @@ export class PaymobController {
           building: 'dummy',
           phone_number: paymentIntention.phone_number,
           city: paymentIntention.city,
-          country: paymentIntention.country,  // Change country to Saudi Arabia
+          country: paymentIntention.country,
           email: user.email,
           floor: 'dummy',
           state: 'dummy',
@@ -107,10 +122,10 @@ export class PaymobController {
       };
 
 
-      this.logger.log(`Processing payment for user ${user.id}, level: ${paymentIntention.level_name}`);
+      this.logger.log(`Processing payment for user ${user._id}, level: ${paymentIntention.level_name}`);
 
       // Process payment and pass userId to the service method
-      const clientURL = await this.paymobService.processOrder(data, user.id);
+      const clientURL = await this.paymobService.processOrder(data, user._id.toString());
 
       return { clientURL };
     } catch (error) {
@@ -121,17 +136,16 @@ export class PaymobController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('/refund')
   async refundOrder(@Req() req: any, @Body('levelName') levelName: Level_Name) {
     try {
-      const userId = req.user.id;
-      this.logger.log(`Refund requested for user ${userId}, level: ${levelName}`);
+      const user = req.user;
+      this.logger.log(`Refund requested for user ${user._id}, level: ${levelName}`);
 
-      // an array of type Order
-      const userOrders = await this.userService.getUserCompletedOrders(userId);
+      // Get all completed orders for this user
+      const userOrders = await this.userService.getUserCompletedOrders(user._id.toString());
 
-      // if the user orders got this item that he want to refund or not
+      // If the user doesn't have the item to refund
       if (
         userOrders.length === 0 ||
         !userOrders.some((order) => order.levelName === levelName)
@@ -139,16 +153,17 @@ export class PaymobController {
         throw new BadRequestException('No order found for this item');
       }
 
-      const { success } = await this.paymobService.refundOrder(
-        userOrders[0].paymentId,
-      );
+      // Find the specific order for this level
+      const orderToRefund = userOrders.find(order => order.levelName === levelName);
 
-      if (!success) {
-        throw new BadRequestException('Failed to refund the order');
+      if (!orderToRefund?.paymentId) {
+        throw new BadRequestException('Order has no payment ID');
       }
 
-      this.logger.log(`Refund successful for user ${userId}, level: ${levelName}`);
-      return { success };
+      const result = await this.paymobService.refundOrder(orderToRefund.paymentId);
+
+      this.logger.log(`Refund successful for user ${user._id}, level: ${levelName}`);
+      return result;
     } catch (error) {
       this.logger.error(`Refund failed: ${error.message}`, error.stack);
       throw new BadRequestException(
@@ -156,4 +171,7 @@ export class PaymobController {
       );
     }
   }
+
+  
+  
 }
