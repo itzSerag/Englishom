@@ -39,7 +39,6 @@ import * as Joi from 'joi';
         AWS_S3_BUCKET_RES: Joi.string().required(),
 
         // Email
-        EMAIL_FROM: Joi.string().email().required(),
         SMTP_HOST: Joi.string().required(),
         SMTP_PORT: Joi.number().required(),
         SMTP_USER: Joi.string().required(),
