@@ -6,12 +6,6 @@ import {
   BadRequestException,
   InternalServerErrorException,
   Logger,
-  Get,
-  Param,
-  UseGuards,
-  Query,
-  HttpStatus,
-  HttpException,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
@@ -22,7 +16,6 @@ import { User } from '../user/models/user.schema';
 import { ConfigService } from '@nestjs/config';
 import { log } from 'console';
 import { Public } from '../auth/decorator/public.decorator';
-import { PaymentRequest } from './types';
 
 @Controller('payment')
 export class PaymobController {

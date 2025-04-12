@@ -11,15 +11,16 @@ import { UserFinishDayDto } from './dto/user-finish-day.dto';
 import { UserTaskDto } from './dto/user-task.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { log } from 'console';
+import { Public } from '../auth/decorator/public.decorator';
 
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-
-  @Get('me')
+  @Public()
   @UseInterceptors(ClassSerializerInterceptor)
+  @Get('me')
   async getMe(@CurrentUser() user: User) {
     return new UserDto(user);
   }

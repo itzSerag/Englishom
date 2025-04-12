@@ -56,6 +56,8 @@ export class AuthController {
   }
 
   @Public()
+  @UseInterceptors(ClassSerializerInterceptor)
+  @HttpCode(HttpStatus.OK)
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     const user = await this.authService.verifyOtp(verifyOtpDto);
