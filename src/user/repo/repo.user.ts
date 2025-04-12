@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { AbstractRepo } from "../../common/database/repo/abstract.repo";
-import { User, UserDocument } from "../models/user.schema";
+import { User } from "../models/user.schema";
 import { Model } from "mongoose";
 import { InjectModel } from "@nestjs/mongoose";
 import { Level_Name } from "../../common/shared/enums";

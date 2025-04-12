@@ -38,6 +38,10 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const user = await this.userRepo.findOne({ email: loginDto.email });
+
+    if (!user) {
+      throw new NotFoundException('Invalid email or password');
+    }
     if (user.strategy !== 'local') {
       throw new ConflictException('This email has signed-up with a different method ' + user.strategy);
     }

@@ -11,14 +11,14 @@ import { UserFinishDayDto } from './dto/user-finish-day.dto';
 import { UserTaskDto } from './dto/user-task.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { log } from 'console';
-import { Public } from '../auth/decorator/public.decorator';
+import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  @Public()
+  @SkipVerifiedGuard()
   @UseInterceptors(ClassSerializerInterceptor)
   @Get('me')
   async getMe(@CurrentUser() user: User) {
