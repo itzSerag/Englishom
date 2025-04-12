@@ -22,7 +22,13 @@ export class UserController {
   @UseInterceptors(ClassSerializerInterceptor)
   @Get('me')
   async getMe(@CurrentUser() user: User) {
-    return new UserDto(user);
+
+    const userLevels = await this.userService.getUserCompletedOrders(user._id.toString());
+
+    return {
+      user: new UserDto(user),
+      levels: userLevels,
+    };
   }
 
   @Post()
