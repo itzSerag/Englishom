@@ -9,6 +9,7 @@ import { Day } from "../models/day.schema";
 import { Task } from "../models/task.schema";
 import { UserTask } from "../models/user-task.schema";
 import { toObjectId } from "../../common/utils/mongoose.utils";
+import { log } from "console";
 
 
 @Injectable()
@@ -59,8 +60,10 @@ export class UserRepo extends AbstractRepo<User> {
     async markDayAsCompleted(userId: string, levelName: Level_Name, dayNumber: number) {
 
         const day = await this.getOrCreateDay(levelName, dayNumber);
-        
+
         try {
+
+
             // Convert userId to ObjectId
             const userIdObjectId = toObjectId(userId);
 

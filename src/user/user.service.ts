@@ -20,6 +20,7 @@ export class UserService {
 
     const user = await this.userRepo.findOne({ email: createUserDto.email });
     if (user) {
+      // user already found
       return null;
     }
 
@@ -79,6 +80,7 @@ export class UserService {
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
+
 
     return await this.userRepo.markDayAsCompleted(userId, levelName, dayNumber);
 

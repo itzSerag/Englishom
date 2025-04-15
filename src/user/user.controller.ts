@@ -99,21 +99,15 @@ export class UserController {
 
   @Post('complete-day')
   async markDayAsCompleted(
-    @Body(ValidationPipe) finishDayDto: UserFinishDayDto,
-    @CurrentUser('_id') userId: string,
+    @Body() finishDayDto: UserFinishDayDto,
+    @CurrentUser() user: User,
   ) {
-    try {
-      return await this.userService.markDayAsCompleted(
-        userId,
-        finishDayDto.levelName,
-        finishDayDto.day,
-      );
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Failed to mark day as completed');
-    }
+
+    return await this.userService.markDayAsCompleted(
+      user._id.toString(),
+      finishDayDto.levelName,
+      finishDayDto.day,
+    );
   }
 
   @Post('complete-task')

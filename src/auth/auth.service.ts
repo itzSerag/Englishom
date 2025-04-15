@@ -30,6 +30,8 @@ export class AuthService {
     if (user) {
       // Generate and send OTP
       await this.generateAndSendOtp(user.email);
+    } else {
+      throw new ConflictException('User already exists with this email');
     }
 
     return user;
