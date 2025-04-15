@@ -9,7 +9,6 @@ import { Day } from "../models/day.schema";
 import { Task } from "../models/task.schema";
 import { UserTask } from "../models/user-task.schema";
 import { toObjectId } from "../../common/utils/mongoose.utils";
-import { log } from "console";
 
 
 @Injectable()

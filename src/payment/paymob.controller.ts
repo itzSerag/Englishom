@@ -14,7 +14,6 @@ import { UserService } from '../user/user.service';
 import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { ConfigService } from '@nestjs/config';
-import { log } from 'console';
 import { Public } from '../auth/decorator/public.decorator';
 
 @Controller('payment')
@@ -35,7 +34,6 @@ export class PaymobController {
     const userEmail = data.obj?.order?.shipping_data.email;
 
     //
-    log("SERAFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
     try {
       const userData = await this.paymobService.handlePaymobCallback(

@@ -22,5 +22,4 @@ export class UserProgress {
 
 export const UserProgressSchema = SchemaFactory.createForClass(UserProgress);
 
-// Create a unique compound index for userId and dayId
 UserProgressSchema.index({ userId: 1, dayId: 1 }, { unique: true });
