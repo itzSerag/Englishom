@@ -97,12 +97,12 @@ export class AuthController {
 
       await this.authService.findOrCreateOAuthUser(user);
       const jwt = await this.authService.generateToken(user);
-      res.redirect(`${process.env.WEBSITE_URL}/ar/callback?token=${jwt}`);
+      res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
 
     } catch (err) {
 
       this.logger.error(`OAuth login failed: ${err.message}`, err.stack);
-      return res.redirect(`${process.env.WEBSITE_URL}/ar/callback?error=auth_failed`);
+      return res.redirect(`${process.env.WEBSITE_URL}/en/callback?error=auth_failed`);
 
     }
   }
