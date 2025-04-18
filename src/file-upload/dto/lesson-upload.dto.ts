@@ -157,7 +157,7 @@ class SPEAK {
 
   @IsString()
   @IsNotEmpty()
-  text: string;
+  sentences: Array<string>;
 }
 
 class GRAMMAR {
