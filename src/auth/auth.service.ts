@@ -129,7 +129,11 @@ export class AuthService {
   }
 
   async findOrCreateOAuthUser(profile: any) {
-    const { email, provider, firstName, lastName } = profile;
+    const { email, provider, firstName, lastName, picture } = profile;
+
+    if (!email) {
+      throw new BadRequestException('Email is required for OAuth login');
+    }
 
     const user = await this.userService.findByEmail(email);
 
@@ -143,18 +147,28 @@ export class AuthService {
         password,
         strategy: provider,
         isVerified: true,
+        picture,
       });
 
-      return newUser
-
+      return newUser;
     }
 
     if (user.strategy !== provider) {
       throw new ConflictException(
-        `Email already registered using another method. Please login using that method.`,
+        `Email already registered using ${user.strategy}. Please login using that method.`,
       );
     }
 
+    // Update user profile if needed
+    if (user.firstName !== firstName || user.lastName !== lastName || user.picture !== picture) {
+      await this.userRepo.findOneAndUpdate(
+        { _id: user._id },
+        { firstName, lastName, picture }
+      );
+      return { ...user, firstName, lastName, picture };
+    }
+
+    return user;
   }
 
   async getUserLevels(userId: string) {
@@ -176,3 +190,4 @@ export class AuthService {
     return otp;
   }
 }
+

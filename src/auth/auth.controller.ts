@@ -89,54 +89,47 @@ export class AuthController {
     return HttpStatus.OK;
   }
 
-  @SkipVerifiedGuard()
+  @Public()
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
-  async facebookLoginCallback(@CurrentUser() user: User, @Res() res: Response): Promise<any> {
-
+  async facebookLoginCallback(@CurrentUser() user: any, @Res() res: Response): Promise<any> {
     try {
+      if (!user) {
+        throw new UnauthorizedException('No user data received from Facebook');
+      }
 
-      await this.authService.findOrCreateOAuthUser(user);
-      const jwt = await this.authService.generateToken(user);
+      const newUser = await this.authService.findOrCreateOAuthUser(user);
+      const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
-
     } catch (err) {
-
-      this.logger.error(`OAuth login failed: ${err.message}`, err.stack);
-      return res.redirect(`${process.env.WEBSITE_URL}/en/callback?error=auth_failed`);
-
+      this.logger.error(`Facebook OAuth login failed: ${err.message}`, err.stack);
+      return res.redirect(`${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`);
     }
   }
 
   @Public()
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() { }
+  async googleAuth() {
+    return HttpStatus.OK;
+  }
 
-
-  @SkipVerifiedGuard()
+  @Public()
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(
-    @CurrentUser() user: User,
-    @Res() res: Response,
-  ): Promise<any> {
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
+  async googleAuthRedirect(@CurrentUser() user: any, @Res() res: Response): Promise<any> {
     try {
+      if (!user) {
+        throw new UnauthorizedException('No user data received from Google');
+      }
 
-      const newUser: User = await this.authService.findOrCreateOAuthUser(user);
+      const newUser = await this.authService.findOrCreateOAuthUser(user);
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
-
     } catch (err) {
-      this.logger.error(`OAuth login failed: ${err.message}`, err.stack);
-      return res.redirect(`${process.env.WEBSITE_URL}/en/callback?error=auth_failed`);
+      this.logger.error(`Google OAuth login failed: ${err.message}`, err.stack);
+      return res.redirect(`${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`);
     }
-
   }
 
   @Post('reset-password')
