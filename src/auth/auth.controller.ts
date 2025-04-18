@@ -12,6 +12,7 @@ import { User } from '../user/models/user.schema';
 import { Response } from 'express';
 import { plainToClass } from 'class-transformer';
 import { ResetPasswordDto } from './dto';
+import { SkipVerifiedGuard } from './guards/skip-verified.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -88,7 +89,7 @@ export class AuthController {
     return HttpStatus.OK;
   }
 
-  @Public()
+  @SkipVerifiedGuard()
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
   async facebookLoginCallback(@CurrentUser() user: User, @Res() res: Response): Promise<any> {
@@ -113,7 +114,7 @@ export class AuthController {
   async googleAuth() { }
 
 
-  @Public()
+  @SkipVerifiedGuard()
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(
