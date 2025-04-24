@@ -9,4 +9,4 @@ export class VerifyOtpDto {
   @IsNotEmpty()
   @Length(6, 6, { message: 'OTP must be exactly 6 characters' })
   otp: string;
-} 
+}

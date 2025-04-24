@@ -1,4 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ConflictException, ValidationPipe, Query, BadRequestException, InternalServerErrorException, UseGuards, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ConflictException,
+  ValidationPipe,
+  Query,
+  BadRequestException,
+  InternalServerErrorException,
+  UseGuards,
+  UseInterceptors,
+  ClassSerializerInterceptor,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -13,17 +29,17 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { log } from 'console';
 import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 
-
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @SkipVerifiedGuard()
   @UseInterceptors(ClassSerializerInterceptor)
   @Get('me')
   async getMe(@CurrentUser() user: User) {
-
-    const userLevels = await this.userService.getUserCompletedOrders(user._id.toString());
+    const userLevels = await this.userService.getUserCompletedOrders(
+      user._id.toString(),
+    );
 
     return {
       user: new UserDto(user),
@@ -46,29 +62,23 @@ export class UserController {
   @Get('all')
   async findAll() {
     const users = await this.userService.findAll();
-    return users.map(user => new UserDto(user));
-
+    return users.map((user) => new UserDto(user));
   }
 
   @Get('levels')
   async getUserLevels(@CurrentUser() user: User) {
-
     log('user', user);
     return await this.userService.getUserCompletedOrders(user._id.toString());
   }
 
-
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-
-
     return this.userService.findOneAndUpdate(id, updateUserDto);
   }
 
   @UseGuards(AdminGuard)
   @Delete(':id')
   async remove(@CurrentUser() user: User, @Param('id') id: string) {
-
     if (id === 'admin' && user._id.toString() === id) {
       throw new BadRequestException('Admin cannot be deleted');
     }
@@ -81,8 +91,10 @@ export class UserController {
     @Query(ValidationPipe) dto: GetCompletedDaysDto,
     @CurrentUser() user: User,
   ) {
-
-    return await this.userService.getCompletedDaysInLevel(user._id.toString(), dto.levelName);
+    return await this.userService.getCompletedDaysInLevel(
+      user._id.toString(),
+      dto.levelName,
+    );
   }
 
   @Get('completed-tasks')
@@ -102,7 +114,6 @@ export class UserController {
     @Body() finishDayDto: UserFinishDayDto,
     @CurrentUser() user: User,
   ) {
-
     return await this.userService.markDayAsCompleted(
       user._id.toString(),
       finishDayDto.levelName,
@@ -115,18 +126,13 @@ export class UserController {
     @Body() taskDto: UserTaskDto,
     @CurrentUser() user: User,
   ) {
-
     return await this.userService.markTaskAsCompleted(
       user._id.toString(),
       taskDto.levelName,
       taskDto.day,
       taskDto.taskName,
     );
-
   }
-
-
-
 
   /// MUST BE AT THE END AND ADMIN ONLY
   @UseGuards(AdminGuard)

@@ -4,4 +4,4 @@ export class ResendOtpDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
-} 
+}

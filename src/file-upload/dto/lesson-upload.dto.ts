@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -10,7 +11,7 @@ import {
   ValidateNested,
   ValidationError,
 } from 'class-validator';
-import { Level_Name } from '../../common/shared/enums';
+import { Level_Name, QuestionType } from '../../common/shared/enums';
 import { BadRequestException } from '@nestjs/common';
 import { plainToInstance, Type, ClassConstructor } from 'class-transformer';
 import { LESSONS } from '../../common/shared/enums';
@@ -34,6 +35,15 @@ class Definition {
   @IsString()
   @IsNotEmpty()
   definition: string;
+}
+
+class Answer {
+  @IsString()
+  @IsNotEmpty()
+  text: string;
+
+  @IsBoolean()
+  isCorrect: boolean;
 }
 
 // Main DTO
@@ -60,7 +70,7 @@ class READ {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -75,7 +85,7 @@ class WRITE {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsArray()
   @IsNotEmpty()
@@ -86,7 +96,7 @@ class PICTURES {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -102,22 +112,22 @@ class PICTURES {
 
   @IsArray()
   @IsNotEmpty()
-  otherWords: Array<string>
+  otherWords: Array<string>;
 
   @IsString()
   @IsNotEmpty()
-  definition: string
+  definition: string;
 
   @IsArray()
   @IsNotEmpty()
-  examples: Array<string>
+  examples: Array<string>;
 }
 
 class LISTEN {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -138,7 +148,7 @@ class Q_A {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -153,7 +163,7 @@ class SPEAK {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -164,11 +174,11 @@ class GRAMMAR {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
-  nameEn: string
+  nameEn: string;
 
   @IsString()
   @IsNotEmpty()
@@ -192,7 +202,7 @@ class PHRASAL_VERBS {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -213,29 +223,35 @@ class PHRASAL_VERBS {
   @IsString()
   @IsNotEmpty()
   pictureSrc: string;
-
 }
 
 class DAILY_TEST {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsEnum(QuestionType)
+  type: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => Answer)
+  answers: Answer[];
 
   @IsString()
   @IsNotEmpty()
   question: string;
-
-  @IsString()
-  @IsNotEmpty()
-  answer: string;
 }
 
 class IDIOMS {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  id?: string
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -256,8 +272,6 @@ class IDIOMS {
   @IsString()
   @IsNotEmpty()
   pictureSrc: string;
-
-
 }
 
 // Type-safe mapping from key to validation class
@@ -290,12 +304,12 @@ export async function validateData(
   for (const item of data) {
     let instance;
 
-    if (key === LESSONS.GRAMMAR) {
-      // For GRAMMAR, we need to ensure proper transformation , Special case
+    if (key === LESSONS.GRAMMAR || key === LESSONS.DAILY_TEST) {
       const transformedItem = {
         ...item,
-        examples: Array.isArray(item.examples) ?
-          item.examples.map(ex => typeof ex === 'object' ? ex : {}) : []
+        examples: Array.isArray(item.examples)
+          ? item.examples.map((ex) => (typeof ex === 'object' ? ex : {}))
+          : [],
       };
       instance = plainToInstance(ValidatorClass, transformedItem);
     } else {

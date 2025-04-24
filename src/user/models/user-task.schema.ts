@@ -7,17 +7,17 @@ export type UserTaskDocument = UserTask & Document;
 
 @Schema()
 export class UserTask {
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-    userId: User;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  userId: User;
 
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Task', required: true })
-    taskId: Task;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Task', required: true })
+  taskId: Task;
 
-    @Prop({ default: false })
-    completed: boolean;
+  @Prop({ default: false })
+  completed: boolean;
 
-    @Prop()
-    completedAt?: Date;
+  @Prop()
+  completedAt?: Date;
 }
 
 export const UserTaskSchema = SchemaFactory.createForClass(UserTask);

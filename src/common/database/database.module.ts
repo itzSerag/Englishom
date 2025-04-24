@@ -4,20 +4,20 @@ import { ModelDefinition, MongooseModule } from '@nestjs/mongoose';
 import { TransactionService } from './transaction.service';
 
 @Module({
-  imports: [MongooseModule.forRootAsync({
-    useFactory: async (configService: ConfigService) => ({
-      uri: configService.get<string>('DATABASE_URL'),
-      retryWrites: true,
-      }), inject: [ConfigService],
-  }),
+  imports: [
+    MongooseModule.forRootAsync({
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('DATABASE_URL'),
+        retryWrites: true,
+      }),
+      inject: [ConfigService],
+    }),
   ],
   providers: [TransactionService],
-  exports: [TransactionService]
+  exports: [TransactionService],
 })
-
 export class DatabaseModule {
-
   static forFeature(models: ModelDefinition[]) {
-    return MongooseModule.forFeature(models)
+    return MongooseModule.forFeature(models);
   }
 }

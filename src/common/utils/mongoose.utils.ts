@@ -11,7 +11,9 @@ export function toObjectId(id: string): Types.ObjectId {
   try {
     return new Types.ObjectId(id);
   } catch (error) {
-    throw new BadRequestException(`Invalid ID format: ${id}. Error: ${error.message}`);
+    throw new BadRequestException(
+      `Invalid ID format: ${id}. Error: ${error.message}`,
+    );
   }
 }
 
@@ -24,7 +26,9 @@ export function toObjectIdOrNull(id: string): Types.ObjectId | null {
   try {
     return new Types.ObjectId(id);
   } catch (error) {
-    console.warn(`Failed to convert ID to ObjectId: ${id}. Error: ${error.message}`);
+    console.warn(
+      `Failed to convert ID to ObjectId: ${id}. Error: ${error.message}`,
+    );
     return null;
   }
 }
@@ -34,13 +38,15 @@ export function toObjectIdOrNull(id: string): Types.ObjectId | null {
  * @param filter - The filter query to convert
  * @returns Filter query with ObjectId for _id fields
  */
-export function convertFilterToObjectId(filter: Record<string, any>): Record<string, any> {
+export function convertFilterToObjectId(
+  filter: Record<string, any>,
+): Record<string, any> {
   const result = { ...filter };
-  
+
   // Convert _id to ObjectId if it's a string
   if (result._id && typeof result._id === 'string') {
     result._id = toObjectId(result._id);
   }
-  
+
   return result;
-} 
+}

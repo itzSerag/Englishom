@@ -1,22 +1,21 @@
 export enum Level_Name {
-    LEVEL_A1 = 'LEVEL_A1',
-    LEVEL_A2 = 'LEVEL_A2',
-    LEVEL_B1 = 'LEVEL_B1',
-    LEVEL_B2 = 'LEVEL_B2',
-    LEVEL_C1 = 'LEVEL_C1',
-    LEVEL_C2 = 'LEVEL_C2',
+  LEVEL_A1 = 'LEVEL_A1',
+  LEVEL_A2 = 'LEVEL_A2',
+  LEVEL_B1 = 'LEVEL_B1',
+  LEVEL_B2 = 'LEVEL_B2',
+  LEVEL_C1 = 'LEVEL_C1',
+  LEVEL_C2 = 'LEVEL_C2',
 }
 
-
 export enum LESSONS {
-    READ = 'READ',
-    PICTURES = 'PICTURES',
-    LISTEN = 'LISTEN',
-    Q_A = 'Q_A',
-    WRITE = 'WRITE',
-    SPEAK = 'SPEAK',
-    GRAMMAR = 'GRAMMAR',
-    DAILY_TEST = 'DAILY_TEST',
-    IDIOMS = 'IDIOMS',
-    PHRASAL_VERBS = 'PHRASAL_VERBS',
+  READ = 'READ',
+  PICTURES = 'PICTURES',
+  LISTEN = 'LISTEN',
+  Q_A = 'Q_A',
+  WRITE = 'WRITE',
+  SPEAK = 'SPEAK',
+  GRAMMAR = 'GRAMMAR',
+  DAILY_TEST = 'DAILY_TEST',
+  IDIOMS = 'IDIOMS',
+  PHRASAL_VERBS = 'PHRASAL_VERBS',
 }

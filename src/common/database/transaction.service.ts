@@ -11,10 +11,12 @@ export class TransactionService {
    * @param callback Function to execute within transaction
    * @returns Result of the callback function
    */
-  async withTransaction<T>(callback: (session: ClientSession) => Promise<T>): Promise<T> {
+  async withTransaction<T>(
+    callback: (session: ClientSession) => Promise<T>,
+  ): Promise<T> {
     const session = await this.connection.startSession();
     session.startTransaction();
-    
+
     try {
       const result = await callback(session);
       await session.commitTransaction();
@@ -26,4 +28,4 @@ export class TransactionService {
       session.endSession();
     }
   }
-} 
+}

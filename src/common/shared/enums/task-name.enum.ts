@@ -1,1 +1,1 @@
-export enum TaskName { }
+export enum TaskName {}

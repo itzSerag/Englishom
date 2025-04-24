@@ -9,7 +9,10 @@ import { PaymentModule } from '../payment/paymob.module';
 import { AuthModule } from '../auth/auth.module';
 import { Day, DaySchema } from './models/day.schema';
 import { Task, TaskSchema } from './models/task.schema';
-import { UserProgress, UserProgressSchema } from './models/user-progress.schema';
+import {
+  UserProgress,
+  UserProgressSchema,
+} from './models/user-progress.schema';
 import { UserTask, UserTaskSchema } from './models/user-task.schema';
 import { Level, LevelSchema } from './models/level.schema';
 
@@ -25,14 +28,12 @@ import { Level, LevelSchema } from './models/level.schema';
       { name: UserTask.name, schema: UserTaskSchema },
       { name: Task.name, schema: TaskSchema },
       { name: Level.name, schema: LevelSchema },
-
-
     ]),
     forwardRef(() => PaymentModule), // Use forwardRef here
-    forwardRef(() => AuthModule),   // Use forwardRef here
+    forwardRef(() => AuthModule), // Use forwardRef here
   ],
   controllers: [UserController],
   providers: [UserService, UserRepo],
   exports: [UserService, UserRepo], // Export UserService
 })
-export class UserModule { }
+export class UserModule {}

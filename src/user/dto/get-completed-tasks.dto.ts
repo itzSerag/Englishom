@@ -1,17 +1,15 @@
-import { IsEnum, IsInt, IsNotEmpty, Max, Min, } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Level_Name } from '../../common/shared/enums';
 
 export class GetCompletedTasksDto {
+  @IsNotEmpty()
+  @IsEnum(Level_Name)
+  levelName: Level_Name;
 
-    @IsNotEmpty()
-    @IsEnum(Level_Name)
-    levelName: Level_Name;
-
-
-    @IsInt()
-    @Min(1, { message: 'Day must be a positive number' })
-    @Max(50, { message: 'Day cannot be greater than 50' })
-    @Type(() => Number) // Transforms string to number for validation
-    day: number;
+  @IsInt()
+  @Min(1, { message: 'Day must be a positive number' })
+  @Max(50, { message: 'Day cannot be greater than 50' })
+  @Type(() => Number) // Transforms string to number for validation
+  day: number;
 }

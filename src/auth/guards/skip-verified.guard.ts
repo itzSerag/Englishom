@@ -2,4 +2,5 @@
 import { SetMetadata } from '@nestjs/common';
 
 export const SKIP_VERIFIED_GUARD_KEY = 'skipVerifiedGuard';
-export const SkipVerifiedGuard = () => SetMetadata(SKIP_VERIFIED_GUARD_KEY, true);
+export const SkipVerifiedGuard = () =>
+  SetMetadata(SKIP_VERIFIED_GUARD_KEY, true);

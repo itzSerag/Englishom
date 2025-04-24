@@ -13,9 +13,17 @@ import { RolesGuard } from './auth/guards/role.guard';
 import { VerifiedGuard } from './auth/guards/verified-user.guard';
 
 @Module({
-  imports: [AuthModule, UserModule, PaymentModule, FileUploadModule, ConfigModule, DatabaseModule],
+  imports: [
+    AuthModule,
+    UserModule,
+    PaymentModule,
+    FileUploadModule,
+    ConfigModule,
+    DatabaseModule,
+  ],
   controllers: [AppController],
-  providers: [AppService,
+  providers: [
+    AppService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard, // First, ensure user is authenticated
@@ -32,4 +40,4 @@ import { VerifiedGuard } from './auth/guards/verified-user.guard';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

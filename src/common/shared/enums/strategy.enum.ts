@@ -1,6 +1,5 @@
-
 export enum Strategy {
-    LOCAL = 'local',
-    GOOGLE = 'google',
-    FACEBOOK = 'facebook',
+  LOCAL = 'local',
+  GOOGLE = 'google',
+  FACEBOOK = 'facebook',
 }

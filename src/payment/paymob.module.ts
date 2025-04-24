@@ -16,8 +16,8 @@ import { PaymobController } from './paymob.controller';
     OrderRepo,
     {
       provide: OrderService,
-      useExisting: OrderRepo
-    }
+      useExisting: OrderRepo,
+    },
   ],
   controllers: [PaymobController],
   imports: [
@@ -28,4 +28,4 @@ import { PaymobController } from './paymob.controller';
   ],
   exports: [PaymobService, OrderRepo, OrderService],
 })
-export class PaymentModule { }
+export class PaymentModule {}

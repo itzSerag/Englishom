@@ -26,11 +26,15 @@ export class PaymobService {
     private readonly configService: ConfigService,
     public readonly orderRepo: OrderRepo,
     private readonly transactionService: TransactionService,
-    private readonly userRepo: UserRepo
+    private readonly userRepo: UserRepo,
   ) {
-    this.integrationId = this.configService.getOrThrow<string>('PAYMOB_INTEGRATION_ID');
-    this.PAYMOB_PUBLIC_KEY = this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
-    this.PAYMOB_SECRET_KEY = this.configService.getOrThrow<string>('PAYMOB_SECRET_KEY');
+    this.integrationId = this.configService.getOrThrow<string>(
+      'PAYMOB_INTEGRATION_ID',
+    );
+    this.PAYMOB_PUBLIC_KEY =
+      this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
+    this.PAYMOB_SECRET_KEY =
+      this.configService.getOrThrow<string>('PAYMOB_SECRET_KEY');
   }
 
   /**
@@ -38,7 +42,10 @@ export class PaymobService {
    */
   private async createIntention(paymentRequest: PaymentRequest): Promise<any> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      this.REQUEST_TIMEOUT,
+    );
 
     try {
       const res = await fetch('https://accept.paymob.com/v1/intention/', {
@@ -80,7 +87,10 @@ export class PaymobService {
   /**
    * Process a new order with transaction support
    */
-  async processOrder(paymentRequest: PaymentRequest, userId: string): Promise<string> {
+  async processOrder(
+    paymentRequest: PaymentRequest,
+    userId: string,
+  ): Promise<string> {
     return await this.transactionService.withTransaction(async (session) => {
       // Validate input
       if (!paymentRequest?.items?.length || !paymentRequest.items[0].name) {
@@ -92,16 +102,19 @@ export class PaymobService {
       const levelName = paymentRequest.items[0].name as Level_Name;
 
       // Check for existing completed order using transaction session
-      const existingCompletedOrder = await this.orderRepo.findCompletedOrder(userId, levelName, session);
+      const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
+        userId,
+        levelName,
+        session,
+      );
 
       if (existingCompletedOrder) {
-        throw new BadRequestException(
-          'User already has this level',
-        );
+        throw new BadRequestException('User already has this level');
       }
 
       // Create payment intention
-      const dataUserPaymentIntention = await this.createIntention(paymentRequest);
+      const dataUserPaymentIntention =
+        await this.createIntention(paymentRequest);
       if (!dataUserPaymentIntention?.client_secret) {
         throw new InternalServerErrorException(
           'Failed to create payment intention',
@@ -114,13 +127,11 @@ export class PaymobService {
           userId,
           levelName,
           paymentRequest.amount,
-          session
+          session,
         );
-
       } catch (err) {
-
-        this.logger.error("failed to upsert the order, ", err)
-        throw new InternalServerErrorException("failed to upsert the order")
+        this.logger.error('failed to upsert the order, ', err);
+        throw new InternalServerErrorException('failed to upsert the order');
       }
 
       return `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${dataUserPaymentIntention.client_secret}`;
@@ -149,11 +160,14 @@ export class PaymobService {
 
       if (!success) {
         // For failed payments, find and update the order status to FAILED
-        const pendingOrder = await this.orderRepo.findOne({
-          userId: user._id,
-          paymentStatus: PaymentStatus.PENDING,
-          amountCents: amount,
-        }, session);
+        const pendingOrder = await this.orderRepo.findOne(
+          {
+            userId: user._id,
+            paymentStatus: PaymentStatus.PENDING,
+            amountCents: amount,
+          },
+          session,
+        );
 
         if (pendingOrder) {
           await this.orderRepo.updateOrderStatus(
@@ -168,18 +182,24 @@ export class PaymobService {
       }
 
       // Find the pending order for this user and amount
-      const pendingOrder = await this.orderRepo.findOne({
-        userId: user._id,
-        paymentStatus: PaymentStatus.PENDING,
-        amountCents: amount,
-      }, session);
+      const pendingOrder = await this.orderRepo.findOne(
+        {
+          userId: user._id,
+          paymentStatus: PaymentStatus.PENDING,
+          amountCents: amount,
+        },
+        session,
+      );
 
       if (!pendingOrder) {
         // Check if there's an order with same amount but different status
-        const existingOrder = await this.orderRepo.findOne({
-          userId: user._id,
-          amountCents: amount,
-        }, session);
+        const existingOrder = await this.orderRepo.findOne(
+          {
+            userId: user._id,
+            amountCents: amount,
+          },
+          session,
+        );
 
         if (existingOrder) {
           throw new BadRequestException(
@@ -201,7 +221,7 @@ export class PaymobService {
       // Verify the update was successful
       const updatedOrder = await this.orderRepo.findOne(
         { _id: pendingOrder._id },
-        session
+        session,
       );
 
       if (updatedOrder?.paymentStatus !== PaymentStatus.COMPLETED) {
@@ -217,9 +237,14 @@ export class PaymobService {
    */
   async refundOrder(orderId: string): Promise<any> {
     return await this.transactionService.withTransaction(async (session) => {
-      const order = await this.orderRepo.findOne({ paymentId: orderId }, session);
+      const order = await this.orderRepo.findOne(
+        { paymentId: orderId },
+        session,
+      );
       if (!order) {
-        throw new NotFoundException(`Order with payment ID ${orderId} not found`);
+        throw new NotFoundException(
+          `Order with payment ID ${orderId} not found`,
+        );
       }
 
       // Update order status to REFUNDED with transaction session
@@ -227,7 +252,7 @@ export class PaymobService {
         order._id.toString(),
         PaymentStatus.REFUNDED,
         undefined,
-        session
+        session,
       );
 
       return { success: true };

@@ -9,23 +9,23 @@ export type OrderDocument = Order & Document;
 
 @Schema({ timestamps: true })
 export class Order extends AbstractDocument {
-    @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-    userId: User;
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  userId: User;
 
-    @Prop({ type: String, enum: Level_Name, required: true })
-    levelName: Level_Name;
+  @Prop({ type: String, enum: Level_Name, required: true })
+  levelName: Level_Name;
 
-    @Prop({ required: true })
-    amountCents: number;
+  @Prop({ required: true })
+  amountCents: number;
 
-    @Prop({ type: String, enum: PaymentStatus, default: PaymentStatus.PENDING })
-    paymentStatus: PaymentStatus;
+  @Prop({ type: String, enum: PaymentStatus, default: PaymentStatus.PENDING })
+  paymentStatus: PaymentStatus;
 
-    @Prop({ default: Date.now })
-    paymentDate: Date;
+  @Prop({ default: Date.now })
+  paymentDate: Date;
 
-    @Prop({ unique: true, sparse: true })
-    paymentId?: string;
+  @Prop({ unique: true, sparse: true })
+  paymentId?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

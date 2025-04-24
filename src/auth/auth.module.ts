@@ -23,7 +23,7 @@ import { Course, CourseSchema } from './models/admin-course';
     ConfigModule,
     DatabaseModule.forFeature([
       { name: Otp.name, schema: OtpSchema },
-      { name: Course.name, schema: CourseSchema }
+      { name: Course.name, schema: CourseSchema },
     ]),
     forwardRef(() => UserModule), // Use forwardRef here
     JwtModule.registerAsync({
@@ -36,7 +36,13 @@ import { Course, CourseSchema } from './models/admin-course';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, FacebookStrategy, OtpRepo],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    FacebookStrategy,
+    OtpRepo,
+  ],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

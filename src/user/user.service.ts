@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserRepo } from './repo/repo.user';
 import * as bcrypt from 'bcrypt';
@@ -9,15 +9,13 @@ import { log } from 'console';
 
 @Injectable()
 export class UserService {
-
   constructor(
     private readonly userRepo: UserRepo,
-    private readonly orderService: OrderService
-  ) { }
-  private logger = new Logger(UserService.name)
+    private readonly orderService: OrderService,
+  ) {}
+  private logger = new Logger(UserService.name);
 
   async create(createUserDto: CreateUserDto) {
-
     const user = await this.userRepo.findOne({ email: createUserDto.email });
     if (user) {
       // user already found
@@ -29,7 +27,6 @@ export class UserService {
     createUserDto.password = hashedPassword;
 
     return this.userRepo.create(createUserDto);
-
   }
 
   async findByEmail(email: string) {
@@ -40,17 +37,16 @@ export class UserService {
     return this.userRepo.findOne({ _id: id });
   }
 
-
   async findAll() {
     return await this.userRepo.find({});
   }
 
   async deleteUser(_id: string) {
-    return await this.userRepo.findOneAndDelete({ _id })
+    return await this.userRepo.findOneAndDelete({ _id });
   }
 
   async findOneAndUpdate(_id: string, updateUserDto: UpdateUserDto) {
-    return await this.userRepo.findOneAndUpdate({ _id }, updateUserDto)
+    return await this.userRepo.findOneAndUpdate({ _id }, updateUserDto);
   }
 
   async getUserCompletedOrders(userId: string) {
@@ -60,9 +56,7 @@ export class UserService {
     return levelNames;
   }
 
-
   async getCompletedDaysInLevel(userId: string, levelName: Level_Name) {
-
     const userLevels = await this.getUserCompletedOrders(userId);
     log('userLevels', userLevels);
     // if level name not included within userLevels throw an error
@@ -71,39 +65,54 @@ export class UserService {
     }
 
     return await this.userRepo.userProgress(userId, levelName);
-
   }
 
-  async markDayAsCompleted(userId: string, levelName: Level_Name, dayNumber: number) {
-
+  async markDayAsCompleted(
+    userId: string,
+    levelName: Level_Name,
+    dayNumber: number,
+  ) {
     const userLevels = await this.getUserCompletedOrders(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
-
 
     return await this.userRepo.markDayAsCompleted(userId, levelName, dayNumber);
-
   }
 
-  async markTaskAsCompleted(userId: string, levelName: Level_Name, dayNumber: number, taskName: string) {
-
+  async markTaskAsCompleted(
+    userId: string,
+    levelName: Level_Name,
+    dayNumber: number,
+    taskName: string,
+  ) {
     const userLevels = await this.getUserCompletedOrders(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 
-    return await this.userRepo.markTaskAsCompleted(userId, levelName, dayNumber, taskName);
+    return await this.userRepo.markTaskAsCompleted(
+      userId,
+      levelName,
+      dayNumber,
+      taskName,
+    );
   }
 
-  async getCompletedTasksInDay(userId: string, levelName: Level_Name, dayNumber: number) {
-
+  async getCompletedTasksInDay(
+    userId: string,
+    levelName: Level_Name,
+    dayNumber: number,
+  ) {
     const userLevels = await this.getUserCompletedOrders(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 
-    return await this.userRepo.getCompletedTasksInDay(userId, levelName, dayNumber);
+    return await this.userRepo.getCompletedTasksInDay(
+      userId,
+      levelName,
+      dayNumber,
+    );
   }
-
 }

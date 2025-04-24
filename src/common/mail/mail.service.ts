@@ -4,26 +4,26 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
-    private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter;
 
-    constructor(private configService: ConfigService) {
-        this.transporter = nodemailer.createTransport({
-            host: this.configService.get<string>('SMTP_HOST'), // e.g. mail.yourdomain.com
-            port: this.configService.get<number>('SMTP_PORT'), // 465 for SSL or 587 for TLS
-            secure: true,
-            auth: {
-                user: this.configService.get<string>('SMTP_USER'), // no-reply@yourdomain.com
-                pass: this.configService.get<string>('SMTP_PASS'),
-            },
-        });
-    }
+  constructor(private configService: ConfigService) {
+    this.transporter = nodemailer.createTransport({
+      host: this.configService.get<string>('SMTP_HOST'), // e.g. mail.yourdomain.com
+      port: this.configService.get<number>('SMTP_PORT'), // 465 for SSL or 587 for TLS
+      secure: true,
+      auth: {
+        user: this.configService.get<string>('SMTP_USER'), // no-reply@yourdomain.com
+        pass: this.configService.get<string>('SMTP_PASS'),
+      },
+    });
+  }
 
-    async sendEmail(to: string, otp: string): Promise<any> {
-        const mailOptions = {
-            from: `"Englishom" <${this.configService.get<string>('SMTP_USER')}>`,
-            to,
-            subject: 'Your OTP',
-            html: `
+  async sendEmail(to: string, otp: string): Promise<any> {
+    const mailOptions = {
+      from: `"Englishom" <${this.configService.get<string>('SMTP_USER')}>`,
+      to,
+      subject: 'Your OTP',
+      html: `
         <html>
           <head>
             <style>
@@ -69,8 +69,8 @@ export class EmailService {
           </body>
         </html>
       `,
-        };
+    };
 
-        return this.transporter.sendMail(mailOptions);
-    }
+    return this.transporter.sendMail(mailOptions);
+  }
 }

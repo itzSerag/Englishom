@@ -24,7 +24,7 @@ export class PaymobController {
     private readonly configService: ConfigService,
     private paymobService: PaymobService,
     private userService: UserService,
-  ) { }
+  ) {}
 
   @Public()
   @Post('callback')
@@ -40,7 +40,7 @@ export class PaymobController {
         orderId,
         success,
         data.obj.amount_cents,
-        userEmail
+        userEmail,
       );
 
       return { userData };
@@ -56,16 +56,15 @@ export class PaymobController {
     @Body() paymentIntention: PaymentRequestDTO,
     @CurrentUser() user: User,
   ) {
-
-    const integration_id = this.configService.get<number>('PAYMOB_INTEGRATION_ID')
+    const integration_id = this.configService.get<number>(
+      'PAYMOB_INTEGRATION_ID',
+    );
 
     if (isNaN(integration_id)) {
       throw new BadRequestException('Invalid integration ID');
     }
 
     try {
-
-
       // HARD CODED FOR NOW
 
       const levelsData = {
@@ -79,7 +78,7 @@ export class PaymobController {
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
             stage_2_description:
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 100
+            price: 100,
           },
           {
             id: 2,
@@ -90,7 +89,7 @@ export class PaymobController {
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
             stage_2_description:
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 200
+            price: 200,
           },
           {
             id: 3,
@@ -101,7 +100,7 @@ export class PaymobController {
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
             stage_2_description:
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 300
+            price: 300,
           },
           {
             id: 4,
@@ -112,7 +111,7 @@ export class PaymobController {
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
             stage_2_description:
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 400
+            price: 400,
           },
           {
             id: 5,
@@ -123,7 +122,7 @@ export class PaymobController {
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
             stage_2_description:
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 500
+            price: 500,
           },
           {
             id: 6,
@@ -134,9 +133,9 @@ export class PaymobController {
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
             stage_2_description:
               'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 600
-          }
-        ]
+            price: 600,
+          },
+        ],
       };
 
       // Find the level by its name
@@ -147,7 +146,6 @@ export class PaymobController {
       if (!level) {
         throw new BadRequestException('Invalid level name');
       }
-
 
       const data = {
         amount: level.price,
@@ -176,15 +174,22 @@ export class PaymobController {
         },
       };
 
-
-      this.logger.log(`Processing payment for user ${user._id}, level: ${paymentIntention.level_name}`);
+      this.logger.log(
+        `Processing payment for user ${user._id}, level: ${paymentIntention.level_name}`,
+      );
 
       // Process payment and pass userId to the service method
-      const clientURL = await this.paymobService.processOrder(data, user._id.toString());
+      const clientURL = await this.paymobService.processOrder(
+        data,
+        user._id.toString(),
+      );
 
       return { clientURL };
     } catch (error) {
-      this.logger.error(`Payment processing failed: ${error.message}`, error.stack);
+      this.logger.error(
+        `Payment processing failed: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException(
         `Payment processing failed: ${error.message}`,
       );
@@ -195,10 +200,14 @@ export class PaymobController {
   async refundOrder(@Req() req: any, @Body('levelName') levelName: Level_Name) {
     try {
       const user = req.user;
-      this.logger.log(`Refund requested for user ${user._id}, level: ${levelName}`);
+      this.logger.log(
+        `Refund requested for user ${user._id}, level: ${levelName}`,
+      );
 
       // Get all completed orders for this user
-      const userOrders = await this.userService.getUserCompletedOrders(user._id.toString());
+      const userOrders = await this.userService.getUserCompletedOrders(
+        user._id.toString(),
+      );
 
       // If the user doesn't have the item to refund
       if (
@@ -209,24 +218,25 @@ export class PaymobController {
       }
 
       // Find the specific order for this level
-      const orderToRefund = userOrders.find(order => order.levelName === levelName);
+      const orderToRefund = userOrders.find(
+        (order) => order.levelName === levelName,
+      );
 
       if (!orderToRefund?.paymentId) {
         throw new BadRequestException('Order has no payment ID');
       }
 
-      const result = await this.paymobService.refundOrder(orderToRefund.paymentId);
+      const result = await this.paymobService.refundOrder(
+        orderToRefund.paymentId,
+      );
 
-      this.logger.log(`Refund successful for user ${user._id}, level: ${levelName}`);
+      this.logger.log(
+        `Refund successful for user ${user._id}, level: ${levelName}`,
+      );
       return result;
     } catch (error) {
       this.logger.error(`Refund failed: ${error.message}`, error.stack);
-      throw new BadRequestException(
-        `Refund failed: ${error.message}`,
-      );
+      throw new BadRequestException(`Refund failed: ${error.message}`);
     }
   }
-
-
-
 }

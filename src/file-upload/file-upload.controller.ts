@@ -21,7 +21,7 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 
 @Controller('files')
 export class FileUploadController {
-  constructor(private uploadService: FileUploadService) { }
+  constructor(private uploadService: FileUploadService) {}
 
   @Get('')
   async getContentByName(@Query() content: UploadFileDTO) {
@@ -36,13 +36,10 @@ export class FileUploadController {
     return result;
   }
 
-
-  // now this is about uploading and Inserting data 
+  // now this is about uploading and Inserting data
   @Post('')
   @UseGuards(AdminGuard)
   async upload(@Body() dataUploadDTO: UploadDTO) {
-
-
     // ensure the data is parsed as array
     if (typeof dataUploadDTO.data === 'string') {
       try {
@@ -57,19 +54,19 @@ export class FileUploadController {
       dataUploadDTO.data = [dataUploadDTO.data];
     }
 
-
     await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
     return await this.uploadService.insertIntoJsonDataArray(dataUploadDTO);
   }
 
-
   @Post('single-file')
   @UseGuards(AdminGuard)
-  @UseInterceptors(FileInterceptor('file', {
-    limits: {
-      fileSize: 20 * 1024 * 1024 // 20mb
-    }
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 20 * 1024 * 1024, // 20mb
+      },
+    }),
+  )
 
   // returns a link of the file in aws to put it within the request
   async uploadSingleFile(
@@ -96,17 +93,12 @@ export class FileUploadController {
     return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
-
   // delete an obj in data array
   @UseGuards(AdminGuard)
   @Delete('delete-obj')
-  async deleteFromJsonDataArray(
-    @Query() deleteObjDTO: DeleteObjDTO) {
-
+  async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
     return await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
-
   }
-
 
   // delete the whole file
   @UseGuards(AdminGuard)
@@ -121,7 +113,4 @@ export class FileUploadController {
     log(res);
     return { message: 'File deleted successfully' };
   }
-
-
-
 }

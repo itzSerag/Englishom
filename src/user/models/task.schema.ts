@@ -6,14 +6,14 @@ export type TaskDocument = Task & Document;
 
 @Schema()
 export class Task {
-    @Prop({ required: true })
-    name: string;
+  @Prop({ required: true })
+  name: string;
 
-    @Prop()
-    description?: string;
+  @Prop()
+  description?: string;
 
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Day', required: true })
-    dayId: Day;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Day', required: true })
+  dayId: Day;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);

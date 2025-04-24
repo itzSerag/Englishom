@@ -1,4 +1,18 @@
-import { Controller, Post, Body, ConflictException, Get, UseGuards, HttpStatus, Res, Logger, UnauthorizedException, ClassSerializerInterceptor, UseInterceptors, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  ConflictException,
+  Get,
+  UseGuards,
+  HttpStatus,
+  Res,
+  Logger,
+  UnauthorizedException,
+  ClassSerializerInterceptor,
+  UseInterceptors,
+  HttpCode,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { UserDto } from '../common/shared/dto/user-dto';
@@ -16,18 +30,16 @@ import { SkipVerifiedGuard } from './guards/skip-verified.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
   private logger = new Logger(AuthController.name);
 
   @Public()
   @UseInterceptors(ClassSerializerInterceptor)
   @Post('signup')
-
-
   async register(@Body() createAuthDto: CreateUserDto) {
     const user = await this.authService.register(createAuthDto);
     if (!user) {
-      throw new ConflictException('User already exist')
+      throw new ConflictException('User already exist');
     }
 
     const access_token = await this.authService.generateToken(user);
@@ -35,8 +47,8 @@ export class AuthController {
     return {
       access_token,
       user: plainToClass(UserDto, user, { excludeExtraneousValues: true }),
-      levels: []
-    }
+      levels: [],
+    };
   }
 
   @Public()
@@ -44,16 +56,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
-
-    const user = await this.authService.login(loginDto)
+    const user = await this.authService.login(loginDto);
     const access_token = await this.authService.generateToken(user);
     const levels = await this.authService.getUserLevels(user._id.toString());
 
     return {
       access_token,
       user: new UserDto(user),
-      levels: levels
-    }
+      levels: levels,
+    };
   }
 
   @Public()
@@ -65,12 +76,12 @@ export class AuthController {
 
     const access_token = await this.authService.generateToken({
       ...user,
-      isVerified: true // manually patch to avoid refetch
+      isVerified: true, // manually patch to avoid refetch
     });
 
     return {
       access_token,
-      user: new UserDto({ ...user, isVerified: true })
+      user: new UserDto({ ...user, isVerified: true }),
     };
   }
 
@@ -79,7 +90,6 @@ export class AuthController {
   async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
     return await this.authService.resendOtp(resendOtpDto.email);
   }
-
 
   // OAUTH
   @Public()
@@ -92,7 +102,10 @@ export class AuthController {
   @Public()
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
-  async facebookLoginCallback(@CurrentUser() user: any, @Res() res: Response): Promise<any> {
+  async facebookLoginCallback(
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ): Promise<any> {
     try {
       if (!user) {
         throw new UnauthorizedException('No user data received from Facebook');
@@ -102,8 +115,13 @@ export class AuthController {
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
-      this.logger.error(`Facebook OAuth login failed: ${err.message}`, err.stack);
-      return res.redirect(`${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`);
+      this.logger.error(
+        `Facebook OAuth login failed: ${err.message}`,
+        err.stack,
+      );
+      return res.redirect(
+        `${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`,
+      );
     }
   }
 
@@ -117,7 +135,10 @@ export class AuthController {
   @Public()
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@CurrentUser() user: any, @Res() res: Response): Promise<any> {
+  async googleAuthRedirect(
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ): Promise<any> {
     try {
       if (!user) {
         throw new UnauthorizedException('No user data received from Google');
@@ -128,12 +149,17 @@ export class AuthController {
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
       this.logger.error(`Google OAuth login failed: ${err.message}`, err.stack);
-      return res.redirect(`${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`);
+      return res.redirect(
+        `${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`,
+      );
     }
   }
 
   @Post('reset-password')
-  async resetPassword(@CurrentUser() user: User, resetPasswordDto: ResetPasswordDto) {
+  async resetPassword(
+    @CurrentUser() user: User,
+    resetPasswordDto: ResetPasswordDto,
+  ) {
     await this.authService.resetPassword(user, resetPasswordDto);
 
     return {

@@ -5,9 +5,7 @@ import { Otp } from '../models/otp.schema';
 
 @Injectable()
 export class OtpRepo {
-  constructor(
-    @InjectModel(Otp.name) private readonly otpModel: Model<Otp>,
-  ) {}
+  constructor(@InjectModel(Otp.name) private readonly otpModel: Model<Otp>) {}
 
   async create(data: Partial<Otp>): Promise<Otp> {
     const createdOtp = new this.otpModel(data);
@@ -21,4 +19,4 @@ export class OtpRepo {
   async delete(filter = {}): Promise<any> {
     return this.otpModel.deleteOne(filter).exec();
   }
-} 
+}

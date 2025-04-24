@@ -7,11 +7,11 @@ export type UserLevelDocument = UserLevel & Document;
 
 @Schema()
 export class UserLevel {
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-    userId: User;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  userId: User;
 
-    @Prop({ type: String, enum: Level_Name, required: true })
-    levelName: Level_Name;
+  @Prop({ type: String, enum: Level_Name, required: true })
+  levelName: Level_Name;
 }
 
 export const UserLevelSchema = SchemaFactory.createForClass(UserLevel);
