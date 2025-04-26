@@ -61,6 +61,8 @@ export class UploadDTO {
   @Matches(/^([1-9]|[1-4][0-9]|50)$/)
   day: string;
 
+
+  @IsNotEmpty()
   @IsArray()
   data: any[];
 }
@@ -165,7 +167,7 @@ class SPEAK {
   @IsNotEmpty()
   id?: string;
 
-  @IsString()
+  @IsArray()
   @IsNotEmpty()
   sentences: Array<string>;
 }
