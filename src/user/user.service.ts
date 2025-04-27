@@ -12,7 +12,7 @@ export class UserService {
   constructor(
     private readonly userRepo: UserRepo,
     private readonly orderService: OrderService,
-  ) {}
+  ) { }
   private logger = new Logger(UserService.name);
 
   async create(createUserDto: CreateUserDto) {
@@ -72,11 +72,22 @@ export class UserService {
     levelName: Level_Name,
     dayNumber: number,
   ) {
+
+
     const userLevels = await this.getUserCompletedOrders(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 
+    // check if the day is already completed or its not available to complete 
+    const completedDays = await this.getCompletedDaysInLevel(
+      userId,
+      levelName,
+    );
+
+    if (dayNumber > completedDays + 1) {
+      throw new NotFoundException('You can only complete the next day');
+    }
     return await this.userRepo.markDayAsCompleted(userId, levelName, dayNumber);
   }
 
@@ -89,6 +100,16 @@ export class UserService {
     const userLevels = await this.getUserCompletedOrders(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
+    }
+
+    // check if the day is already completed or its not available to complete 
+    const completedDays = await this.getCompletedDaysInLevel(
+      userId,
+      levelName,
+    );
+
+    if (dayNumber > completedDays + 1) {
+      throw new NotFoundException('You can only complete tasks in the next day');
     }
 
     return await this.userRepo.markTaskAsCompleted(

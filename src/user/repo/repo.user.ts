@@ -23,11 +23,12 @@ export class UserRepo extends AbstractRepo<User> {
     @InjectModel(Day.name) private readonly dayModel: Model<Day>,
     @InjectModel(Task.name) private readonly taskModel: Model<any>,
     @InjectModel(UserTask.name) private readonly userTaskModel: Model<any>,
+
   ) {
     super(userModel);
   }
 
-  async userProgress(userId: string, levelName: Level_Name) {
+  async userProgress(userId: string, levelName: Level_Name): Promise<number | null> {
     try {
       // Convert userId to ObjectId
       const userIdObjectId = toObjectId(userId);
@@ -49,7 +50,9 @@ export class UserRepo extends AbstractRepo<User> {
         .filter((p) => p.dayId) // make sure populate didn't miss
         .map((p) => p.dayId.dayNumber);
 
-      return completedDayNumbers;
+      // Return the maximum day number or null if no days are completed
+      return completedDayNumbers.length > 0 ? Math.max(...completedDayNumbers) : 0;
+      
     } catch (error) {
       if (error instanceof ForbiddenException) throw new Error(error.message);
 

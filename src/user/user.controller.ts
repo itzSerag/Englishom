@@ -10,7 +10,6 @@ import {
   ValidationPipe,
   Query,
   BadRequestException,
-  InternalServerErrorException,
   UseGuards,
   UseInterceptors,
   ClassSerializerInterceptor,
@@ -31,7 +30,7 @@ import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @SkipVerifiedGuard()
   @UseInterceptors(ClassSerializerInterceptor)
