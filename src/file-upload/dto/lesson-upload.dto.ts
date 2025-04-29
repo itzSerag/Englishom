@@ -112,10 +112,6 @@ class PICTURES {
   @IsNotEmpty()
   wordEn: string;
 
-  @IsArray()
-  @IsNotEmpty()
-  otherWords: Array<string>;
-
   @IsString()
   @IsNotEmpty()
   definition: string;
