@@ -155,6 +155,15 @@ class Q_A {
   @IsString()
   @IsNotEmpty()
   answer: string;
+
+  @IsString()
+  @IsNotEmpty()
+  questionSrc: string;
+
+  @IsString()
+  @IsNotEmpty()
+  answerSrc: string;
+
 }
 
 class SPEAK {
