@@ -27,6 +27,16 @@ class Example {
   sentence: string;
 }
 
+class Instructions {
+  @IsString()
+  @IsNotEmpty()
+  word: string;
+
+  @IsString()
+  @IsNotEmpty()
+  definition: string;
+}
+
 class Definition {
   @IsString()
   @IsNotEmpty()
@@ -92,6 +102,31 @@ class WRITE {
   @IsArray()
   @IsNotEmpty()
   sentences: Array<string>;
+}
+
+class TODAY {
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => Instructions)
+  instructions: Instructions[];
+
+  @IsArray()
+  @IsNotEmpty()
+  sentences: Array<string>;
+
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
 }
 
 class PICTURES {
@@ -293,6 +328,7 @@ const validationMap: Record<LESSONS, ClassConstructor<any>> = {
   [LESSONS.DAILY_TEST]: DAILY_TEST,
   [LESSONS.IDIOMS]: IDIOMS,
   [LESSONS.PHRASAL_VERBS]: PHRASAL_VERBS,
+  [LESSONS.TODAY]: TODAY,
 };
 
 export async function validateData(
