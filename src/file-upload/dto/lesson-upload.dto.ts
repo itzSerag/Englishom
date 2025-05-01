@@ -128,6 +128,7 @@ class TODAY {
   @IsNotEmpty()
   sentences: Array<string>;
 
+  
   @IsString()
   @IsNotEmpty()
   soundSrc: string;

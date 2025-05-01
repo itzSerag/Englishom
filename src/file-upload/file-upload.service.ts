@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -76,7 +77,7 @@ export class FileUploadService {
     const key = this.generateFileKey(
       fileTypePath,
       uploadFileDTO,
-      file.originalname,
+      file.originalname.trim().replace(/\s+/g, '_'),
     );
 
     try {
@@ -85,6 +86,180 @@ export class FileUploadService {
     } catch (error) {
       throw new InternalServerErrorException(
         `Failed to upload file: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Uploads a user audio file to S3 and returns the file URL.
+   * @param file The audio file to upload.
+   * @param uploadFileDTO Metadata for the file upload.
+   * @param userId The ID of the user uploading the file.
+   * @returns The URL of the uploaded file.
+   */
+
+  async uploadUserAudio(
+    file: Express.Multer.File,
+    uploadFileDTO: UploadFileDTO,
+    userId: string,
+  ) {
+    this.validateFile(file);
+
+    const fileTypePath = 'UserAudios';
+    // Use a fixed filename pattern for each day to ensure uniqueness
+    const key = `${fileTypePath}/${userId}/${uploadFileDTO.level_name}/${uploadFileDTO.day}/today_audio.mp3`;
+
+    try {
+      await this.uploadToS3(file, key);
+      return this.getFileUrl(key, this.s3Config.resBucket);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to upload user audio: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Retrieves a list of audio files for a specific user.
+   * @param userId The ID of the user.
+   * @returns An array of URLs for the user's audio files.
+   */
+
+  async getUserAudios(userId: string): Promise<{ url: string }[]> {
+    const prefix = `UserAudios/${userId}/`;
+
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: this.s3Config.resBucket,
+        Prefix: prefix,
+      });
+
+      const response = await this.s3Client.send(command);
+
+      return (response.Contents || []).map(object => ({
+        url: this.getFileUrl(object.Key, this.s3Config.resBucket).url
+      }));
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to retrieve user audios: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Retrieves a list of audio files for a specific user and level.
+   * @param userId The ID of the user.
+   * @param levelName The name of the level.
+   * @returns An array of URLs for the user's audio files for the specified level.
+   */
+  async getUserAudiosByLevel(
+    userId: string,
+    levelName: string
+  ): Promise<{ url: string }[]> {
+    const prefix = `UserAudios/${userId}/${levelName}/`;
+
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: this.s3Config.resBucket,
+        Prefix: prefix,
+      });
+
+      const response = await this.s3Client.send(command);
+
+      return (response.Contents || []).map(object => ({
+        url: this.getFileUrl(object.Key, this.s3Config.resBucket).url
+      }));
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to retrieve user audios for level: ${error.message}`,
+      );
+    }
+  }
+  async getUserDayAudio(
+    userId: string,
+    levelName: string,
+    day: string
+  ): Promise<{ url: string } | null> {
+    const key = `UserAudios/${userId}/${levelName}/${day}/today_audio.mp3`;
+
+    try {
+
+      this.logger.debug(`Checking for audio file at key: ${key}`);
+      // First, check if the file exists
+      const command = new GetObjectCommand({
+        Bucket: this.s3Config.resBucket,
+        Key: key,
+
+      });
+
+      try {
+        await this.s3Client.send(command);
+        // If file exists, return the proper S3 URL
+        const region = this.s3Config.region;
+        return {
+          url: `https://${this.s3Config.resBucket}.s3.${region}.amazonaws.com/${key}`
+        };
+      } catch (error) {
+        // Check if the error is because the file doesn't exist
+        if (error.name === 'NoSuchKey') {
+          this.logger.debug(`No audio file found for user ${userId} in level ${levelName} day ${day}`);
+          return null;
+        }
+        // If it's a different error, throw it
+        throw error;
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving day audio: ${error.message}`,
+        error.stack
+      );
+      throw new InternalServerErrorException(
+        `Failed to retrieve day audio: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Deletes a user audio file from S3.
+   * @param userId The ID of the user.
+   * @param audioKey The key of the audio file to delete.
+   */
+  async deleteUserAudio(userId: string, audioKey: string): Promise<void> {
+    // Don't append userId since it's already in the audioKey
+    const key = audioKey.startsWith('UserAudios/') ? audioKey : `UserAudios/${audioKey}`;
+
+    try {
+      // First verify the file exists
+      const getCommand = new GetObjectCommand({
+        Bucket: this.s3Config.resBucket,
+        Key: key,
+      });
+
+      try {
+        await this.s3Client.send(getCommand);
+      } catch (error) {
+        if (error.name === 'NoSuchKey') {
+          throw new NotFoundException(`Audio file not found: ${key}`);
+        }
+        throw error;
+      }
+
+      // If file exists, delete it
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: this.s3Config.resBucket,
+        Key: key,
+      });
+
+      await this.s3Client.send(deleteCommand);
+      this.logger.debug(`Successfully deleted audio file: ${key}`);
+
+    } catch (error) {
+      this.logger.error(`Failed to delete audio file: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to delete user audio: ${error.message}`,
       );
     }
   }
@@ -291,6 +466,8 @@ export class FileUploadService {
   }
 
   private getFileUrl(key: string, bucket: string) {
-    return { url: `https://${bucket}.s3.amazonaws.com/${key}` };
+    const region = this.s3Config.region;
+
+    return { url: `https://${bucket}.s3.${region}.amazonaws.com/${key}` };
   }
 }
