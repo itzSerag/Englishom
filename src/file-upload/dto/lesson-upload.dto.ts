@@ -112,7 +112,7 @@ class TODAY {
 
   @IsString()
   @IsNotEmpty()
-  title : string;
+  title: string;
 
   @IsString()
   @IsNotEmpty()
@@ -128,10 +128,11 @@ class TODAY {
   @IsNotEmpty()
   sentences: Array<string>;
 
-  
+
   @IsString()
   @IsNotEmpty()
-  soundSrc: string;
+  @IsOptional()
+  soundSrc?: string;
 }
 
 class PICTURES {
