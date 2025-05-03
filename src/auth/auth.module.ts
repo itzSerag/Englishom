@@ -15,6 +15,9 @@ import { Otp, OtpSchema } from './models/otp.schema';
 import { GoogleStrategy } from './strategy/google.strategy';
 import { FacebookStrategy } from './strategy/facebook.strategy';
 import { Course, CourseSchema } from './models/admin-course';
+import { CourseRepo } from './repo/course.repo';
+import { CourseService } from './services/course.service';
+import { CourseController } from './controllers/course.controller';
 
 @Module({
   imports: [
@@ -35,14 +38,16 @@ import { Course, CourseSchema } from './models/admin-course';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, CourseController],
   providers: [
     AuthService,
     JwtStrategy,
     GoogleStrategy,
     FacebookStrategy,
     OtpRepo,
+    CourseRepo,
+    CourseService,
   ],
-  exports: [AuthService],
+  exports: [AuthService, CourseService],
 })
 export class AuthModule {}

@@ -4,6 +4,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
 
 import * as dotenv from 'dotenv';
+import { AllExceptionsFilter } from './common/filters/all-exception';
 
 dotenv.config();
 
@@ -27,6 +28,9 @@ async function bootstrap() {
       forbidUnknownValues: true,
     }),
   );
+
+  app.useGlobalFilters(new AllExceptionsFilter());
+
 
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));

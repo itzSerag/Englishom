@@ -6,6 +6,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
@@ -15,6 +16,7 @@ import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { ConfigService } from '@nestjs/config';
 import { Public } from '../auth/decorator/public.decorator';
+import { CourseService } from '../auth/services/course.service';
 
 @Controller('payment')
 export class PaymobController {
@@ -24,6 +26,7 @@ export class PaymobController {
     private readonly configService: ConfigService,
     private paymobService: PaymobService,
     private userService: UserService,
+    private courseService: CourseService,
   ) {}
 
   @Public()
@@ -32,8 +35,6 @@ export class PaymobController {
     const success = data.obj?.success;
     const orderId = data.obj?.id;
     const userEmail = data.obj?.order?.shipping_data.email;
-
-    //
 
     try {
       const userData = await this.paymobService.handlePaymobCallback(
@@ -65,97 +66,26 @@ export class PaymobController {
     }
 
     try {
-      // HARD CODED FOR NOW
-
-      const levelsData = {
-        Levels: [
-          {
-            id: 1,
-            name: 'LEVEL_A1',
-            description:
-              'Level A1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a beginner level.',
-            stage_1_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            stage_2_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 100,
-          },
-          {
-            id: 2,
-            name: 'LEVEL_A2',
-            description:
-              'Level A2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a above beginner level.',
-            stage_1_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            stage_2_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 200,
-          },
-          {
-            id: 3,
-            name: 'LEVEL_B1',
-            description:
-              'Level B1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a intermediate level.',
-            stage_1_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            stage_2_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 300,
-          },
-          {
-            id: 4,
-            name: 'LEVEL_B2',
-            description:
-              'Level B2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a above intermediate level.',
-            stage_1_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            stage_2_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 400,
-          },
-          {
-            id: 5,
-            name: 'LEVEL_C1',
-            description:
-              'Level C1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a advanced level.',
-            stage_1_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            stage_2_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 500,
-          },
-          {
-            id: 6,
-            name: 'LEVEL_C2',
-            description:
-              'Level C2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a native level.',
-            stage_1_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            stage_2_description:
-              'In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.',
-            price: 600,
-          },
-        ],
-      };
-
-      // Find the level by its name
-      const level = levelsData.Levels.find(
-        (lvl) => lvl.name === paymentIntention.level_name,
-      );
-
-      if (!level) {
-        throw new BadRequestException('Invalid level name');
+      // Get course data from the database instead of hard-coded values
+      let course;
+      try {
+        course = await this.courseService.findByLevelName(paymentIntention.level_name);
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          throw new BadRequestException('Invalid level name');
+        }
+        throw error;
       }
 
       const data = {
-        amount: level.price,
+        amount: course.price,
         currency: 'EGP',
         payment_methods: [integration_id],
         items: [
           {
             name: paymentIntention.level_name,
-            amount: level.price,
-            description: level.description,
+            amount: course.price,
+            description: course.description || `${course.title} course`,
             quantity: 1,
           },
         ],
@@ -239,4 +169,4 @@ export class PaymobController {
       throw new BadRequestException(`Refund failed: ${error.message}`);
     }
   }
-}
+} 

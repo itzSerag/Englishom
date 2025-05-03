@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AbstractRepo } from '../../common/database/repo/abstract.repo';
-import { Order, OrderDocument } from '../models/order.schema';
+import { Order } from '../models/order.schema';
 import { ClientSession, Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Level_Name } from '../../common/shared/enums';

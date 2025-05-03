@@ -11,6 +11,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt.guard';
 import { RolesGuard } from './auth/guards/role.guard';
 import { VerifiedGuard } from './auth/guards/verified-user.guard';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -20,6 +21,15 @@ import { VerifiedGuard } from './auth/guards/verified-user.guard';
     FileUploadModule,
     ConfigModule,
     DatabaseModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+
+          ttl: 60,
+          limit: 100,
+        }
+      ]
+    })
   ],
   controllers: [AppController],
   providers: [
@@ -38,6 +48,10 @@ import { VerifiedGuard } from './auth/guards/verified-user.guard';
       provide: APP_GUARD,
       useClass: VerifiedGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule { }
