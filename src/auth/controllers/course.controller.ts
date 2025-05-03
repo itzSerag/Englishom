@@ -7,6 +7,7 @@ import { Roles } from '../decorator/roles.decorator';
 import { Role } from 'src/common/shared';
 import { CourseDto } from '../dto/course.dto';
 import { plainToInstance } from 'class-transformer';
+import { Public } from '../decorator/public.decorator';
 
 @Controller('admin/courses')
 export class CourseController {
@@ -17,13 +18,14 @@ export class CourseController {
   // and will handle the promise resolution for me.
 
   @Get()
-  @Roles(Role.ADMIN)
+  @Public()
   async findAll(): Promise<CourseDto[]> {
     const courses = await this.courseService.findAll();
     return plainToInstance(CourseDto, courses, { excludeExtraneousValues: true });
   }
 
   @Get(':level_name')
+  @Public()
   async findByLevelName(@Param('level_name') level_name: Level_Name): Promise<CourseDto> {
     const course = await this.courseService.findByLevelName(level_name);
 
@@ -49,7 +51,6 @@ export class CourseController {
 
     const course = await this.courseService.update(level_name, updateCourseDto);
     return plainToInstance(CourseDto, course, { excludeExtraneousValues: true });
-
 
   }
 
