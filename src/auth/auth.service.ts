@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { IPayload } from '../common/shared/interfaces/payload.interface';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { User } from '../user/models/user.schema';
-import { UserRepo } from '../user/repo/repo.user';
+import { UserRepo } from '../user/repo/user.repo';
 import { UserService } from '../user/user.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
@@ -27,7 +27,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly otpRepo: OtpRepo,
-  ) {}
+  ) { }
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);

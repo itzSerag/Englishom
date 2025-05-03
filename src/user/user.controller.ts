@@ -11,8 +11,6 @@ import {
   Query,
   BadRequestException,
   UseGuards,
-  UseInterceptors,
-  ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -27,13 +25,15 @@ import { UserTaskDto } from './dto/user-task.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { log } from 'console';
 import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
+import { CompleteLevelDto } from './dto/complete-level.dto';
+import { CertificateDto } from './dto/certificate.dto';
+import { GetCertificateDto } from './dto/get-certificate';
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @SkipVerifiedGuard()
-  @UseInterceptors(ClassSerializerInterceptor)
   @Get('me')
   async getMe(@CurrentUser() user: User) {
     const userLevels = await this.userService.getUserCompletedOrders(
@@ -46,6 +46,7 @@ export class UserController {
     };
   }
 
+
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
@@ -57,7 +58,6 @@ export class UserController {
 
   // HAVE TO DO SOME PAGINATION HERE
   @UseGuards(AdminGuard)
-  @UseInterceptors(ClassSerializerInterceptor)
   @Get('all')
   async findAll() {
     const users = await this.userService.findAll();
@@ -83,6 +83,15 @@ export class UserController {
     }
 
     return await this.userService.deleteUser(id);
+  }
+
+  @Get('certificate')
+  async getUserCertificate(@CurrentUser() user: User, @Body() certificateDto: GetCertificateDto) {
+    const certificate = await this.userService.getUserCertificate(user._id.toString(), certificateDto);
+    if (!certificate) {
+      throw new BadRequestException('Certificate not found');
+    }
+    return new CertificateDto(certificate);
   }
 
   @Get('completed-days')
@@ -131,6 +140,19 @@ export class UserController {
       taskDto.day,
       taskDto.taskName,
     );
+  }
+
+  @Post('complete-level')
+  async markLevelAsCompleted(
+    @CurrentUser() user: User,
+    @Body() completeLevelDto: CompleteLevelDto,
+  ) {
+    const certificate = await this.userService.markLevelAsCompleted(user._id.toString(), completeLevelDto);
+    if (!certificate) {
+      throw new Error('Something went wrong');
+    }
+
+    return new CertificateDto(certificate);
   }
 
   /// MUST BE AT THE END AND ADMIN ONLY

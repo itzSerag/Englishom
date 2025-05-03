@@ -12,7 +12,7 @@ import { PaymentRequest, PaymentStatus } from './types';
 import { Level_Name } from '../common/shared/enums';
 import { OrderRepo } from './repo/order.repo';
 import { TransactionService } from '../common/database/transaction.service';
-import { UserRepo } from '../user/repo/repo.user';
+import { UserRepo } from '../user/repo/user.repo';
 
 @Injectable()
 export class PaymobService {

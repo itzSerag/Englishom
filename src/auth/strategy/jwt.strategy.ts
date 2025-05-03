@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { UserRepo } from '../../user/repo/repo.user';
+import { UserRepo } from '../../user/repo/user.repo';
 import { UserDto } from '../../common/shared/dto/user-dto';
 import { IPayload } from '../../common/shared/interfaces/payload.interface';
 import { ConfigService } from '@nestjs/config';

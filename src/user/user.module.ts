@@ -2,7 +2,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { UserRepo } from './repo/repo.user';
+import { UserRepo } from './repo/user.repo';
 import { DatabaseModule } from '../common/database/database.module';
 import { User, UserSchema } from './models/user.schema';
 import { PaymentModule } from '../payment/paymob.module';
@@ -15,6 +15,8 @@ import {
 } from './models/user-progress.schema';
 import { UserTask, UserTaskSchema } from './models/user-task.schema';
 import { Level, LevelSchema } from './models/level.schema';
+import { Certification, CertificationSchema } from './models/certification.schema';
+import { CertificateRepo } from './repo/certificate.repo';
 
 // filepath: /mnt/DATA/Englishom/src/user/user.module.ts
 @Module({
@@ -28,12 +30,13 @@ import { Level, LevelSchema } from './models/level.schema';
       { name: UserTask.name, schema: UserTaskSchema },
       { name: Task.name, schema: TaskSchema },
       { name: Level.name, schema: LevelSchema },
+      { name: Certification.name, schema: CertificationSchema },
     ]),
     forwardRef(() => PaymentModule), // Use forwardRef here
     forwardRef(() => AuthModule), // Use forwardRef here
   ],
   controllers: [UserController],
-  providers: [UserService, UserRepo],
+  providers: [UserService, UserRepo, CertificateRepo],
   exports: [UserService, UserRepo], // Export UserService
 })
-export class UserModule {}
+export class UserModule { }

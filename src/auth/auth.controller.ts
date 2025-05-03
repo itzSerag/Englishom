@@ -9,8 +9,6 @@ import {
   Res,
   Logger,
   UnauthorizedException,
-  ClassSerializerInterceptor,
-  UseInterceptors,
   HttpCode,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -26,15 +24,13 @@ import { User } from '../user/models/user.schema';
 import { Response } from 'express';
 import { plainToClass } from 'class-transformer';
 import { ResetPasswordDto } from './dto';
-import { SkipVerifiedGuard } from './guards/skip-verified.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
   private logger = new Logger(AuthController.name);
 
   @Public()
-  @UseInterceptors(ClassSerializerInterceptor)
   @Post('signup')
   async register(@Body() createAuthDto: CreateUserDto) {
     const user = await this.authService.register(createAuthDto);
@@ -52,7 +48,6 @@ export class AuthController {
   }
 
   @Public()
-  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
@@ -68,7 +63,6 @@ export class AuthController {
   }
 
   @Public()
-  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.OK)
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
