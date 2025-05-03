@@ -8,11 +8,19 @@ export class CreateCourseDto {
 
   @IsNotEmpty()
   @IsString()
-  title: string;
+  titleAr: string;
+
+  @IsNotEmpty()
+  @IsString()
+  titleEn: string;
 
   @IsOptional()
   @IsString()
-  description?: string;
+  descriptionAr?: string;
+
+  @IsOptional()
+  @IsString()
+  descriptionEn?: string;
 
   @IsNotEmpty()
   @IsNumber()

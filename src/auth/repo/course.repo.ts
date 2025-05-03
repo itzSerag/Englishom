@@ -17,7 +17,7 @@ export class CourseRepo extends AbstractRepo<Course> {
   // }
 
   async findByLevelName(level_name: Level_Name): Promise<Course> {
-    return await this.courseModel.findOne({ level_name }).exec();
+    return await this.courseModel.findOne({ level_name }).lean();
   }
 
   // async create(createCourseDto: CreateCourseDto): Promise<Course> {

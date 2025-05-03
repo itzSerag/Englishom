@@ -35,12 +35,4 @@ export class CourseService {
     }
     return updatedCourse;
   }
-
-  async delete(level_name: Level_Name): Promise<Course> {
-    const deletedCourse = await this.courseRepo.findOneAndDelete({ level_name });
-    if (!deletedCourse) {
-      throw new NotFoundException(`Course with level name ${level_name} not found`);
-    }
-    return deletedCourse;
-  }
 } 

@@ -9,10 +9,16 @@ export class Course extends AbstractDocument {
   level_name: Level_Name
 
   @Prop({ required: true })
-  title: string;
+  titleAr: string;
 
   @Prop({ type: String })
-  description: string;
+  descriptionAr: string;
+
+  @Prop({ required: true })
+  titleEn: string;
+
+  @Prop({ type: String })
+  descriptionEn: string;
 
   @Prop({ required: true, type: Number })
   price: number;
