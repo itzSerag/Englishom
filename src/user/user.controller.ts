@@ -85,8 +85,8 @@ export class UserController {
     return await this.userService.deleteUser(id);
   }
 
-  @Get('certificate')
-  async getUserCertificate(@CurrentUser() user: User, @Body() certificateDto: GetCertificateDto) {
+  @Get('certificate/:level_name')
+  async getUserCertificate(@CurrentUser() user: User, @Param() certificateDto: GetCertificateDto) {
     const certificate = await this.userService.getUserCertificate(user._id.toString(), certificateDto);
     if (!certificate) {
       throw new BadRequestException('Certificate not found');
