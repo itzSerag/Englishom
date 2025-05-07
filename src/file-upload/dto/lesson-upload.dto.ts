@@ -17,16 +17,6 @@ import { plainToInstance, Type, ClassConstructor } from 'class-transformer';
 import { LESSONS } from '../../common/shared/enums';
 
 // SUB DTOs
-class Example {
-  @IsString()
-  @IsNotEmpty()
-  word: string;
-
-  @IsString()
-  @IsNotEmpty()
-  sentence: string;
-}
-
 class Instructions {
   @IsString()
   @IsNotEmpty()
@@ -45,6 +35,10 @@ class Definition {
   @IsString()
   @IsNotEmpty()
   definition: string;
+
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
 }
 
 class Answer {
@@ -56,6 +50,28 @@ class Answer {
   isCorrect: boolean;
 }
 
+class Example {
+
+  @IsString()
+  @IsNotEmpty()
+  exampleAr: string;
+
+  @IsString()
+  @IsNotEmpty()
+  exampleEn: string;
+
+  @IsString()
+  @IsNotEmpty()
+  sentence: string;
+
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
+
+  @IsString()
+  @IsNotEmpty()
+  pictureSrc: string;
+}
 // Main DTO
 export class UploadDTO {
   @IsNotEmpty()
@@ -116,7 +132,16 @@ class TODAY {
 
   @IsString()
   @IsNotEmpty()
+  @IsOptional()
+  soundSrc?: string;
+
+  @IsString()
+  @IsNotEmpty()
   description: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  sentences: Array<string>;
 
   @IsArray()
   @IsNotEmpty()
@@ -124,15 +149,7 @@ class TODAY {
   @Type(() => Instructions)
   instructions: Instructions[];
 
-  @IsArray()
-  @IsNotEmpty()
-  sentences: Array<string>;
 
-
-  @IsString()
-  @IsNotEmpty()
-  @IsOptional()
-  soundSrc?: string;
 }
 
 class PICTURES {
@@ -231,6 +248,8 @@ class GRAMMAR {
   @IsString()
   @IsNotEmpty()
   nameAr: string;
+
+
   @IsString()
   @IsNotEmpty()
   definition: string;
@@ -241,9 +260,11 @@ class GRAMMAR {
 
   @IsArray()
   @IsNotEmpty() // Ensures the array is not empty
-  @ValidateNested({ each: true })
-  @Type(() => Example)
-  examples: Example[];
+  examples: Array<string>
+
+  @IsArray()
+  @IsNotEmpty()
+  words: Array<string>;
 }
 
 class PHRASAL_VERBS {
@@ -303,23 +324,17 @@ class IDIOMS {
 
   @IsString()
   @IsNotEmpty()
-  exampleAr: string;
+  definition: string;
 
   @IsString()
   @IsNotEmpty()
-  exampleEn: string;
+  useCases: Array<string>;
 
-  @IsString()
+  @IsArray()
   @IsNotEmpty()
-  sentence: string;
-
-  @IsString()
-  @IsNotEmpty()
-  soundSrc: string;
-
-  @IsString()
-  @IsNotEmpty()
-  pictureSrc: string;
+  @ValidateNested({ each: true })
+  @Type(() => Example)
+  examples: Example[];
 }
 
 // Type-safe mapping from key to validation class
@@ -353,7 +368,11 @@ export async function validateData(
   for (const item of data) {
     let instance;
 
-    if (key === LESSONS.GRAMMAR || key === LESSONS.DAILY_TEST) {
+    if (
+      key === LESSONS.DAILY_TEST ||
+      key === LESSONS.LISTEN ||
+      key === LESSONS.IDIOMS
+    ) {
       const transformedItem = {
         ...item,
         examples: Array.isArray(item.examples)
