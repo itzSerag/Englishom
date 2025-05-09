@@ -249,7 +249,6 @@ class GRAMMAR {
   @IsNotEmpty()
   nameAr: string;
 
-
   @IsString()
   @IsNotEmpty()
   definition: string;
@@ -259,12 +258,13 @@ class GRAMMAR {
   useCases: Array<string>;
 
   @IsArray()
-  @IsNotEmpty() // Ensures the array is not empty
+  @IsNotEmpty()
   examples: Array<string>
 
   @IsArray()
+  @IsOptional()
   @IsNotEmpty()
-  words: Array<string>;
+  words?: Array<string>;
 }
 
 class PHRASAL_VERBS {
@@ -326,7 +326,7 @@ class IDIOMS {
   @IsNotEmpty()
   definition: string;
 
-  @IsString()
+  @IsArray()
   @IsNotEmpty()
   useCases: Array<string>;
 
