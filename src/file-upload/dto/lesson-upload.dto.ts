@@ -371,7 +371,8 @@ export async function validateData(
     if (
       key === LESSONS.DAILY_TEST ||
       key === LESSONS.LISTEN ||
-      key === LESSONS.IDIOMS
+      key === LESSONS.IDIOMS ||
+      key === LESSONS.TODAY
     ) {
       const transformedItem = {
         ...item,
