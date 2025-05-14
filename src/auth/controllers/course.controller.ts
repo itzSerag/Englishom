@@ -9,7 +9,7 @@ import { CourseDto } from '../dto/course.dto';
 import { plainToInstance } from 'class-transformer';
 import { Public } from '../decorator/public.decorator';
 
-@Controller('admin/courses')
+@Controller('courses')
 export class CourseController {
   constructor(private readonly courseService: CourseService) { }
 
@@ -33,7 +33,7 @@ export class CourseController {
     return plainToInstance(CourseDto, course, { excludeExtraneousValues: true });
   }
 
-  @Post()
+  @Post('admin')
   @Roles(Role.ADMIN)
   async create(@Body() createCourseDto: CreateCourseDto): Promise<CourseDto> {
     const course = await this.courseService.create(createCourseDto);
