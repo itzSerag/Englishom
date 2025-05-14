@@ -15,8 +15,8 @@ export class CourseController {
 
   // JUST remainder -- we can delete this await in the cruds
   // NestJS already understands that the controller methods are async
-  // and will handle the promise resolution for me.
 
+  // and will handle the promise resolution for me.
   @Get()
   @Public()
   async findAll(): Promise<CourseDto[]> {
