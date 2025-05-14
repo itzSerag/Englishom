@@ -33,16 +33,7 @@ export class CourseController {
     return plainToInstance(CourseDto, course, { excludeExtraneousValues: true });
   }
 
-  @Post('admin')
-  @Roles(Role.ADMIN)
-  async create(@Body() createCourseDto: CreateCourseDto): Promise<CourseDto> {
-    const course = await this.courseService.create(createCourseDto);
-
-    return plainToInstance(CourseDto, course, { excludeExtraneousValues: true });
-
-  }
-
-  @Patch(':level_name')
+  @Patch('admin/:level_name')
   @Roles(Role.ADMIN)
   async update(
     @Param('level_name') level_name: Level_Name,
