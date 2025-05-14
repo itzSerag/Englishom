@@ -4,11 +4,13 @@ export class UpdateCourseDto {
 
   @IsNotEmpty()
   @IsString()
-  titleAr: string;
+  @IsOptional()
+  titleAr?: string;
 
+  @IsOptional()
   @IsNotEmpty()
   @IsString()
-  titleEn: string;
+  titleEn?: string;
 
   @IsOptional()
   @IsString()
@@ -18,7 +20,8 @@ export class UpdateCourseDto {
   @IsString()
   descriptionEn?: string;
 
+  @IsOptional()
   @IsNotEmpty()
   @IsNumber()
-  price: number;
+  price?: number;
 } 

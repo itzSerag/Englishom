@@ -27,7 +27,7 @@ export class PaymobController {
     private paymobService: PaymobService,
     private userService: UserService,
     private courseService: CourseService,
-  ) {}
+  ) { }
 
   @Public()
   @Post('callback')
@@ -78,7 +78,7 @@ export class PaymobController {
       }
 
       const data = {
-        amount: course.price,
+        amount: course.price * 100, // Convert to EGP piasters
         currency: 'EGP',
         payment_methods: [integration_id],
         items: [
