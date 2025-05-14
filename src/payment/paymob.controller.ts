@@ -17,6 +17,7 @@ import { User } from '../user/models/user.schema';
 import { ConfigService } from '@nestjs/config';
 import { Public } from '../auth/decorator/public.decorator';
 import { CourseService } from '../auth/services/course.service';
+import { Course } from '../auth/models/admin-course';
 
 @Controller('payment')
 export class PaymobController {
@@ -67,7 +68,7 @@ export class PaymobController {
 
     try {
       // Get course data from the database instead of hard-coded values
-      let course;
+      let course: Course;
       try {
         course = await this.courseService.findByLevelName(paymentIntention.level_name);
       } catch (error) {
@@ -78,14 +79,14 @@ export class PaymobController {
       }
 
       const data = {
-        amount: course.price * 100, // Convert to EGP piasters
+        amount: course.price * 100,
         currency: 'EGP',
         payment_methods: [integration_id],
         items: [
           {
             name: paymentIntention.level_name,
-            amount: course.price,
-            description: course.description || `${course.title} course`,
+            amount: course.price * 100,
+            description: course.descriptionEn || `${course.titleEn} course`,
             quantity: 1,
           },
         ],

@@ -96,6 +96,10 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
+    if (user.isVerified) {
+      throw new BadRequestException('User already verified');
+    }
+
     const otpRecord = await this.otpRepo.findOne({ email });
 
     if (!otpRecord || otpRecord.otp !== otp) {
@@ -112,12 +116,14 @@ export class AuthService {
 
   async resendOtp(email: string) {
     const user = await this.userRepo.findOne({ email });
+
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
     if (user.isVerified) {
-      throw new ConflictException('User already verified');
+      throw new BadRequestException('User already verified');
     }
     await this.otpRepo.delete({ email });
 
