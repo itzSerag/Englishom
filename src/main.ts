@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import { ClassSerializerInterceptor, Logger, ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
 import helmet from 'helmet';
-import * as compression from 'compression';
 import * as dotenv from 'dotenv';
 import { AllExceptionsFilter } from './common/filters/all-exception';
 
@@ -15,7 +14,6 @@ async function bootstrap() {
 
   // Security middleware
   app.use(helmet());
-  app.use(compression());
 
   app.setGlobalPrefix('api');
   app.enableCors({

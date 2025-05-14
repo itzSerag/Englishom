@@ -1,6 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
-import { CreateCourseDto } from '../dto/create-course.dto';
 import { UpdateCourseDto } from '../dto/update-course.dto';
 import { Level_Name } from 'src/common/shared/enums';
 import { Roles } from '../decorator/roles.decorator';
