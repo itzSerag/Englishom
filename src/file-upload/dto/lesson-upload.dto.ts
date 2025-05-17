@@ -51,7 +51,6 @@ class Answer {
 }
 
 class Example {
-
   @IsString()
   @IsNotEmpty()
   exampleAr: string;
@@ -72,6 +71,7 @@ class Example {
   @IsNotEmpty()
   pictureSrc: string;
 }
+
 // Main DTO
 export class UploadDTO {
   @IsNotEmpty()
@@ -86,7 +86,6 @@ export class UploadDTO {
   @IsNotEmpty()
   @Matches(/^([1-9]|[1-4][0-9]|50)$/)
   day: string;
-
 
   @IsNotEmpty()
   @IsArray()
@@ -116,7 +115,8 @@ class WRITE {
   id?: string;
 
   @IsArray()
-  @IsNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   sentences: Array<string>;
 }
 
@@ -140,7 +140,8 @@ class TODAY {
   description: string;
 
   @IsArray()
-  @IsNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   sentences: Array<string>;
 
   @IsArray()
@@ -148,8 +149,6 @@ class TODAY {
   @ValidateNested({ each: true })
   @Type(() => Instructions)
   instructions: Instructions[];
-
-
 }
 
 class PICTURES {
@@ -175,7 +174,8 @@ class PICTURES {
   definition: string;
 
   @IsArray()
-  @IsNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   examples: Array<string>;
 }
 
@@ -221,7 +221,6 @@ class Q_A {
   @IsString()
   @IsNotEmpty()
   answerSrc: string;
-
 }
 
 class SPEAK {
@@ -231,7 +230,8 @@ class SPEAK {
   id?: string;
 
   @IsArray()
-  @IsNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   sentences: Array<string>;
 }
 
@@ -254,16 +254,19 @@ class GRAMMAR {
   definition: string;
 
   @IsArray()
-  @IsNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   useCases: Array<string>;
 
   @IsArray()
-  @IsNotEmpty()
-  examples: Array<string>
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  examples: Array<string>;
 
   @IsArray()
   @IsOptional()
-  @IsNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   words?: Array<string>;
 }
 
@@ -327,7 +330,8 @@ class IDIOMS {
   definition: string;
 
   @IsArray()
-  @IsNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   useCases: Array<string>;
 
   @IsArray()
@@ -366,14 +370,9 @@ export async function validateData(
 
   // Validate each item in the data array
   for (const item of data) {
+    // Special transformation only for IDIOMS which has nested Example objects
     let instance;
-
-    if (
-      key === LESSONS.DAILY_TEST ||
-      key === LESSONS.LISTEN ||
-      key === LESSONS.IDIOMS ||
-      key === LESSONS.TODAY
-    ) {
+    if (key === LESSONS.IDIOMS) {
       const transformedItem = {
         ...item,
         examples: Array.isArray(item.examples)

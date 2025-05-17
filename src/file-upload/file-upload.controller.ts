@@ -12,6 +12,7 @@ import {
   UploadedFile,
   Param,
   ForbiddenException,
+  ValidationPipe,
 } from '@nestjs/common';
 import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -29,10 +30,10 @@ export class FileUploadController {
   constructor(private uploadService: FileUploadService) { }
 
   @Get('')
-  async getContentByName(@Query() content: UploadFileDTO) {
+  async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {
     const result = await this.uploadService.getContentByName(content);
 
-    if (!result || result.length == 0) {
+    if (!result || !result.data || result.data.length === 0) {
       throw new NotFoundException(
         `Can't find any file by this name or file is empty : ${content.lesson_name}`,
       );

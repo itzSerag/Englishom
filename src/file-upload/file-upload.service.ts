@@ -18,6 +18,7 @@ import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
 import { v4 as uuidv4 } from 'uuid';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
+import { log } from 'console';
 
 enum FileType {
   IMAGE = 'Images',
@@ -353,9 +354,13 @@ export class FileUploadService {
     if (!signedUrl) return null;
 
     const response = await fetch(signedUrl.url);
+    log(response)
     if (!response.ok) return null;
 
-    return await response.json();
+    const data = await response.json();
+    log(data)
+    
+    return data 
   }
 
   private createJsonKey(uploadDTO: UploadDTO | UploadFileDTO): string {

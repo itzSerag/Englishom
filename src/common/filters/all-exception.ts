@@ -7,7 +7,6 @@ import {
     Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -18,10 +17,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
 
-        // Generate request ID if not exists
-        const requestId = request.headers['x-request-id'] || uuidv4();
-        response.setHeader('x-request-id', requestId);
-
         let status = HttpStatus.INTERNAL_SERVER_ERROR;
         let message = 'Internal server error';
         let errorResponse: any = {
@@ -29,7 +24,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
             message,
             timestamp: new Date().toISOString(),
             path: request.url,
-            requestId,
         };
 
         if (exception instanceof HttpException) {
@@ -46,27 +40,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
             }
         } else if (exception instanceof Error) {
             message = exception.message;
-            // Add error name for better error identification
-            errorResponse.error = exception.name;
         }
 
         // Update errorResponse with final status and message
         errorResponse.statusCode = status;
         errorResponse.message = message;
 
-        // Enhanced logging with request details
+        // Logging with full stack trace for debugging
         this.logger.error(
-            `[${requestId}] [${request.method}] ${request.url} - ${status} - ${message}`,
-            {
-                requestId,
-                method: request.method,
-                url: request.url,
-                status,
-                message,
-                stack: exception instanceof Error ? exception.stack : undefined,
-                headers: request.headers,
-                body: request.body,
-            }
+            `[${request.method}] ${request.url}`,
+            exception instanceof Error ? exception.stack : String(exception),
         );
 
         response.status(status).json(errorResponse);
