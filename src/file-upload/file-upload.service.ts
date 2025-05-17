@@ -112,6 +112,7 @@ export class FileUploadService {
 
     try {
       await this.uploadToS3(file, key);
+      // Return the exact URL for the file that was just uploaded
       return this.getFileUrl(key, this.s3Config.resBucket);
     } catch (error) {
       throw new InternalServerErrorException(
@@ -176,6 +177,7 @@ export class FileUploadService {
       );
     }
   }
+
   async getUserDayAudio(
     userId: string,
     levelName: string,
@@ -184,25 +186,20 @@ export class FileUploadService {
     const key = `UserAudios/${userId}/${levelName}/${day}/today_audio.mp3`;
 
     try {
-
       this.logger.debug(`Checking for audio file at key: ${key}`);
       // First, check if the file exists
-      const command = new GetObjectCommand({
+      const command = new HeadObjectCommand({  // Changed from GetObjectCommand to HeadObjectCommand
         Bucket: this.s3Config.resBucket,
         Key: key,
-
       });
 
       try {
         await this.s3Client.send(command);
         // If file exists, return the proper S3 URL
-        const region = this.s3Config.region;
-        return {
-          url: `https://${this.s3Config.resBucket}.s3.${region}.amazonaws.com/${key}`
-        };
+        return this.getFileUrl(key, this.s3Config.resBucket);
       } catch (error) {
         // Check if the error is because the file doesn't exist
-        if (error.name === 'NoSuchKey') {
+        if (error.name === 'NotFound' || error.name === 'NoSuchKey') {
           this.logger.debug(`No audio file found for user ${userId} in level ${levelName} day ${day}`);
           return null;
         }
@@ -231,15 +228,15 @@ export class FileUploadService {
 
     try {
       // First verify the file exists
-      const getCommand = new GetObjectCommand({
+      const headCommand = new HeadObjectCommand({  // Changed from GetObjectCommand to HeadObjectCommand
         Bucket: this.s3Config.resBucket,
         Key: key,
       });
 
       try {
-        await this.s3Client.send(getCommand);
+        await this.s3Client.send(headCommand);
       } catch (error) {
-        if (error.name === 'NoSuchKey') {
+        if (error.name === 'NotFound' || error.name === 'NoSuchKey') {
           throw new NotFoundException(`Audio file not found: ${key}`);
         }
         throw error;
@@ -360,7 +357,7 @@ export class FileUploadService {
     const data = await response.json();
     log(data)
 
-    return data 
+    return data
   }
 
   private createJsonKey(uploadDTO: UploadDTO | UploadFileDTO): string {
@@ -472,7 +469,8 @@ export class FileUploadService {
 
   private getFileUrl(key: string, bucket: string) {
     const region = this.s3Config.region;
-
-    return { url: `https://${bucket}.s3.${region}.amazonaws.com/${key}` };
+    // Properly encode the key to handle spaces and special characters correctly
+    const encodedKey = encodeURIComponent(key);
+    return { url: `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}` };
   }
 }
