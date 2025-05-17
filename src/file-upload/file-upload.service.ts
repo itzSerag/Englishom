@@ -359,7 +359,7 @@ export class FileUploadService {
 
     const data = await response.json();
     log(data)
-    
+
     return data 
   }
 
@@ -378,7 +378,7 @@ export class FileUploadService {
     uploadFileDTO: UploadFileDTO,
     originalName: string,
   ): string {
-    return `${fileTypePath}/${uploadFileDTO.level_name}/${uploadFileDTO.day}/${originalName}`;
+    return `${fileTypePath}/${uploadFileDTO.level_name}/${uploadFileDTO.day}/${uploadFileDTO.lesson_name}/${originalName}`;
   }
 
   private async uploadToS3(
