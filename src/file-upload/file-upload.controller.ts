@@ -13,10 +13,10 @@ import {
   Param,
   ForbiddenException,
   ValidationPipe,
+  Logger,
 } from '@nestjs/common';
 import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { log } from 'console';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 import { FileUploadService } from './file-upload.service';
@@ -27,19 +27,14 @@ import { Level_Name } from '../common/shared/enums';
 
 @Controller('files')
 export class FileUploadController {
+  private readonly logger = new Logger(FileUploadController.name);
+
   constructor(private uploadService: FileUploadService) { }
 
   @Get('')
   async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {
     const result = await this.uploadService.getContentByName(content);
-
-    if (!result || !result.data || result.data.length === 0) {
-      throw new NotFoundException(
-        `Can't find any file by this name or file is empty : ${content.lesson_name}`,
-      );
-    }
-
-    return result;
+    return result; // Service now always returns { data: [] } if no content
   }
 
   @Get('user-audio')
@@ -64,17 +59,25 @@ export class FileUploadController {
     @Param('levelName') levelName: Level_Name,
     @Param('day') day: string
   ) {
-    const audio = await this.uploadService.getUserDayAudio(
-      user._id.toString(),
-      levelName,
-      day
-    );
+    try {
+      const audio = await this.uploadService.getUserDayAudio(
+        user._id.toString(),
+        levelName,
+        day
+      );
 
-    if (!audio) {
-      throw new NotFoundException('No audio found for this day');
+      if (!audio) {
+        throw new NotFoundException('No audio found for this day');
+      }
+
+      return audio;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Error getting user day audio: ${error.message}`, error.stack);
+      throw error;
     }
-
-    return audio;
   }
 
   @Post('user-audio')
@@ -90,19 +93,7 @@ export class FileUploadController {
     @Body() uploadFileDTO: UploadFileDTO,
     @CurrentUser() user: User,
   ) {
-    if (!file) {
-      throw new BadRequestException('File not found in request');
-    }
-
-    const allowedMimeTypes = [
-      ...Object.values(AllowedAudioMimeTypes),
-    ];
-
-    if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
-      throw new BadRequestException(
-        'Only audio files are allowed to be uploaded.',
-      );
-    }
+    this.validateAudioFile(file);
 
     return await this.uploadService.uploadUserAudio(
       file,
@@ -111,57 +102,44 @@ export class FileUploadController {
     );
   }
 
-
   @Delete('user-audio')
   async deleteUserAudio(
     @CurrentUser() user: User,
     @Query('audioKey') audioKey: string
   ) {
+    if (!audioKey) {
+      throw new BadRequestException('audioKey is required');
+    }
 
-    const decodedKey = decodeURIComponent(audioKey); // just in case
-    // Extract userId from the audioKey path
-    // audioKey format: UserAudios/userId/levelName/day/day_audio.mp3
+    const decodedKey = decodeURIComponent(audioKey);
     const keyParts = decodedKey.split('/');
 
-
     if (keyParts.length < 2) {
-      log('Invalid audio key format:', keyParts);
-      log('Decoded key:', decodedKey);
-      log('Original key:', audioKey);
-      log('keyParts:', keyParts.length);
+      this.logger.warn('Invalid audio key format', {
+        decodedKey,
+        originalKey: audioKey,
+        keyPartsLength: keyParts.length,
+      });
       throw new BadRequestException('Invalid audio key format');
     }
 
-    const audioUserId = keyParts[1]; // Get userId from path
+    const audioUserId = keyParts[1];
 
     if (audioUserId !== user._id.toString()) {
-      throw new ForbiddenException('Access denied. ')
+      throw new ForbiddenException('You do not have permission to delete this audio file');
     }
 
     await this.uploadService.deleteUserAudio(user._id.toString(), audioKey);
     return { message: 'Audio file deleted successfully' };
   }
 
-  // now this is about uploading and Inserting data
   @Post('')
   @UseGuards(AdminGuard)
   async upload(@Body() dataUploadDTO: UploadDTO) {
-    // ensure the data is parsed as array
-    if (typeof dataUploadDTO.data === 'string') {
-      try {
-        dataUploadDTO.data = JSON.parse(dataUploadDTO.data);
-      } catch (error) {
-        throw new BadRequestException('Invalid JSON data format, ' + error);
-      }
-    }
-
-    // Additional check to ensure data is an array
-    if (!Array.isArray(dataUploadDTO.data)) {
-      dataUploadDTO.data = [dataUploadDTO.data];
-    }
-
+    dataUploadDTO.data = this.parseData(dataUploadDTO.data);
     await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
-    return await this.uploadService.insertIntoJsonDataArray(dataUploadDTO);
+    await this.uploadService.insertIntoJsonDataArray(dataUploadDTO);
+    return { message: 'Data uploaded successfully' };
   }
 
   @Post('single-file')
@@ -173,13 +151,71 @@ export class FileUploadController {
       },
     }),
   )
-
-  // returns a link of the file in aws to put it within the request
   async uploadSingleFile(
     @UploadedFile() file: Express.Multer.File,
     @Body() uploadFileDTO: UploadFileDTO,
   ) {
-    // upload to AWS and return the link
+    this.validateMediaFile(file);
+    return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete('delete-obj')
+  async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
+    await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
+    return { message: 'Object deleted successfully' };
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete()
+  async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
+    try {
+      const res = await this.uploadService.deleteFile(uploadFileDTO);
+      if (!res) {
+        throw new NotFoundException(
+          `Can't find any file by this name: ${uploadFileDTO.lesson_name}`,
+        );
+      }
+      return { message: 'File deleted successfully' };
+    } catch (error) {
+      if (error.name === 'NoSuchKey' || error.name === 'NotFound') {
+        throw new NotFoundException(
+          `Can't find any file by this name: ${uploadFileDTO.lesson_name}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  private parseData(data: any): any[] {
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch (error) {
+        throw new BadRequestException(`Invalid JSON data format: ${error.message}`);
+      }
+    }
+
+    if (!Array.isArray(data)) {
+      data = [data];
+    }
+
+    return data;
+  }
+
+  private validateAudioFile(file: Express.Multer.File): void {
+    if (!file) {
+      throw new BadRequestException('File not found in request');
+    }
+
+    const allowedMimeTypes = Object.values(AllowedAudioMimeTypes);
+
+    if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
+      throw new BadRequestException('Only audio files are allowed to be uploaded.');
+    }
+  }
+
+  private validateMediaFile(file: Express.Multer.File): void {
     if (!file) {
       throw new BadRequestException('File not found in request');
     }
@@ -190,33 +226,7 @@ export class FileUploadController {
     ];
 
     if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
-      throw new BadRequestException(
-        'Only Audio and images files are allowed to be uploaded.',
-      );
+      throw new BadRequestException('Only audio and image files are allowed to be uploaded.');
     }
-
-    console.log(uploadFileDTO);
-    return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
-  }
-
-  // delete an obj in data array
-  @UseGuards(AdminGuard)
-  @Delete('delete-obj')
-  async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
-    return await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
-  }
-
-  // delete the whole file
-  @UseGuards(AdminGuard)
-  @Delete()
-  async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
-    const res = await this.uploadService.deleteFile(uploadFileDTO);
-    if (!res) {
-      throw new NotFoundException(
-        `Can't find any file by this name : ${uploadFileDTO.lesson_name}`,
-      );
-    }
-    log(res);
-    return { message: 'File deleted successfully' };
   }
 }
