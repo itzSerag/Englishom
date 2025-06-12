@@ -27,6 +27,21 @@ class Instructions {
   definition: string;
 }
 
+class UseCases {
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  en : Array<String>
+
+  @IsArray()
+  @IsNotEmpty({each : true})
+  @IsString({each : true})
+  ar : Array<String>
+
+
+}
+
 class Definition {
   @IsString()
   @IsNotEmpty()
@@ -254,9 +269,11 @@ class GRAMMAR {
   definition: string;
 
   @IsArray()
-  @IsString({ each: true })
-  @IsNotEmpty({ each: true })
-  useCases: Array<string>;
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => UseCases)
+  useCases: UseCases[] ;
+
 
   @IsArray()
   @IsString({ each: true })
@@ -327,12 +344,17 @@ class IDIOMS {
 
   @IsString()
   @IsNotEmpty()
-  definition: string;
+  definitionEn: string;
+
+  @IsString()
+  @IsNotEmpty()
+  definitionAr: string;
 
   @IsArray()
-  @IsString({ each: true })
-  @IsNotEmpty({ each: true })
-  useCases: Array<string>;
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => UseCases)
+  useCases: UseCases[] ;
 
   @IsArray()
   @IsNotEmpty()
