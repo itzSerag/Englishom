@@ -29,8 +29,19 @@ class Instructions {
   definition: string;
 }
 
-class UseCase {
 
+class Sentence {
+
+  @IsString()
+  @IsNotEmpty()
+  sentence : string;
+  
+  @IsString()
+  @IsNotEmpty()
+  soundSrc : string; 
+}
+
+class UseCase {
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
@@ -247,9 +258,10 @@ class SPEAK {
   id?: string;
 
   @IsArray()
-  @IsString({ each: true })
   @IsNotEmpty({ each: true })
-  sentences: Array<string>;
+  @ValidateNested({ each: true })
+  @Type(() => Sentence)
+  sentences: Sentence[];
 }
 
 class GRAMMAR {
