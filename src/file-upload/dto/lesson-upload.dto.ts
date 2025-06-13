@@ -268,7 +268,11 @@ class GRAMMAR {
 
   @IsString()
   @IsNotEmpty()
-  definition: string;
+  definitionEn: string;
+
+  @IsString()
+  @IsNotEmpty()
+  definitionAr: string;
 
   @IsNotEmptyObject()
   @ValidateNested({ each: true })
