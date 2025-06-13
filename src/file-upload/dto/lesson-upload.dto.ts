@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsEnum,
   IsNotEmpty,
+  IsNotEmptyObject,
   IsObject,
   IsOptional,
   IsString,
@@ -269,7 +270,7 @@ class GRAMMAR {
   @IsNotEmpty()
   definition: string;
 
-  @IsNotEmpty()
+  @IsNotEmptyObject()
   @ValidateNested({ each: true })
   @Type(() => UseCase)
   useCases: UseCase ;
@@ -350,7 +351,7 @@ class IDIOMS {
   @IsNotEmpty()
   definitionAr: string;
 
-  @IsNotEmpty()
+  @IsNotEmptyObject()
   @ValidateNested({ each: true })
   @Type(() => UseCase)
   useCases: UseCase ;

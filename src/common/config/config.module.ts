@@ -19,7 +19,6 @@ import * as Joi from 'joi';
 
         // Database
         DATABASE_URL: Joi.string().uri().required(),
-        MONGODB_REPLICA_SET: Joi.string().default('rs0'),
 
         // JWT
         JWT_SECRET: Joi.string().required(),
