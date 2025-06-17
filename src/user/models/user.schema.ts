@@ -1,10 +1,11 @@
 // src/modules/users/schemas/user.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
 import { Role } from '../../common/shared';
 import { AbstractDocument } from '../../common/database/abstract.schema';
+import { TimeService } from 'src/common/config/time.service';
 
-@Schema({ timestamps: true })
+
+@Schema({ timestamps: true, versionKey: false })
 export class User extends AbstractDocument {
   @Prop({ required: true, unique: true })
   email: string;
@@ -17,6 +18,13 @@ export class User extends AbstractDocument {
 
   @Prop({ required: true })
   password: string;
+
+  @Prop({
+    required: true,
+    type: Date,
+    default: (timeService: TimeService) => timeService.now(),
+  })
+  lastActivity: Date;
 
   // @Prop({ default: 'NA', unique: true })
   // phoneNumber: string;

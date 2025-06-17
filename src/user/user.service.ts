@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserRepo } from './repo/user.repo';
 import * as bcrypt from 'bcrypt';
@@ -17,7 +22,7 @@ export class UserService {
     private readonly userRepo: UserRepo,
     private readonly orderService: OrderService,
     private readonly certificateRepo: CertificateRepo,
-  ) { }
+  ) {}
   private logger = new Logger(UserService.name);
 
   async create(createUserDto: CreateUserDto) {
@@ -85,15 +90,15 @@ export class UserService {
     return await this.userRepo.userProgress(userId, levelName);
   }
 
-  async markLevelAsCompleted(userId: string, completeLevelDto: CompleteLevelDto) {
-
-
+  async markLevelAsCompleted(
+    userId: string,
+    completeLevelDto: CompleteLevelDto,
+  ) {
     const userLevels = await this.getUserCompletedOrders(userId);
 
     if (!userLevels.includes(completeLevelDto.level_name)) {
       throw new NotFoundException('User does not have this level');
     }
-
 
     // check if the user truly finished the level
     // by checking if the user finished day 50 in this level
@@ -111,8 +116,7 @@ export class UserService {
 
     // ISSUE THE CERTIFICATE
     const isCertificateExist = await this.certificateRepo.findOne({
-
-      // WHEN COMBINED FILTER ID MUST RETURNED TO OBJECT 
+      // WHEN COMBINED FILTER ID MUST RETURNED TO OBJECT
 
       userId: new Types.ObjectId(userId),
       level_name: completeLevelDto.level_name,
@@ -138,18 +142,13 @@ export class UserService {
     levelName: Level_Name,
     dayNumber: number,
   ) {
-
-
     const userLevels = await this.getUserCompletedOrders(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
 
-    // check if the day is already completed or its not available to complete 
-    const completedDays = await this.getCompletedDaysInLevel(
-      userId,
-      levelName,
-    );
+    // check if the day is already completed or its not available to complete
+    const completedDays = await this.getCompletedDaysInLevel(userId, levelName);
 
     if (dayNumber > completedDays + 1) {
       throw new NotFoundException('You can only complete the next day');
@@ -168,14 +167,13 @@ export class UserService {
       throw new NotFoundException('User does not have this level');
     }
 
-    // check if the day is already completed or its not available to complete 
-    const completedDays = await this.getCompletedDaysInLevel(
-      userId,
-      levelName,
-    );
+    // check if the day is already completed or its not available to complete
+    const completedDays = await this.getCompletedDaysInLevel(userId, levelName);
 
     if (dayNumber > completedDays + 1) {
-      throw new NotFoundException('You can only complete tasks in the next day');
+      throw new NotFoundException(
+        'You can only complete tasks in the next day',
+      );
     }
 
     return await this.userRepo.markTaskAsCompleted(
@@ -212,5 +210,4 @@ export class UserService {
     }
     return result;
   }
-
 }

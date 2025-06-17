@@ -27,7 +27,7 @@ import { ResetPasswordDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
   private logger = new Logger(AuthController.name);
 
   @Public()
@@ -106,7 +106,7 @@ export class AuthController {
       }
 
       const newUser = await this.authService.findOrCreateOAuthUser(user);
-      const jwt = await this.authService.generateToken(newUser);
+      const jwt = await this.authService.generateToken(newUser as User);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
       this.logger.error(
@@ -139,7 +139,7 @@ export class AuthController {
       }
 
       const newUser = await this.authService.findOrCreateOAuthUser(user);
-      const jwt = await this.authService.generateToken(newUser);
+      const jwt = await this.authService.generateToken(newUser as User);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
       this.logger.error(`Google OAuth login failed: ${err.message}`, err.stack);

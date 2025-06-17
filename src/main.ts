@@ -1,43 +1,73 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ClassSerializerInterceptor, Logger, ValidationPipe } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  Logger,
+  ValidationPipe,
+} from '@nestjs/common';
 import * as express from 'express';
-
 import * as dotenv from 'dotenv';
 import { AllExceptionsFilter } from './common/filters/all-exception';
+import { TimeService } from './common/config/time.service';
 
 dotenv.config();
 
 async function bootstrap() {
   const logger = new Logger('Server Main');
-  const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api');
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? '*',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    preflightContinue: false,
-  });
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-      forbidUnknownValues: true,
-    }),
-  );
+  try {
+    const app = await NestFactory.create(AppModule);
 
-  app.useGlobalFilters(new AllExceptionsFilter());
+    app.setGlobalPrefix('api');
+    app.enableCors({
+      origin: process.env.CORS_ORIGIN ?? '*',
+      credentials: true,
+      methods: process.env.CORS_METHODS?.split(',') || [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'OPTIONS',
+      ],
+      allowedHeaders: process.env.CORS_HEADERS?.split(',') || [
+        'Content-Type',
+        'Authorization',
+        'Accept',
+      ],
+      preflightContinue: false,
+    });
 
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+        forbidUnknownValues: true,
+      }),
+    );
 
-  app.use(express.json({ limit: '20mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+    app.useGlobalFilters(new AllExceptionsFilter());
+    app.useGlobalInterceptors(
+      new ClassSerializerInterceptor(app.get(Reflector)),
+    );
+    const timeService = app.get(TimeService);
 
-  await app.listen(process.env.PORT ?? 3000, () => {
-    logger.log('Server started on port ' + (process.env.PORT ?? 3000));
-  });
+    app.use(express.json({ limit: '20mb' }));
+    app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+    const port = process.env.PORT ?? 3000;
+    await app.listen(port);
+    logger.log(
+      `Server successfully started on port ${port} ${timeService.now()}`,
+    );
+  } catch (error) {
+    logger.error(
+      `Error during application bootstrap: ${error.message}`,
+      error.stack,
+    );
+    process.exit(1);
+  }
 }
+
 bootstrap();

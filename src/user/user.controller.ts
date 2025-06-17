@@ -31,7 +31,7 @@ import { GetCertificateDto } from './dto/get-certificate';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @SkipVerifiedGuard()
   @Get('me')
@@ -45,7 +45,6 @@ export class UserController {
       levels: userLevels,
     };
   }
-
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
@@ -86,8 +85,14 @@ export class UserController {
   }
 
   @Get('certificate/:level_name')
-  async getUserCertificate(@CurrentUser() user: User, @Param() certificateDto: GetCertificateDto) {
-    const certificate = await this.userService.getUserCertificate(user._id.toString(), certificateDto);
+  async getUserCertificate(
+    @CurrentUser() user: User,
+    @Param() certificateDto: GetCertificateDto,
+  ) {
+    const certificate = await this.userService.getUserCertificate(
+      user._id.toString(),
+      certificateDto,
+    );
     if (!certificate) {
       throw new BadRequestException('Certificate not found');
     }
@@ -147,7 +152,10 @@ export class UserController {
     @CurrentUser() user: User,
     @Body() completeLevelDto: CompleteLevelDto,
   ) {
-    const certificate = await this.userService.markLevelAsCompleted(user._id.toString(), completeLevelDto);
+    const certificate = await this.userService.markLevelAsCompleted(
+      user._id.toString(),
+      completeLevelDto,
+    );
     if (!certificate) {
       throw new Error('Something went wrong');
     }

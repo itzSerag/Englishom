@@ -1,4 +1,10 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Level_Name } from 'src/common/shared/enums';
 
 export class CreateCourseDto {
@@ -25,4 +31,4 @@ export class CreateCourseDto {
   @IsNotEmpty()
   @IsNumber()
   price: number;
-} 
+}

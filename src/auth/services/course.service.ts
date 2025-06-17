@@ -7,10 +7,7 @@ import { Course } from '../models/admin-course';
 
 @Injectable()
 export class CourseService {
-  constructor(
-    private readonly courseRepo: CourseRepo,
-  ) { }
-
+  constructor(private readonly courseRepo: CourseRepo) {}
 
   async findAll(): Promise<Course[]> {
     return await this.courseRepo.find({});
@@ -19,7 +16,9 @@ export class CourseService {
   async findByLevelName(level_name: Level_Name): Promise<Course> {
     const course = await this.courseRepo.findByLevelName(level_name);
     if (!course) {
-      throw new NotFoundException(`Course with level name ${level_name} not found`);
+      throw new NotFoundException(
+        `Course with level name ${level_name} not found`,
+      );
     }
     return course;
   }
@@ -28,11 +27,19 @@ export class CourseService {
     return this.courseRepo.create(createCourseDto);
   }
 
-  async update(level_name: Level_Name, updateCourseDto: UpdateCourseDto): Promise<Course> {
-    const updatedCourse = await this.courseRepo.findOneAndUpdate({ level_name }, updateCourseDto);
+  async update(
+    level_name: Level_Name,
+    updateCourseDto: UpdateCourseDto,
+  ): Promise<Course> {
+    const updatedCourse = await this.courseRepo.findOneAndUpdate(
+      { level_name },
+      updateCourseDto,
+    );
     if (!updatedCourse) {
-      throw new NotFoundException(`Course with level name ${level_name} not found`);
+      throw new NotFoundException(
+        `Course with level name ${level_name} not found`,
+      );
     }
     return updatedCourse;
   }
-} 
+}

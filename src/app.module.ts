@@ -24,12 +24,11 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     ThrottlerModule.forRoot({
       throttlers: [
         {
-
           ttl: 60,
           limit: 100,
-        }
-      ]
-    })
+        },
+      ],
+    }),
   ],
   controllers: [AppController],
   providers: [
@@ -54,4 +53,4 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

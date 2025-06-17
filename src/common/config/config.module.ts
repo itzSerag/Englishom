@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
+import { TimeService } from './time.service';
+import { ConfigService } from './config.service';
 
 @Module({
+  providers: [TimeService, ConfigService],
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
@@ -56,6 +59,6 @@ import * as Joi from 'joi';
       },
     }),
   ],
-  exports: [NestConfigModule],
+  exports: [NestConfigModule, TimeService],
 })
 export class ConfigModule {}

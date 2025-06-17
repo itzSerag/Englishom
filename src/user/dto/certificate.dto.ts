@@ -25,7 +25,6 @@ export class CertificateDto {
   @Expose()
   updatedAt: Date | string;
 
-
   @Exclude()
   _id?: any;
 

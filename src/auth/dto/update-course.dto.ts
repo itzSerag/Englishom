@@ -1,7 +1,6 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateCourseDto {
-
   @IsNotEmpty()
   @IsString()
   @IsOptional()
@@ -24,4 +23,4 @@ export class UpdateCourseDto {
   @IsNotEmpty()
   @IsNumber()
   price?: number;
-} 
+}

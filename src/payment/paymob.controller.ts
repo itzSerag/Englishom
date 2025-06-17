@@ -28,7 +28,7 @@ export class PaymobController {
     private paymobService: PaymobService,
     private userService: UserService,
     private courseService: CourseService,
-  ) { }
+  ) {}
 
   @Public()
   @Post('callback')
@@ -70,7 +70,9 @@ export class PaymobController {
       // Get course data from the database instead of hard-coded values
       let course: Course;
       try {
-        course = await this.courseService.findByLevelName(paymentIntention.level_name);
+        course = await this.courseService.findByLevelName(
+          paymentIntention.level_name,
+        );
       } catch (error) {
         if (error instanceof NotFoundException) {
           throw new BadRequestException('Invalid level name');
@@ -170,4 +172,4 @@ export class PaymobController {
       throw new BadRequestException(`Refund failed: ${error.message}`);
     }
   }
-} 
+}

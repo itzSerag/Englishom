@@ -18,6 +18,7 @@ import { EmailService } from '../common/mail/mail.service';
 import { OtpRepo } from './repo/repo.otp';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto';
+import { UserDto } from 'src/common/shared/dto/user-dto';
 
 @Injectable()
 export class AuthService {
@@ -27,7 +28,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly otpRepo: OtpRepo,
-  ) { }
+  ) {}
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
@@ -117,7 +118,6 @@ export class AuthService {
   async resendOtp(email: string) {
     const user = await this.userRepo.findOne({ email });
 
-
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -143,7 +143,9 @@ export class AuthService {
   }
 
   async findOrCreateOAuthUser(profile: any) {
-    const { email, provider, firstName, lastName } = profile;
+    const { email, strategy, firstName, lastName } = profile;
+
+    // return user levels
 
     if (!email) {
       throw new BadRequestException('Email is required for OAuth login');
@@ -159,14 +161,14 @@ export class AuthService {
         firstName,
         lastName,
         password,
-        strategy: provider,
+        strategy,
         isVerified: true,
       });
 
-      return newUser;
+      return new UserDto(newUser);
     }
 
-    if (user.strategy !== provider) {
+    if (user.strategy !== strategy) {
       throw new ConflictException(
         `Email already registered using ${user.strategy}. Please login using that method.`,
       );
@@ -181,7 +183,7 @@ export class AuthService {
       return { ...user, firstName, lastName };
     }
 
-    return user;
+    return new UserDto(user);
   }
 
   async getUserLevels(userId: string) {

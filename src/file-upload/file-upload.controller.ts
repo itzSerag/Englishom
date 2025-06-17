@@ -29,7 +29,7 @@ import { Level_Name } from '../common/shared/enums';
 export class FileUploadController {
   private readonly logger = new Logger(FileUploadController.name);
 
-  constructor(private uploadService: FileUploadService) { }
+  constructor(private uploadService: FileUploadService) {}
 
   @Get('')
   async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {
@@ -45,11 +45,11 @@ export class FileUploadController {
   @Get('user-audio/:levelName')
   async getUserAudiosByLevel(
     @CurrentUser() user: User,
-    @Param('levelName') levelName: string
+    @Param('levelName') levelName: string,
   ) {
     return await this.uploadService.getUserAudiosByLevel(
       user._id.toString(),
-      levelName
+      levelName,
     );
   }
 
@@ -57,13 +57,13 @@ export class FileUploadController {
   async getUserDayAudio(
     @CurrentUser() user: User,
     @Param('levelName') levelName: Level_Name,
-    @Param('day') day: string
+    @Param('day') day: string,
   ) {
     try {
       const audio = await this.uploadService.getUserDayAudio(
         user._id.toString(),
         levelName,
-        day
+        day,
       );
 
       if (!audio) {
@@ -75,7 +75,10 @@ export class FileUploadController {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      this.logger.error(`Error getting user day audio: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error getting user day audio: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -98,14 +101,14 @@ export class FileUploadController {
     return await this.uploadService.uploadUserAudio(
       file,
       uploadFileDTO,
-      user._id.toString()
+      user._id.toString(),
     );
   }
 
   @Delete('user-audio')
   async deleteUserAudio(
     @CurrentUser() user: User,
-    @Query('audioKey') audioKey: string
+    @Query('audioKey') audioKey: string,
   ) {
     if (!audioKey) {
       throw new BadRequestException('audioKey is required');
@@ -126,7 +129,9 @@ export class FileUploadController {
     const audioUserId = keyParts[1];
 
     if (audioUserId !== user._id.toString()) {
-      throw new ForbiddenException('You do not have permission to delete this audio file');
+      throw new ForbiddenException(
+        'You do not have permission to delete this audio file',
+      );
     }
 
     await this.uploadService.deleteUserAudio(user._id.toString(), audioKey);
@@ -192,7 +197,9 @@ export class FileUploadController {
       try {
         data = JSON.parse(data);
       } catch (error) {
-        throw new BadRequestException(`Invalid JSON data format: ${error.message}`);
+        throw new BadRequestException(
+          `Invalid JSON data format: ${error.message}`,
+        );
       }
     }
 
@@ -211,7 +218,9 @@ export class FileUploadController {
     const allowedMimeTypes = Object.values(AllowedAudioMimeTypes);
 
     if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
-      throw new BadRequestException('Only audio files are allowed to be uploaded.');
+      throw new BadRequestException(
+        'Only audio files are allowed to be uploaded.',
+      );
     }
   }
 
@@ -226,7 +235,9 @@ export class FileUploadController {
     ];
 
     if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
-      throw new BadRequestException('Only audio and image files are allowed to be uploaded.');
+      throw new BadRequestException(
+        'Only audio and image files are allowed to be uploaded.',
+      );
     }
   }
 }

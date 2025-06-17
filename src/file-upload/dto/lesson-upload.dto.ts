@@ -4,7 +4,6 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNotEmptyObject,
-  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -29,30 +28,26 @@ class Instructions {
   definition: string;
 }
 
-
 class Sentence {
+  @IsString()
+  @IsNotEmpty()
+  sentence: string;
 
   @IsString()
   @IsNotEmpty()
-  sentence : string;
-  
-  @IsString()
-  @IsNotEmpty()
-  soundSrc : string; 
+  soundSrc: string;
 }
 
 class UseCase {
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
-  en : Array<String>
+  en: Array<String>;
 
   @IsArray()
-  @IsNotEmpty({each : true})
-  @IsString({each : true})
-  ar : Array<String>
-
-
+  @IsNotEmpty({ each: true })
+  @IsString({ each: true })
+  ar: Array<String>;
 }
 
 class Definition {
@@ -289,8 +284,7 @@ class GRAMMAR {
   @IsNotEmptyObject()
   @ValidateNested({ each: true })
   @Type(() => UseCase)
-  useCases: UseCase ;
-
+  useCases: UseCase;
 
   @IsArray()
   @IsString({ each: true })
@@ -370,7 +364,7 @@ class IDIOMS {
   @IsNotEmptyObject()
   @ValidateNested({ each: true })
   @Type(() => UseCase)
-  useCases: UseCase ;
+  useCases: UseCase;
 
   @IsArray()
   @IsNotEmpty()
@@ -428,7 +422,6 @@ export async function validateData(
     }
   }
 
-  
   if (validationErrors.length > 0) {
     throw new BadRequestException(
       'Please fill the data in a proper way as documented',

@@ -15,7 +15,10 @@ import {
 } from './models/user-progress.schema';
 import { UserTask, UserTaskSchema } from './models/user-task.schema';
 import { Level, LevelSchema } from './models/level.schema';
-import { Certification, CertificationSchema } from './models/certification.schema';
+import {
+  Certification,
+  CertificationSchema,
+} from './models/certification.schema';
 import { CertificateRepo } from './repo/certificate.repo';
 
 // filepath: /mnt/DATA/Englishom/src/user/user.module.ts
@@ -39,4 +42,4 @@ import { CertificateRepo } from './repo/certificate.repo';
   providers: [UserService, UserRepo, CertificateRepo],
   exports: [UserService, UserRepo], // Export UserService
 })
-export class UserModule { }
+export class UserModule {}

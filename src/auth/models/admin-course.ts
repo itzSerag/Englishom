@@ -4,9 +4,8 @@ import { AbstractDocument } from '../../common/database/abstract.schema';
 
 @Schema({ timestamps: true })
 export class Course extends AbstractDocument {
-
   @Prop({ required: true, unique: true, enum: Level_Name })
-  level_name: Level_Name
+  level_name: Level_Name;
 
   @Prop({ required: true })
   titleAr: string;

@@ -105,7 +105,10 @@ export class FileUploadService {
       await this.uploadToS3(file, key);
       return this.getFileUrl(key, this.s3Config.resBucket);
     } catch (error) {
-      this.logger.error(`Failed to upload user audio: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to upload user audio: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `Failed to upload user audio: ${error.message}`,
       );
@@ -118,12 +121,14 @@ export class FileUploadService {
 
   async getUserAudiosByLevel(
     userId: string,
-    levelName: string
+    levelName: string,
   ): Promise<{ url: string }[]> {
     return this.listObjectsWithPrefix(`UserAudios/${userId}/${levelName}/`);
   }
 
-  private async listObjectsWithPrefix(prefix: string): Promise<{ url: string }[]> {
+  private async listObjectsWithPrefix(
+    prefix: string,
+  ): Promise<{ url: string }[]> {
     try {
       const command = new ListObjectsV2Command({
         Bucket: this.s3Config.resBucket,
@@ -132,11 +137,14 @@ export class FileUploadService {
 
       const response = await this.s3Client.send(command);
 
-      return (response.Contents || []).map(object => ({
-        url: this.getFileUrl(object.Key, this.s3Config.resBucket).url
+      return (response.Contents || []).map((object) => ({
+        url: this.getFileUrl(object.Key, this.s3Config.resBucket).url,
       }));
     } catch (error) {
-      this.logger.error(`Failed to list objects with prefix ${prefix}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to list objects with prefix ${prefix}: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `Failed to retrieve objects: ${error.message}`,
       );
@@ -146,7 +154,7 @@ export class FileUploadService {
   async getUserDayAudio(
     userId: string,
     levelName: string,
-    day: string
+    day: string,
   ): Promise<{ url: string } | null> {
     const key = `UserAudios/${userId}/${levelName}/${day}/today_audio.mp3`;
 
@@ -163,7 +171,9 @@ export class FileUploadService {
         return this.getFileUrl(key, this.s3Config.resBucket);
       } catch (error) {
         if (error.name === 'NotFound' || error.name === 'NoSuchKey') {
-          this.logger.debug(`No audio file found for user ${userId} in level ${levelName} day ${day}`);
+          this.logger.debug(
+            `No audio file found for user ${userId} in level ${levelName} day ${day}`,
+          );
           return null;
         }
         throw error;
@@ -171,16 +181,18 @@ export class FileUploadService {
     } catch (error) {
       this.logger.error(
         `Error retrieving day audio: ${error.message}`,
-        error.stack
+        error.stack,
       );
       throw new InternalServerErrorException(
-        `Failed to retrieve day audio: ${error.message}`
+        `Failed to retrieve day audio: ${error.message}`,
       );
     }
   }
 
   async deleteUserAudio(userId: string, audioKey: string): Promise<void> {
-    const key = audioKey.startsWith('UserAudios/') ? audioKey : `UserAudios/${audioKey}`;
+    const key = audioKey.startsWith('UserAudios/')
+      ? audioKey
+      : `UserAudios/${audioKey}`;
 
     try {
       // First verify the file exists
@@ -207,7 +219,10 @@ export class FileUploadService {
       await this.s3Client.send(deleteCommand);
       this.logger.debug(`Successfully deleted audio file: ${key}`);
     } catch (error) {
-      this.logger.error(`Failed to delete audio file: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete audio file: ${error.message}`,
+        error.stack,
+      );
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -248,7 +263,10 @@ export class FileUploadService {
 
       await this.updateJsonInS3(key, jsonData);
     } catch (error) {
-      this.logger.error(`Failed to insert object into JSON data array: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to insert object into JSON data array: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `Failed to insert object into JSON data array: ${error.message}`,
       );
@@ -265,7 +283,9 @@ export class FileUploadService {
       this.validateJsonDataArray(jsonData);
       const initialLength = jsonData.data.length;
 
-      jsonData.data = jsonData.data.filter((item) => item.id !== objectId.toString());
+      jsonData.data = jsonData.data.filter(
+        (item) => item.id !== objectId.toString(),
+      );
 
       if (jsonData.data.length === initialLength) {
         throw new NotFoundException(`Object with ID ${objectId} not found`);
@@ -295,7 +315,9 @@ export class FileUploadService {
       return await this.s3Client.send(command);
     } catch (error) {
       this.logger.error(`Failed to delete file: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to delete file: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Failed to delete file: ${error.message}`,
+      );
     }
   }
 
@@ -303,7 +325,10 @@ export class FileUploadService {
     const key = this.createJsonKey(uploadFileDTO);
 
     try {
-      const signedUrl = await this.getPresignedSignedUrl(key, this.s3Config.bucket);
+      const signedUrl = await this.getPresignedSignedUrl(
+        key,
+        this.s3Config.bucket,
+      );
 
       if (!signedUrl.url) {
         return { data: [] };
@@ -324,7 +349,10 @@ export class FileUploadService {
 
       return data;
     } catch (error) {
-      this.logger.error(`Failed to get content by name: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get content by name: ${error.message}`,
+        error.stack,
+      );
       // Return empty data array instead of throwing an error
       return { data: [] };
     }
@@ -362,7 +390,10 @@ export class FileUploadService {
     try {
       await this.s3Client.send(command);
     } catch (error) {
-      this.logger.error(`Failed to upload file to S3: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to upload file to S3: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `Failed to upload file to S3: ${error.message}`,
       );
@@ -373,7 +404,10 @@ export class FileUploadService {
     try {
       return await this.getJsonFromS3(key, this.s3Config.bucket);
     } catch (error) {
-      this.logger.error(`Failed to retrieve JSON: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to retrieve JSON: ${error.message}`,
+        error.stack,
+      );
       // If file does not exist, initialize a new JSON structure
       return { data: [] };
     }
@@ -406,7 +440,10 @@ export class FileUploadService {
 
       return parsed;
     } catch (error) {
-      this.logger.error(`Failed to retrieve JSON: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to retrieve JSON: ${error.message}`,
+        error.stack,
+      );
       if (error.name === 'NoSuchKey' || error.name === 'NotFound') {
         return { data: [] };
       }
@@ -436,7 +473,10 @@ export class FileUploadService {
     }
   }
 
-  private async getPresignedSignedUrl(key: string, bucket: string): Promise<{ url: string | null }> {
+  private async getPresignedSignedUrl(
+    key: string,
+    bucket: string,
+  ): Promise<{ url: string | null }> {
     try {
       const headCommand = new HeadObjectCommand({ Bucket: bucket, Key: key });
       await this.s3Client.send(headCommand);
@@ -446,7 +486,9 @@ export class FileUploadService {
         url: await getSignedUrl(this.s3Client, command, { expiresIn: 86400 }),
       };
     } catch (err) {
-      this.logger.warn(`File not found or access denied: ${key}  - ${err.message}`);
+      this.logger.warn(
+        `File not found or access denied: ${key}  - ${err.message}`,
+      );
       return { url: null };
     }
   }
@@ -454,6 +496,8 @@ export class FileUploadService {
   private getFileUrl(key: string, bucket: string): { url: string } {
     const region = this.s3Config.region;
     const encodedKey = encodeURIComponent(key);
-    return { url: `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}` };
+    return {
+      url: `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`,
+    };
   }
 }
