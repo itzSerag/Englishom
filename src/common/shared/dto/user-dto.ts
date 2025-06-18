@@ -21,6 +21,12 @@ export class UserDto {
   role: Role;
 
   @Expose()
+  strategy?: String
+
+  @Expose()
+  lastLoginAt?: Date
+
+  @Expose()
   country?: string;
 
   @Expose()

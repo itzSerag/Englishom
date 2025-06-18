@@ -18,7 +18,10 @@ import { EmailService } from '../common/mail/mail.service';
 import { OtpRepo } from './repo/repo.otp';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto';
-import { UserDto } from 'src/common/shared/dto/user-dto';
+import { TimeService } from '../common/config/time.service';
+import { AuthenticationService } from 'src/common/services/authentication.service';
+import { Admin } from 'src/admin/models/admin.schema';
+import { Role } from 'src/common/shared';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +31,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly otpRepo: OtpRepo,
+    private readonly timeService: TimeService,
+    private readonly globalAuthService : AuthenticationService
   ) {}
 
   async register(createUserDto: CreateUserDto) {
@@ -43,33 +48,51 @@ export class AuthService {
     return user;
   }
 
+
+  
   async login(loginDto: LoginDto) {
-    const user = await this.userRepo.findOne({ email: loginDto.email });
+    const user  = await this.globalAuthService.findUserByEmail(loginDto.email);
 
     if (!user) {
-      throw new NotFoundException('Invalid email or password');
+      throw new NotFoundException('Invalid Credentials');
     }
-    if (user.strategy !== 'local') {
-      throw new ConflictException(
-        'This email has signed-up with a different method ' + user.strategy,
-      );
+
+    if (user.role === Role.USER){
+
+      if (user.strategy !== 'local') {
+        throw new ConflictException(
+          'This email has signed-up with a different method ' + user.strategy,
+        );
+      }
     }
+
     const isValid =
       user && (await bcrypt.compare(loginDto.password, user.password));
-
+  
     if (!isValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid Credentials');
     }
+
+    const access_token = await this.generateToken(user);
+
+    // Update last login time
+    await this.userRepo.findOneAndUpdate(
+      { _id: user._id },
+      { 
+        lastActivity: this.timeService.now(),
+      },
+    );
 
     return user;
   }
 
-  async logout(user: User) {
+
+  async logout(user: User | Admin) {
     // FRONTEND LOGOUT
     return true;
   }
 
-  async resetPassword(user: User, restPasswordDto: ResetPasswordDto) {
+  async resetPassword(user: User | Admin, restPasswordDto: ResetPasswordDto) {
     // hash the new password
 
     //compare the old password and new password
@@ -87,6 +110,7 @@ export class AuthService {
       { password: hashedPassword },
     );
   }
+
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { email, otp } = verifyOtpDto;
@@ -115,6 +139,7 @@ export class AuthService {
     return user;
   }
 
+
   async resendOtp(email: string) {
     const user = await this.userRepo.findOne({ email });
 
@@ -126,15 +151,15 @@ export class AuthService {
       throw new BadRequestException('User already verified');
     }
     await this.otpRepo.delete({ email });
-
     await this.generateAndSendOtp(email);
-
     return { message: 'OTP has been sent to your email' };
   }
 
-  async generateToken(user: User) {
-    const payload: IPayload = { sub: user._id.toString(), email: user.email };
 
+
+  async generateToken(user: User | Admin) {
+
+    const payload: IPayload = { sub: user._id.toString(), email: user.email };
     try {
       return this.jwtService.sign(payload);
     } catch (err) {
@@ -144,9 +169,7 @@ export class AuthService {
 
   async findOrCreateOAuthUser(profile: any) {
     const { email, strategy, firstName, lastName } = profile;
-
     // return user levels
-
     if (!email) {
       throw new BadRequestException('Email is required for OAuth login');
     }
@@ -163,9 +186,10 @@ export class AuthService {
         password,
         strategy,
         isVerified: true,
+        lastActivity: this.timeService.now(),
       });
 
-      return new UserDto(newUser);
+      return newUser;
     }
 
     if (user.strategy !== strategy) {
@@ -174,17 +198,24 @@ export class AuthService {
       );
     }
 
-    // Update user profile if needed
+    // Update user profile if needed and update last login
+    const updateData: any = {
+      lastActivity: this.timeService.now(),
+    };
+
     if (user.firstName !== firstName || user.lastName !== lastName) {
-      await this.userRepo.findOneAndUpdate(
-        { _id: user._id },
-        { firstName, lastName },
-      );
-      return { ...user, firstName, lastName };
+      updateData.firstName = firstName;
+      updateData.lastName = lastName;
     }
 
-    return new UserDto(user);
+    await this.userRepo.findOneAndUpdate(
+      { _id: user._id },
+      updateData
+    );
+
+    return user;
   }
+
 
   async getUserLevels(userId: string) {
     return await this.userService.getUserCompletedOrders(userId);

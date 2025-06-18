@@ -1,19 +1,18 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { UserRepo } from '../../user/repo/user.repo';
-import { UserDto } from '../../common/shared/dto/user-dto';
 import { IPayload } from '../../common/shared/interfaces/payload.interface';
 import { ConfigService } from '@nestjs/config';
-import { User } from 'src/user/models/user.schema';
-import { TimeService } from 'src/common/config/time.service';
+import { AuthenticationService } from '../../common/services/authentication.service';
+import { User } from '../../user/models/user.schema';
+import { Admin } from '../../admin/models/admin.schema';
+import { cleanSensitiveFields } from '../../common/utils/response.utils';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private readonly userRepo: UserRepo,
     private readonly configService: ConfigService,
-    private readonly timeService: TimeService,
+    private readonly authenticationService: AuthenticationService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -24,20 +23,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: IPayload) {
     try {
-      const user: User = await this.userRepo.findOne({ _id: payload.sub });
-
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
-
-      if (this.timeService.isActivityStale(user.lastActivity)) {
-        await this.userRepo.findOneAndUpdate(
-          { _id: user._id },
-          { lastActivity: this.timeService.now() },
-        );
-      }
-
-      return new UserDto(user);
+      const user = await this.authenticationService.validateAndGetUser(payload);
+      
+      // Return cleaned user object (password will be removed by cleanSensitiveFields)
+      return cleanSensitiveFields(user);
     } catch (error) {
       throw new UnauthorizedException('Invalid token, ' + error.message);
     }

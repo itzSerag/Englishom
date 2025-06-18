@@ -15,7 +15,6 @@ import {
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserDto } from '../common/shared/dto/user-dto';
 import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from './models/user.schema';
 import { GetCompletedDaysDto } from './dto/get-completed-days.dto';
@@ -26,8 +25,8 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { log } from 'console';
 import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 import { CompleteLevelDto } from './dto/complete-level.dto';
-import { CertificateDto } from './dto/certificate.dto';
 import { GetCertificateDto } from './dto/get-certificate';
+import { cleanSensitiveFields } from '../common/utils/response.utils';
 
 @Controller('users')
 export class UserController {
@@ -41,7 +40,7 @@ export class UserController {
     );
 
     return {
-      user: new UserDto(user),
+      user: cleanSensitiveFields(user),
       levels: userLevels,
     };
   }
@@ -52,15 +51,15 @@ export class UserController {
     if (!user) {
       throw new ConflictException('User already exists');
     }
-    return new UserDto(user);
+    return cleanSensitiveFields(user);
   }
 
-  // HAVE TO DO SOME PAGINATION HERE
+  // TODO : HAVE TO DO SOME PAGINATION HERE
   @UseGuards(AdminGuard)
   @Get('all')
   async findAll() {
     const users = await this.userService.findAll();
-    return users.map((user) => new UserDto(user));
+    return users.map((user) => cleanSensitiveFields(user));
   }
 
   @Get('levels')
@@ -96,7 +95,7 @@ export class UserController {
     if (!certificate) {
       throw new BadRequestException('Certificate not found');
     }
-    return new CertificateDto(certificate);
+    return cleanSensitiveFields(certificate);
   }
 
   @Get('completed-days')
@@ -160,7 +159,7 @@ export class UserController {
       throw new Error('Something went wrong');
     }
 
-    return new CertificateDto(certificate);
+    return cleanSensitiveFields(certificate);
   }
 
   /// MUST BE AT THE END AND ADMIN ONLY

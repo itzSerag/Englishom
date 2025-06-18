@@ -18,6 +18,8 @@ import { Course, CourseSchema } from './models/admin-course';
 import { CourseRepo } from './repo/course.repo';
 import { CourseService } from './services/course.service';
 import { CourseController } from './controllers/course.controller';
+import { AdminModule } from '../admin/admin.module';
+import { AuthenticationService } from '../common/services/authentication.service';
 
 @Module({
   imports: [
@@ -29,6 +31,7 @@ import { CourseController } from './controllers/course.controller';
       { name: Course.name, schema: CourseSchema },
     ]),
     forwardRef(() => UserModule), // Use forwardRef here
+    forwardRef(() => AdminModule), // Add AdminModule with forwardRef
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService) => ({
@@ -47,6 +50,7 @@ import { CourseController } from './controllers/course.controller';
     OtpRepo,
     CourseRepo,
     CourseService,
+    AuthenticationService,
   ],
   exports: [AuthService, CourseService],
 })

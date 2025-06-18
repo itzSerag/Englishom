@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
+import { AdminRole } from '../../common/shared';
 
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -15,8 +16,25 @@ export class AdminGuard implements CanActivate {
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
     const request = context.switchToHttp().getRequest();
+    const user = request.user;
 
-    if ((request.user && request.user.role === 'admin') || 'ADMIN') {
+    // Check if the route is public
+    if (
+      this.reflector.getAllAndOverride<boolean>('isPublic', [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    ) {
+      return true;
+    }
+
+    // Check if user is an admin (new admin system)
+    if (user && Object.values(AdminRole).includes(user.role)) {
+      return true;
+    }
+
+    // Legacy check for backward compatibility
+    if (user && (user.role === 'admin' || user.role === 'ADMIN')) {
       return true;
     }
 

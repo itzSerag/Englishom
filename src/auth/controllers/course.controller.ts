@@ -1,12 +1,11 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import { UpdateCourseDto } from '../dto/update-course.dto';
 import { Level_Name } from 'src/common/shared/enums';
 import { Roles } from '../decorator/roles.decorator';
-import { Role } from 'src/common/shared';
-import { CourseDto } from '../dto/course.dto';
-import { plainToInstance } from 'class-transformer';
 import { Public } from '../decorator/public.decorator';
+import { AdminGuard } from '../guards/admin.guard';
+import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../../common/utils/response.utils';
 
 @Controller('courses')
 export class CourseController {
@@ -18,35 +17,27 @@ export class CourseController {
   // and will handle the promise resolution for me.
   @Get()
   @Public()
-  async findAll(): Promise<CourseDto[]> {
+  async findAll() {
     const courses = await this.courseService.findAll();
-    return plainToInstance(CourseDto, courses, {
-      excludeExtraneousValues: true,
-    });
+    return cleanSensitiveFieldsArray(courses);
   }
 
   @Get(':level_name')
   @Public()
   async findByLevelName(
     @Param('level_name') level_name: Level_Name,
-  ): Promise<CourseDto> {
+  ) {
     const course = await this.courseService.findByLevelName(level_name);
-
-    // return its DTO
-    return plainToInstance(CourseDto, course, {
-      excludeExtraneousValues: true,
-    });
+    return cleanSensitiveFields(course);
   }
 
   @Patch('admin/:level_name')
-  @Roles(Role.ADMIN)
+  @UseGuards(AdminGuard)
   async update(
     @Param('level_name') level_name: Level_Name,
     @Body() updateCourseDto: UpdateCourseDto,
-  ): Promise<CourseDto> {
+  ) {
     const course = await this.courseService.update(level_name, updateCourseDto);
-    return plainToInstance(CourseDto, course, {
-      excludeExtraneousValues: true,
-    });
+    return cleanSensitiveFields(course);
   }
 }

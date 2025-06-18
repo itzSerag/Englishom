@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { AdminModule } from './admin/admin.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { ConfigModule } from './common/config/config.module';
 import { DatabaseModule } from './common/database/database.module';
@@ -17,6 +18,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
   imports: [
     AuthModule,
     UserModule,
+    AdminModule,
     PaymentModule,
     FileUploadModule,
     ConfigModule,

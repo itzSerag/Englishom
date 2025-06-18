@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../user/dto/create-user.dto';
-import { UserDto } from '../common/shared/dto/user-dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './decorator/public.decorator';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -22,12 +21,14 @@ import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { Response } from 'express';
-import { plainToClass } from 'class-transformer';
 import { ResetPasswordDto } from './dto';
+import { cleanSensitiveFields } from '../common/utils/response.utils';
+import { Admin } from 'src/admin/models/admin.schema';
+import { Role } from 'src/common/shared';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService ) {}
   private logger = new Logger(AuthController.name);
 
   @Public()
@@ -42,7 +43,7 @@ export class AuthController {
 
     return {
       access_token,
-      user: plainToClass(UserDto, user, { excludeExtraneousValues: true }),
+      user: cleanSensitiveFields(user),
       levels: [],
     };
   }
@@ -51,13 +52,23 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
-    const user = await this.authService.login(loginDto);
+    const user : User | Admin= await this.authService.login(loginDto);
     const access_token = await this.authService.generateToken(user);
+
+    if (user.role === Role.ADMIN) {
+      // If the user is an admin, we can return the admin-specific fields
+      return {
+        access_token,
+        user: cleanSensitiveFields(user),
+        levels: [],
+      };
+    }
+
     const levels = await this.authService.getUserLevels(user._id.toString());
 
     return {
       access_token,
-      user: new UserDto(user),
+      user: cleanSensitiveFields(user),
       levels: levels,
     };
   }
@@ -68,14 +79,13 @@ export class AuthController {
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     const user = await this.authService.verifyOtp(verifyOtpDto);
 
-    const access_token = await this.authService.generateToken({
-      ...user,
-      isVerified: true, // manually patch to avoid refetch
-    });
+    // Update user verification status
+    user.isVerified = true;
+    const access_token = await this.authService.generateToken(user);
 
     return {
       access_token,
-      user: new UserDto({ ...user, isVerified: true }),
+      user: cleanSensitiveFields(user),
     };
   }
 
@@ -97,7 +107,7 @@ export class AuthController {
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
   async facebookLoginCallback(
-    @CurrentUser() user: any,
+    @CurrentUser() user: User,
     @Res() res: Response,
   ): Promise<any> {
     try {
@@ -105,8 +115,8 @@ export class AuthController {
         throw new UnauthorizedException('No user data received from Facebook');
       }
 
-      const newUser = await this.authService.findOrCreateOAuthUser(user);
-      const jwt = await this.authService.generateToken(newUser as User);
+      const newUser : User = await this.authService.findOrCreateOAuthUser(user);
+      const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
       this.logger.error(
@@ -138,8 +148,8 @@ export class AuthController {
         throw new UnauthorizedException('No user data received from Google');
       }
 
-      const newUser = await this.authService.findOrCreateOAuthUser(user);
-      const jwt = await this.authService.generateToken(newUser as User);
+      const newUser : User = await this.authService.findOrCreateOAuthUser(user);
+      const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
       this.logger.error(`Google OAuth login failed: ${err.message}`, err.stack);
@@ -151,7 +161,7 @@ export class AuthController {
 
   @Post('reset-password')
   async resetPassword(
-    @CurrentUser() user: User,
+    @CurrentUser() user: User | Admin,
     resetPasswordDto: ResetPasswordDto,
   ) {
     await this.authService.resetPassword(user, resetPasswordDto);
