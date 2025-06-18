@@ -7,7 +7,6 @@ import {
   NotFoundException,
   Post,
   Query,
-  UseGuards,
   UseInterceptors,
   UploadedFile,
   Param,
@@ -20,10 +19,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 import { FileUploadService } from './file-upload.service';
-import { AdminGuard } from '../auth/guards/admin.guard';
 import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
-import { Level_Name } from '../common/shared/enums';
+import { AdminRole, Level_Name } from '../common/shared/enums';
+import { AdminRoles } from 'src/admin/decorators';
+
+
 
 @Controller('files')
 export class FileUploadController {
@@ -139,7 +140,7 @@ export class FileUploadController {
   }
 
   @Post('')
-  @UseGuards(AdminGuard)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   async upload(@Body() dataUploadDTO: UploadDTO) {
     dataUploadDTO.data = this.parseData(dataUploadDTO.data);
     await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
@@ -148,7 +149,7 @@ export class FileUploadController {
   }
 
   @Post('single-file')
-  @UseGuards(AdminGuard)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
@@ -164,14 +165,14 @@ export class FileUploadController {
     return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
-  @UseGuards(AdminGuard)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Delete('delete-obj')
   async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
     await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
     return { message: 'Object deleted successfully' };
   }
 
-  @UseGuards(AdminGuard)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Delete()
   async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
     try {

@@ -21,12 +21,14 @@ import { GetCompletedDaysDto } from './dto/get-completed-days.dto';
 import { GetCompletedTasksDto } from './dto/get-completed-tasks.dto';
 import { UserFinishDayDto } from './dto/user-finish-day.dto';
 import { UserTaskDto } from './dto/user-task.dto';
-import { AdminGuard } from '../auth/guards/admin.guard';
-import { log } from 'console';
 import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 import { CompleteLevelDto } from './dto/complete-level.dto';
 import { GetCertificateDto } from './dto/get-certificate';
 import { cleanSensitiveFields } from '../common/utils/response.utils';
+import { Admin } from 'src/admin/models/admin.schema';
+import { AdminRole, Role } from 'src/common/shared';
+import { IsAdminGuard } from 'src/admin/guards';
+import { AdminRoles } from 'src/admin/decorators';
 
 @Controller('users')
 export class UserController {
@@ -34,7 +36,16 @@ export class UserController {
 
   @SkipVerifiedGuard()
   @Get('me')
-  async getMe(@CurrentUser() user: User) {
+  async getMe(@CurrentUser() user: User | Admin) {
+
+    // no need to get the levels for admin
+    if(user.role === Role.ADMIN) {
+      return {
+        user: cleanSensitiveFields(user),
+        levels: [],
+      };
+    }
+
     const userLevels = await this.userService.getUserCompletedOrders(
       user._id.toString(),
     );
@@ -54,8 +65,8 @@ export class UserController {
     return cleanSensitiveFields(user);
   }
 
-  // TODO : HAVE TO DO SOME PAGINATION HERE
-  @UseGuards(AdminGuard)
+  // TODO : HAVE TO DO SOME PAGINATION HERE -- any admin can access this endpoint
+  @UseGuards(IsAdminGuard)
   @Get('all')
   async findAll() {
     const users = await this.userService.findAll();
@@ -64,7 +75,6 @@ export class UserController {
 
   @Get('levels')
   async getUserLevels(@CurrentUser() user: User) {
-    log('user', user);
     return await this.userService.getUserCompletedOrders(user._id.toString());
   }
 
@@ -73,7 +83,7 @@ export class UserController {
     return this.userService.findOneAndUpdate(id, updateUserDto);
   }
 
-  @UseGuards(AdminGuard)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Delete(':id')
   async remove(@CurrentUser() user: User, @Param('id') id: string) {
     if (id === 'admin' && user._id.toString() === id) {
@@ -163,7 +173,7 @@ export class UserController {
   }
 
   /// MUST BE AT THE END AND ADMIN ONLY
-  @UseGuards(AdminGuard)
+  @UseGuards(IsAdminGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.userService.findById(id);

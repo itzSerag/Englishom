@@ -10,5 +10,5 @@ export class UpdateAdminDto extends PartialType(CreateAdminDto) {
 
   @IsOptional()
   @IsEnum(AdminRole)
-  role?: AdminRole;
+  adminRole?: AdminRole;
 }

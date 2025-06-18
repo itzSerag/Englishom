@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import { UpdateCourseDto } from '../dto/update-course.dto';
-import { Level_Name } from 'src/common/shared/enums';
+import { AdminRole, Level_Name } from 'src/common/shared/enums';
 import { Roles } from '../decorator/roles.decorator';
 import { Public } from '../decorator/public.decorator';
-import { AdminGuard } from '../guards/admin.guard';
 import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../../common/utils/response.utils';
+import { AdminRoles } from 'src/admin/decorators';
+import { Admin } from 'src/admin/models/admin.schema';
 
 @Controller('courses')
 export class CourseController {
@@ -19,7 +20,7 @@ export class CourseController {
   @Public()
   async findAll() {
     const courses = await this.courseService.findAll();
-    return cleanSensitiveFieldsArray(courses);
+    return courses;
   }
 
   @Get(':level_name')
@@ -28,16 +29,16 @@ export class CourseController {
     @Param('level_name') level_name: Level_Name,
   ) {
     const course = await this.courseService.findByLevelName(level_name);
-    return cleanSensitiveFields(course);
+    return course;
   }
 
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
   @Patch('admin/:level_name')
-  @UseGuards(AdminGuard)
   async update(
     @Param('level_name') level_name: Level_Name,
     @Body() updateCourseDto: UpdateCourseDto,
   ) {
     const course = await this.courseService.update(level_name, updateCourseDto);
-    return cleanSensitiveFields(course);
+    return course;
   }
 }

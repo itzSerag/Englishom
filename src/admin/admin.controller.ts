@@ -11,7 +11,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { CreateAdminDto, UpdateAdminDto, AdminLoginDto } from './dto';
+import { CreateAdminDto, UpdateAdminDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { AdminRoles } from './decorators/admin-roles.decorator';
@@ -19,12 +19,12 @@ import { IsAdminGuard, AdminRoleGuard } from './guards';
 import { AdminRole } from '../common/shared';
 import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../common/utils/response.utils';
 
+@UseGuards(IsAdminGuard)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // Create new admin - Only SUPER admin
-  @UseGuards(AdminRoleGuard)
   @AdminRoles(AdminRole.SUPER)
   @Post('create-admin')
   async createAdmin(
@@ -35,37 +35,30 @@ export class AdminController {
     return cleanSensitiveFields(admin);
   }
 
-  // Get all admins - SUPER and MANAGER
-  @UseGuards(AdminRoleGuard)
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Get('all')
-  async getAllAdmins(@CurrentAdmin() currentAdmin: Admin) {
-    const admins = await this.adminService.getAllAdmins(currentAdmin);
+  @Get('all-active')
+  async getAllActiveAdmins() {
+    const admins = await this.adminService.getAllActiveAdmins();
     return cleanSensitiveFieldsArray(admins);
   }
 
-  // Get admin profile
-  @UseGuards(IsAdminGuard)
-  @Get('profile')
-  async getProfile(@CurrentAdmin() admin: Admin) {
-    const profile = await this.adminService.getProfile(admin);
-    return cleanSensitiveFields(profile);
+  @Get('all')
+  async getAllAdmins() {
+    const admins = await this.adminService.getAllAdmins();
+    return cleanSensitiveFieldsArray(admins);
   }
 
   // Get admin by ID - SUPER and MANAGER
-  @UseGuards(AdminRoleGuard)
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Get(':id')
   async getAdminById(
     @Param('id') id: string,
-    @CurrentAdmin() currentAdmin: Admin,
   ) {
-    const admin = await this.adminService.getAdminById(id, currentAdmin);
+    const admin = await this.adminService.getAdminById(id);
     return cleanSensitiveFields(admin);
   }
 
+
   // Update admin
-  @UseGuards(IsAdminGuard)
+  @AdminRoles(AdminRole.SUPER)
   @Patch(':id')
   async updateAdmin(
     @Param('id') id: string,
@@ -76,11 +69,10 @@ export class AdminController {
     return cleanSensitiveFields(admin);
   }
 
+
   // Delete admin - Only SUPER admin
-  @UseGuards(AdminRoleGuard)
   @AdminRoles(AdminRole.SUPER)
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAdmin(
     @Param('id') id: string,
     @CurrentAdmin() currentAdmin: Admin,

@@ -2,7 +2,6 @@ import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
-import { AdminUserController } from './controllers/admin-user.controller';
 import { AdminRepo } from './repo/admin.repo';
 import { AdminSeederService } from './services/admin-seeder.service';
 import { DatabaseModule } from '../common/database/database.module';
@@ -30,7 +29,7 @@ import { ConfigService } from '@nestjs/config';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AdminController, AdminUserController],
+  controllers: [AdminController],
   providers: [
     AdminService,
     AdminRepo,

@@ -11,18 +11,22 @@ export class AdminRepo extends AbstractRepo<Admin> {
   }
 
   async findByEmail(email: string): Promise<Admin | null> {
-    return this.findOne({ email });
+    return await this.findOne({ email });
   }
 
   async findActiveAdmins(): Promise<Admin[]> {
-    return this.find({ isActive: true });
+    return await this.find({ isActive: true });
   }
 
   async countAdminsByRole(role: string): Promise<number> {
-    return this.adminModel.countDocuments({ adminRole: role, isActive: true });
+    return await this.adminModel.countDocuments({ adminRole: role, isActive: true });
   }
 
   async countAllAdmins(){
     return await this.adminModel.countDocuments();
+  }
+
+  async finaAllAdmins(): Promise<Admin[]> {
+    return await this.find({});
   }
 }

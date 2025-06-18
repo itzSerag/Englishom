@@ -9,7 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AdminRepo } from './repo/admin.repo';
-import { CreateAdminDto, UpdateAdminDto, AdminLoginDto } from './dto';
+import { CreateAdminDto, UpdateAdminDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { AdminRole } from '../common/shared';
 import { TimeService } from '../common/config/time.service';
@@ -53,55 +53,19 @@ export class AdminService {
     return admin;
   }
 
-// // Admin login - whyy here ? because it is a common functionality with other mdel
-//   async login(adminLoginDto: AdminLoginDto): Promise<{ admin: Admin; access_token: string }> {
-//     const { email, password } = adminLoginDto;
-
-//     // Find admin by email
-//     const admin = await this.adminRepo.findByEmail(email);
-//     if (!admin) {
-//       throw new UnauthorizedException('Invalid credentials');
-//     }
-
-//     // Check if admin is active -- super can deactivate accounts
-//     if (!admin.isActive) {
-//       throw new UnauthorizedException('Admin account is deactivated');
-//     }
-
-//     // Verify password
-//     const isPasswordValid = await bcrypt.compare(password, admin.password);
-//     if (!isPasswordValid) {
-//       throw new UnauthorizedException('Invalid credentials');
-//     }
-
-//     // Update last login
-//     await this.adminRepo.findOneAndUpdate(
-//       { _id: admin._id },
-//       { 
-//         lastLoginAt: this.timeService.now(),
-//         lastActivity: this.timeService.now(),
-//       },
-//     );
-
-//     // Generate JWT token
-//     const payload = {
-//       sub: admin._id, 
-//       email: admin.email,
-//     };
-//     const access_token = this.jwtService.sign(payload);
-
-//     return { admin, access_token };
-//   }
 
   // Get all admins (SUPER and MANAGER can view all)
-  async getAllAdmins(currentAdmin: Admin): Promise<Admin[]> {
-    // no need for pagination there wont be many admins
+  async getAllActiveAdmins(): Promise<Admin[]> {
     return this.adminRepo.findActiveAdmins();
+  }
+   async getAllAdmins(): Promise<Admin[]> {
+    // no need for pagination there wont be many admins
+    return this.adminRepo.finaAllAdmins();
   }
 
   
   // Get admin by ID
-  async getAdminById(id: string, currentAdmin: Admin): Promise<Admin> {
+  async getAdminById(id: string): Promise<Admin> {
 
     const admin = await this.adminRepo.findOne({ _id: new Types.ObjectId(id) });
     if (!admin) {
@@ -117,7 +81,8 @@ export class AdminService {
     updateAdminDto: UpdateAdminDto,
     currentAdmin: Admin,
   ): Promise<Admin> {
-    const targetAdmin = await this.adminRepo.findOne({ _id: new Types.ObjectId(id) });
+    const targetAdmin = await this.adminRepo.findOne({ _id: id });
+
     if (!targetAdmin) {
       throw new NotFoundException('Admin not found');
     }
@@ -130,7 +95,7 @@ export class AdminService {
       }
       
       // Non-SUPER admins cannot change roles or activation status
-      if (updateAdminDto.role || updateAdminDto.hasOwnProperty('isActive')) {
+      if (updateAdminDto.adminRole || updateAdminDto.hasOwnProperty('isActive')) {
         throw new ForbiddenException('You cannot change role or activation status');
       }
     }
@@ -140,10 +105,9 @@ export class AdminService {
       updateAdminDto.isActive === false &&
       targetAdmin.adminRole === AdminRole.SUPER
     ) {
-      const superAdminCount = await this.adminRepo.countAdminsByRole(AdminRole.SUPER);
-      if (superAdminCount <= 1) {
-        throw new BadRequestException('Cannot deactivate the last Super Admin');
-      }
+
+      throw new BadRequestException('Cannot deactivate Super Admin');
+      
     }
 
     // Hash password if provided
@@ -152,7 +116,7 @@ export class AdminService {
     }
 
     const updatedAdmin = await this.adminRepo.findOneAndUpdate(
-      { _id: new Types.ObjectId(id) },
+      { _id: id},
       { ...updateAdminDto, lastActivity: this.timeService.now() },
     );
 
