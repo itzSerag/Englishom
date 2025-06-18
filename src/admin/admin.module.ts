@@ -7,7 +7,7 @@ import { AdminRepo } from './repo/admin.repo';
 import { AdminSeederService } from './services/admin-seeder.service';
 import { DatabaseModule } from '../common/database/database.module';
 import { Admin, AdminSchema } from './models/admin.schema';
-import { SuperAdminGuard, AdminRolesGuard } from './guards';
+import { IsAdminGuard, AdminRoleGuard } from './guards';
 import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from 'src/common/config/config.module';
@@ -35,8 +35,8 @@ import { ConfigService } from '@nestjs/config';
     AdminService,
     AdminRepo,
     AdminSeederService,
-    SuperAdminGuard,
-    AdminRolesGuard,
+    IsAdminGuard,
+    AdminRoleGuard,
   ],
   exports: [AdminService, AdminRepo],
 })

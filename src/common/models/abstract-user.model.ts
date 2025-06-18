@@ -1,6 +1,7 @@
 import { Prop } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database/abstract.schema';
 import { TimeService } from '../config/time.service';
+import { Role } from '../shared';
 
 export abstract class AbstractUser extends AbstractDocument {
   @Prop({ required: true, unique: true })
@@ -20,6 +21,8 @@ export abstract class AbstractUser extends AbstractDocument {
     type: Date,
     default: (timeService: TimeService) => timeService.now(),
   })
+
+
   lastActivity: Date;
 
   @Prop({ default: 'NA' })

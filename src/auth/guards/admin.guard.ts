@@ -29,7 +29,7 @@ export class AdminGuard implements CanActivate {
     }
 
     // Check if user is an admin (new admin system)
-    if (user && Object.values(AdminRole).includes(user.role)) {
+    if (user && Object.values(AdminRole).includes(user.adminRole)) {
       return true;
     }
 

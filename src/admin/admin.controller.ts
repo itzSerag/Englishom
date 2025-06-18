@@ -15,30 +15,18 @@ import { CreateAdminDto, UpdateAdminDto, AdminLoginDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { AdminRoles } from './decorators/admin-roles.decorator';
-import { SuperAdminGuard, AdminRolesGuard } from './guards';
+import { IsAdminGuard, AdminRoleGuard } from './guards';
 import { AdminRole } from '../common/shared';
-import { Public } from '../auth/decorator/public.decorator';
 import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../common/utils/response.utils';
 
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-//   // Admin login - Public endpoint
-//   @Public()
-//   @Post('login')
-//   @HttpCode(HttpStatus.OK)
-//   async login(@Body() adminLoginDto: AdminLoginDto) {
-//     const result = await this.adminService.login(adminLoginDto);
-//     return {
-//       access_token: result.access_token,
-//       admin: cleanSensitiveFields(result.admin),
-//     };
-//   }
-
   // Create new admin - Only SUPER admin
-  @UseGuards(SuperAdminGuard)
-  @Post('create')
+  @UseGuards(AdminRoleGuard)
+  @AdminRoles(AdminRole.SUPER)
+  @Post('create-admin')
   async createAdmin(
     @Body() createAdminDto: CreateAdminDto,
     @CurrentAdmin() currentAdmin: Admin,
@@ -48,7 +36,7 @@ export class AdminController {
   }
 
   // Get all admins - SUPER and MANAGER
-  @UseGuards(AdminRolesGuard)
+  @UseGuards(AdminRoleGuard)
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Get('all')
   async getAllAdmins(@CurrentAdmin() currentAdmin: Admin) {
@@ -57,7 +45,7 @@ export class AdminController {
   }
 
   // Get admin profile
-  @UseGuards(AdminRolesGuard)
+  @UseGuards(IsAdminGuard)
   @Get('profile')
   async getProfile(@CurrentAdmin() admin: Admin) {
     const profile = await this.adminService.getProfile(admin);
@@ -65,7 +53,7 @@ export class AdminController {
   }
 
   // Get admin by ID - SUPER and MANAGER
-  @UseGuards(AdminRolesGuard)
+  @UseGuards(AdminRoleGuard)
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Get(':id')
   async getAdminById(
@@ -77,7 +65,7 @@ export class AdminController {
   }
 
   // Update admin
-  @UseGuards(AdminRolesGuard)
+  @UseGuards(IsAdminGuard)
   @Patch(':id')
   async updateAdmin(
     @Param('id') id: string,
@@ -89,7 +77,8 @@ export class AdminController {
   }
 
   // Delete admin - Only SUPER admin
-  @UseGuards(SuperAdminGuard)
+  @UseGuards(AdminRoleGuard)
+  @AdminRoles(AdminRole.SUPER)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAdmin(

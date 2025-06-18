@@ -11,14 +11,14 @@ import {
 } from '@nestjs/common';
 import { UserService } from '../../user/user.service';
 import { UpdateUserDto } from '../../user/dto/update-user.dto';
-import { AdminRolesGuard } from '../guards/admin-roles.guard';
+import { AdminRoleGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin-roles.decorator';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
 import { Admin } from '../models/admin.schema';
 import { AdminRole } from '../../common/shared';
 
 @Controller('admin/users')
-@UseGuards(AdminRolesGuard)
+@UseGuards(AdminRoleGuard)
 export class AdminUserController {
   constructor(private readonly userService: UserService) {}
 

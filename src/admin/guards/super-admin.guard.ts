@@ -3,12 +3,13 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AdminRole } from '../../common/shared';
 
 @Injectable()
-export class SuperAdminGuard implements CanActivate {
+export class IsAdminGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -25,10 +26,14 @@ export class SuperAdminGuard implements CanActivate {
       return true;
     }
 
-    if (!admin || admin.role !== AdminRole.SUPER) {
-      throw new UnauthorizedException(
-        'Only Super Admin can access this resource',
-      );
+    // If the user is not authenticated, throw UnauthorizedException
+    if (!admin) {
+      throw new UnauthorizedException('User is not authenticated');
+    }
+
+    // Check if user is any type of admin (using adminRole field)
+    if (!admin.adminRole || !Object.values(AdminRole).includes(admin.adminRole)) {
+      throw new ForbiddenException('User is not an admin');
     }
 
     return true;

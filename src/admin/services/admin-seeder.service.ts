@@ -21,7 +21,7 @@ export class AdminSeederService implements OnModuleInit {
     try {
       // Check if any super admin exists
       const existingSuperAdmin = await this.adminRepo.findOne({
-        role: AdminRole.SUPER,
+        adminRole: AdminRole.SUPER,
         isActive: true,
       });
 
@@ -39,7 +39,7 @@ export class AdminSeederService implements OnModuleInit {
         firstName: 'Super',
         lastName: 'Admin',
         password: hashedPassword,
-        role: AdminRole.SUPER,
+        adminRole: AdminRole.SUPER,
         isActive: true,
         isVerified: true,
         lastActivity: this.timeService.now(),

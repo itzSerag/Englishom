@@ -29,7 +29,7 @@ export class AdminService {
     currentAdmin: Admin,
   ): Promise<Admin> {
     // Only SUPER admin can create other admins
-    if (currentAdmin.role !== AdminRole.SUPER) {
+    if (currentAdmin.adminRole !== AdminRole.SUPER) {
       throw new ForbiddenException('Only Super Admin can create new admins');
     }
 
@@ -95,19 +95,13 @@ export class AdminService {
 
   // Get all admins (SUPER and MANAGER can view all)
   async getAllAdmins(currentAdmin: Admin): Promise<Admin[]> {
-    if (![AdminRole.SUPER, AdminRole.MANAGER].includes(currentAdmin.role)) {
-      throw new ForbiddenException('Access denied');
-    }
-
     // no need for pagination there wont be many admins
     return this.adminRepo.findActiveAdmins();
   }
 
+  
   // Get admin by ID
   async getAdminById(id: string, currentAdmin: Admin): Promise<Admin> {
-    if (![AdminRole.SUPER, AdminRole.MANAGER].includes(currentAdmin.role)) {
-      throw new ForbiddenException('Access denied');
-    }
 
     const admin = await this.adminRepo.findOne({ _id: new Types.ObjectId(id) });
     if (!admin) {
@@ -130,7 +124,7 @@ export class AdminService {
 
     // SUPER admin can update anyone
     // Others can only update themselves (except role changes)
-    if (currentAdmin.role !== AdminRole.SUPER) {
+    if (currentAdmin.adminRole !== AdminRole.SUPER) {
       if (currentAdmin._id.toString() !== id) {
         throw new ForbiddenException('You can only update your own profile');
       }
@@ -144,7 +138,7 @@ export class AdminService {
     // Prevent deactivating the last SUPER admin
     if (
       updateAdminDto.isActive === false &&
-      targetAdmin.role === AdminRole.SUPER
+      targetAdmin.adminRole === AdminRole.SUPER
     ) {
       const superAdminCount = await this.adminRepo.countAdminsByRole(AdminRole.SUPER);
       if (superAdminCount <= 1) {
@@ -167,7 +161,7 @@ export class AdminService {
 
   // Delete admin (only SUPER can delete, and cannot delete themselves or last SUPER)
   async deleteAdmin(id: string, currentAdmin: Admin): Promise<void> {
-    if (currentAdmin.role !== AdminRole.SUPER) {
+    if (currentAdmin.adminRole !== AdminRole.SUPER) {
       throw new ForbiddenException('Only Super Admin can delete admins');
     }
 
@@ -182,7 +176,7 @@ export class AdminService {
     }
 
     // Cannot delete the last SUPER admin
-    if (targetAdmin.role === AdminRole.SUPER) {
+    if (targetAdmin.adminRole === AdminRole.SUPER) {
       const superAdminCount = await this.adminRepo.countAdminsByRole(AdminRole.SUPER);
       if (superAdminCount <= 1) {
         throw new BadRequestException('Cannot delete the last Super Admin');

@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { AdminRole } from '../../common/shared';
 
 @Injectable()
-export class AdminRolesGuard implements CanActivate {
+export class AdminRoleGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -36,8 +36,8 @@ export class AdminRolesGuard implements CanActivate {
       throw new UnauthorizedException('Admin is not authenticated');
     }
 
-    // Check if user is actually an admin
-    if (!admin.role || !Object.values(AdminRole).includes(admin.role)) {
+    // Check if user is actually an admin (using adminRole field)
+    if (!admin.adminRole || !Object.values(AdminRole).includes(admin.adminRole)) {
       throw new ForbiddenException('User is not an admin');
     }
 
@@ -47,12 +47,12 @@ export class AdminRolesGuard implements CanActivate {
     }
 
     // SUPER admin can access everything
-    if (admin.role === AdminRole.SUPER) {
+    if (admin.adminRole === AdminRole.SUPER) {
       return true;
     }
 
     // Check if admin has the required role
-    if (!requiredRoles.includes(admin.role)) {
+    if (!requiredRoles.includes(admin.adminRole)) {
       throw new ForbiddenException('Admin does not have the required role');
     }
 

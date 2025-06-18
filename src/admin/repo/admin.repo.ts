@@ -19,7 +19,7 @@ export class AdminRepo extends AbstractRepo<Admin> {
   }
 
   async countAdminsByRole(role: string): Promise<number> {
-    return this.adminModel.countDocuments({ role, isActive: true });
+    return this.adminModel.countDocuments({ adminRole: role, isActive: true });
   }
 
   async countAllAdmins(){
