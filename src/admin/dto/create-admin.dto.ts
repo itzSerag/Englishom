@@ -17,4 +17,9 @@ export class CreateAdminDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  country?: string;
 }

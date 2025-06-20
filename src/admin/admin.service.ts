@@ -12,21 +12,22 @@ import { AdminRepo } from './repo/admin.repo';
 import { CreateAdminDto, UpdateAdminDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { AdminRole } from '../common/shared';
-import { TimeService } from '../common/config/time.service';
 import { Types } from 'mongoose';
+import { IpService } from 'src/common/services/ip.service';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly adminRepo: AdminRepo,
     private readonly jwtService: JwtService,
-    private readonly timeService: TimeService,
+    private readonly ipService : IpService
   ) {}
 
   // Create new admin (only SUPER admin can create other admins)
   async createAdmin(
     createAdminDto: CreateAdminDto,
     currentAdmin: Admin,
+    ipAddress?: string, // Optional IP address for logging
   ): Promise<Admin> {
     // Only SUPER admin can create other admins
     if (currentAdmin.adminRole !== AdminRole.SUPER) {
@@ -39,6 +40,12 @@ export class AdminService {
       throw new ConflictException('Admin with this email already exists');
     }
 
+     // Set country based on IP address during signup
+    if (ipAddress) {
+      const country = this.ipService.getCountryFromIp(ipAddress);
+      createAdminDto.country = country;
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(createAdminDto.password, 10);
 
@@ -47,7 +54,7 @@ export class AdminService {
       ...createAdminDto,
       password: hashedPassword,
       createdBy: currentAdmin._id,
-      lastActivity: this.timeService.now(),
+      isActive: true, 
     });
 
     return admin;
@@ -117,7 +124,7 @@ export class AdminService {
 
     const updatedAdmin = await this.adminRepo.findOneAndUpdate(
       { _id: id},
-      { ...updateAdminDto, lastActivity: this.timeService.now() },
+      { ...updateAdminDto, lastActivity:  Date.now() },
     );
 
     return updatedAdmin;
@@ -163,7 +170,7 @@ export class AdminService {
   async updateActivity(adminId: Types.ObjectId): Promise<void> {
     await this.adminRepo.findOneAndUpdate(
       { _id: adminId },
-      { lastActivity: this.timeService.now() },
+      { lastActivity: Date.now() },
     );
   }
 
@@ -188,4 +195,23 @@ export class AdminService {
     
     return admin;
   }
+
+  async deactivateAdmin(id: string): Promise<Admin> {
+    const admin = await this.adminRepo.findOne({ _id: new Types.ObjectId(id) });
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    if (admin.adminRole === AdminRole.SUPER) {
+      throw new BadRequestException('Cannot deactivate Super Admin');
+    }
+
+    return await this.adminRepo.findOneAndUpdate(
+      { _id: new Types.ObjectId(id) },
+      { isActive: false },
+    );
+  }
+
+
+  private
 }

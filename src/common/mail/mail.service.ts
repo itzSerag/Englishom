@@ -73,4 +73,8 @@ export class EmailService {
 
     return this.transporter.sendMail(mailOptions);
   }
+
+  async sendCustomEmail(mailOptions: any): Promise<any> {
+    return this.transporter.sendMail(mailOptions);
+  }
 }

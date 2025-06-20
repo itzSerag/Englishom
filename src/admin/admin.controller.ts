@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { CreateAdminDto, UpdateAdminDto } from './dto';
@@ -18,11 +19,13 @@ import { AdminRoles } from './decorators/admin-roles.decorator';
 import { IsAdminGuard, AdminRoleGuard } from './guards';
 import { AdminRole } from '../common/shared';
 import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../common/utils/response.utils';
+import { IpService } from 'src/common/services/ip.service';
 
 @UseGuards(IsAdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService, 
+    private readonly ipService : IpService) {}
 
   // Create new admin - Only SUPER admin
   @AdminRoles(AdminRole.SUPER)
@@ -30,8 +33,10 @@ export class AdminController {
   async createAdmin(
     @Body() createAdminDto: CreateAdminDto,
     @CurrentAdmin() currentAdmin: Admin,
+    @Req() req: Request,
   ) {
-    const admin = await this.adminService.createAdmin(createAdminDto, currentAdmin);
+    const ip = this.ipService.getRealIp(req);
+    const admin = await this.adminService.createAdmin(createAdminDto, currentAdmin,ip);
     return cleanSensitiveFields(admin);
   }
 
@@ -78,5 +83,12 @@ export class AdminController {
     @CurrentAdmin() currentAdmin: Admin,
   ) {
     return await this.adminService.deleteAdmin(id, currentAdmin);
+  }
+
+  @AdminRoles(AdminRole.SUPER)
+  @Post('deactivate-admin/:id')
+  async deactivateAdmin(@Param('id') id : string){
+    const admin = await this.adminService.deactivateAdmin(id);
+    return cleanSensitiveFields(admin);
   }
 }

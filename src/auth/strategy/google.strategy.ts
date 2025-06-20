@@ -38,12 +38,21 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       strategy: profile.provider,
     };
 
+
+      // if lastActivity is stale, update it
+      const dbUser = await this.userRepo.findOne({ email: user.email });
+      if (!dbUser) {
+        throw new Error('User not found');
+      }
+
      if (this.timeService.isActivityStale(user.lastActivity)) {
         await this.userRepo.findOneAndUpdate(
           { _id: user._id },
           { lastActivity: this.timeService.now() },
         );
       }
-    done(null, user);
+
+
+    done(null, dbUser);
   }
 }

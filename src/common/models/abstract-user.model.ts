@@ -17,22 +17,11 @@ export abstract class AbstractUser extends AbstractDocument {
   @Prop({
     required: true,
     type: Date,
-    default: Date.now(),
+    default: Date.now,
   })
   lastActivity: Date;
 
-  @Prop({ default: 'NA' })
+  @Prop({ type : String, default : 'unknown' })
   country: string;
 
-  @Prop({ default: 'NA' })
-  city: string;
-
-  @Prop({ default: false })
-  isVerified: boolean;
-
-  // Method to determine if this is an admin or user
-  abstract getUserType(): 'admin' | 'user';
-  
-  // Method to get the role (will be overridden in child classes)
-  abstract getRole(): string;
 }

@@ -21,7 +21,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { Response } from 'express';
-import { ResetPasswordDto } from './dto';
+import { ForgetPasswordDto, ResetPasswordWithOtpDto } from './dto';
 import { cleanSensitiveFields } from '../common/utils/response.utils';
 import { Admin } from 'src/admin/models/admin.schema';
 import { Role } from 'src/common/shared';
@@ -95,6 +95,20 @@ export class AuthController {
     return await this.authService.resendOtp(resendOtpDto.email);
   }
 
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('forget-password')
+  async forgetPassword(@Body() forgetPasswordDto: ForgetPasswordDto) {
+    return await this.authService.forgetPassword(forgetPasswordDto.email);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password-otp')
+  async resetPasswordWithOtp(@Body() resetPasswordWithOtpDto: ResetPasswordWithOtpDto) {
+    return await this.authService.resetPasswordWithOtp(resetPasswordWithOtpDto);
+  }
+
   // OAUTH
   @Public()
   @Get('facebook')
@@ -159,17 +173,7 @@ export class AuthController {
     }
   }
 
-  @Post('reset-password')
-  async resetPassword(
-    @CurrentUser() user: User | Admin,
-    resetPasswordDto: ResetPasswordDto,
-  ) {
-    await this.authService.resetPassword(user, resetPasswordDto);
-
-    return {
-      message: 'Password reset successful',
-    };
-  }
+ 
 
   @Post('logout')
   async logout(@CurrentUser() user: User) {

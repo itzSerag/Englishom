@@ -17,8 +17,6 @@ import * as bcrypt from 'bcrypt';
 import { EmailService } from '../common/mail/mail.service';
 import { OtpRepo } from './repo/repo.otp';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { ResetPasswordDto } from './dto';
-import { TimeService } from '../common/config/time.service';
 import { AuthenticationService } from 'src/common/services/authentication.service';
 import { Admin } from 'src/admin/models/admin.schema';
 import { Role } from 'src/common/shared';
@@ -31,7 +29,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly otpRepo: OtpRepo,
-    private readonly timeService: TimeService,
     private readonly globalAuthService : AuthenticationService
   ) {}
 
@@ -79,7 +76,7 @@ export class AuthService {
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
       { 
-        lastActivity: this.timeService.now(),
+        lastActivity: Date.now() ,
       },
     );
 
@@ -92,24 +89,6 @@ export class AuthService {
     return true;
   }
 
-  async resetPassword(user: User | Admin, restPasswordDto: ResetPasswordDto) {
-    // hash the new password
-
-    //compare the old password and new password
-    const isValid = await bcrypt.compare(
-      restPasswordDto.oldPassword,
-      user.password,
-    );
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid old password');
-    }
-
-    const hashedPassword = await bcrypt.hash(restPasswordDto.newPassword, 10);
-    return await this.userRepo.findOneAndUpdate(
-      { _id: user._id },
-      { password: hashedPassword },
-    );
-  }
 
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
@@ -155,6 +134,54 @@ export class AuthService {
     return { message: 'OTP has been sent to your email' };
   }
 
+  async forgetPassword(email: string) {
+    const user = await this.userRepo.findOne({ email });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Delete any existing OTP for this email
+    await this.otpRepo.delete({ email });
+    
+    // Generate and send new OTP
+    await this.generateAndSendOtp(email);
+    
+    return { message: 'Password reset OTP has been sent to your email' };
+  }
+
+  async resetPasswordWithOtp(resetPasswordWithOtpDto: any) {
+    const { email, otp, newPassword } = resetPasswordWithOtpDto;
+
+    const user = await this.userRepo.findOne({ email });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const otpRecord = await this.otpRepo.findOne({ email });
+
+    if (!otpRecord || otpRecord.otp !== otp) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and delete OTP
+    const [updatedUser, _] = await Promise.all([
+      this.userRepo.findOneAndUpdate(
+        { email }, 
+        { 
+          password: hashedPassword,
+          lastActivity: Date.now()
+        }
+      ),
+      this.otpRepo.delete({ email })
+    ]);
+
+    return { message: 'Password reset successful' };
+  }
 
 
   async generateToken(user: User | Admin) {
@@ -186,7 +213,7 @@ export class AuthService {
         password,
         strategy,
         isVerified: true,
-        lastActivity: this.timeService.now(),
+        lastActivity:  new Date(),
       });
 
       return newUser;
@@ -200,7 +227,7 @@ export class AuthService {
 
     // Update user profile if needed and update last login
     const updateData: any = {
-      lastActivity: this.timeService.now(),
+      lastActivity: Date.now(),
     };
 
     if (user.firstName !== firstName || user.lastName !== lastName) {

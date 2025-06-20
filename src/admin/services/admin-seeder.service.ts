@@ -2,7 +2,6 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { AdminRepo } from '../repo/admin.repo';
 import { AdminRole } from '../../common/shared';
 import * as bcrypt from 'bcrypt';
-import { TimeService } from '../../common/config/time.service';
 
 @Injectable()
 export class AdminSeederService implements OnModuleInit {
@@ -10,7 +9,6 @@ export class AdminSeederService implements OnModuleInit {
 
   constructor(
     private readonly adminRepo: AdminRepo,
-    private readonly timeService: TimeService,
   ) {}
 
   async onModuleInit() {
@@ -42,7 +40,6 @@ export class AdminSeederService implements OnModuleInit {
         adminRole: AdminRole.SUPER,
         isActive: true,
         isVerified: true,
-        lastActivity: this.timeService.now(),
       });
 
       this.logger.log('Initial Super Admin created successfully');

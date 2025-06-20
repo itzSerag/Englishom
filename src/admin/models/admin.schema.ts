@@ -9,6 +9,9 @@ export class Admin extends AbstractUser {
   @Prop({ enum: AdminRole, default: AdminRole.VIEW })
   adminRole: AdminRole;
 
+  @Prop({ type: Boolean , default: true })
+  isVerified: boolean;
+
   @Prop({ default: true })
   isActive: boolean;
 
@@ -21,14 +24,8 @@ export class Admin extends AbstractUser {
   @Prop({enum: Strategy, default: Strategy.LOCAL , required: false})
   strategy?: Strategy;
 
-  // Implementation of abstract methods
-  getUserType(): 'admin' | 'user' {
-    return 'admin';
-  }
-
-  getRole(): string {
-    return this.role;
-  }
+ 
+  
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

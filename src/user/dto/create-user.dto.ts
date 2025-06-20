@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -17,4 +17,9 @@ export class CreateUserDto {
   @IsNotEmpty()
   @Length(6, 20)
   password: string;
+
+  // will set country based on IP address during signup
+  @IsString()
+  @IsOptional()
+  country?: string;
 }

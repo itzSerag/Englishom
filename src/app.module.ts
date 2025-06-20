@@ -7,7 +7,9 @@ import { AdminModule } from './admin/admin.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { ConfigModule } from './common/config/config.module';
 import { DatabaseModule } from './common/database/database.module';
+import { CommonModule } from './common/common.module';
 import { PaymentModule } from './payment/paymob.module';
+import { CronModule } from './cron/cron.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt.guard';
 import { RolesGuard } from './auth/guards/role.guard';
@@ -16,6 +18,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
+    CommonModule, // Import the global common module
     AuthModule,
     UserModule,
     AdminModule,
@@ -23,6 +26,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     FileUploadModule,
     ConfigModule,
     DatabaseModule,
+    CronModule, // Add CRON module
     ThrottlerModule.forRoot({
       throttlers: [
         {

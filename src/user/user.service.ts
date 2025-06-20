@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserRepo } from './repo/user.repo';
@@ -15,6 +16,11 @@ import { CompleteLevelDto } from './dto/complete-level.dto';
 import { CertificateRepo } from './repo/certificate.repo';
 import { Types } from 'mongoose';
 import { GetCertificateDto } from './dto/get-certificate';
+import { PaginationDto } from './dto/pagination.dto';
+import { IpService } from '../common/services/ip.service';
+import { User } from './models/user.schema';
+import { Admin } from 'src/admin/models/admin.schema';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class UserService {
@@ -22,13 +28,14 @@ export class UserService {
     private readonly userRepo: UserRepo,
     private readonly orderService: OrderService,
     private readonly certificateRepo: CertificateRepo,
+    private readonly ipService: IpService,
   ) {}
   private logger = new Logger(UserService.name);
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto, ipAddress?: string) {
     const user = await this.userRepo.findOne({ email: createUserDto.email });
     if (user) {
-      // user already found
+    
       return null;
     }
 
@@ -36,7 +43,15 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     createUserDto.password = hashedPassword;
 
-    return this.userRepo.create(createUserDto);
+    // Set country based on IP address during signup
+    if (ipAddress) {
+      const country = this.ipService.getCountryFromIp(ipAddress);
+      createUserDto.country = country;
+    }
+    log('ipAddress', ipAddress);
+    log('createUserDto country', createUserDto.country);
+
+    return await this.userRepo.create({...createUserDto});
   }
 
   async findByEmail(email: string) {
@@ -49,6 +64,11 @@ export class UserService {
 
   async findAll() {
     return await this.userRepo.find({});
+  }
+
+  async findAllWithPagination(paginationDto: PaginationDto) {
+    const { page, limit } = paginationDto;
+    return await this.userRepo.findWithPagination({}, page, limit);
   }
 
   async deleteUser(_id: string) {
@@ -71,6 +91,26 @@ export class UserService {
 
     return certificate;
   }
+
+   async resetPassword(user: User | Admin, restPasswordDto: ResetPasswordDto) {
+      // hash the new password
+      const {newPassword , oldPassword} = restPasswordDto;
+      //compare the old password and new password
+
+      const isValid = await bcrypt.compare(
+        oldPassword,
+        user.password,
+      );
+      if (!isValid) {
+        throw new UnauthorizedException('Invalid old password');
+      }
+  
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      return await this.userRepo.findOneAndUpdate(
+        { _id: user._id },
+        { password: hashedPassword },
+      );
+    }
 
   async getUserCompletedOrders(userId: string) {
     const userLevels = await this.orderService.findUserCompletedOrders(userId);

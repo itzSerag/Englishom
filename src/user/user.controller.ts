@@ -11,6 +11,7 @@ import {
   Query,
   BadRequestException,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -29,15 +30,21 @@ import { Admin } from 'src/admin/models/admin.schema';
 import { AdminRole, Role } from 'src/common/shared';
 import { IsAdminGuard } from 'src/admin/guards';
 import { AdminRoles } from 'src/admin/decorators';
+import { PaginationDto } from './dto/pagination.dto';
+import { IpService } from '../common/services/ip.service';
+import { Request } from 'express';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly ipService: IpService,
+  ) {}
 
   @SkipVerifiedGuard()
   @Get('me')
   async getMe(@CurrentUser() user: User | Admin) {
-
     // no need to get the levels for admin
     if(user.role === Role.ADMIN) {
       return {
@@ -57,20 +64,25 @@ export class UserController {
   }
 
   @Post()
-  async create(@Body() createUserDto: CreateUserDto) {
-    const user = await this.userService.create(createUserDto);
+  async create(@Body() createUserDto: CreateUserDto, @Req() req: Request) {
+    const ip =  this.ipService.getRealIp(req);
+    const user = await this.userService.create(createUserDto, ip);
     if (!user) {
       throw new ConflictException('User already exists');
     }
     return cleanSensitiveFields(user);
   }
 
-  // TODO : HAVE TO DO SOME PAGINATION HERE -- any admin can access this endpoint
+  // Admin endpoint with pagination support
   @UseGuards(IsAdminGuard)
   @Get('all')
-  async findAll() {
-    const users = await this.userService.findAll();
-    return users.map((user) => cleanSensitiveFields(user));
+  async findAll(@Query() paginationDto: PaginationDto) {
+    const result = await this.userService.findAllWithPagination(paginationDto);
+    
+    return {
+      ...result,
+      data: result.data.map((user) => cleanSensitiveFields(user)),
+    };
   }
 
   @Get('levels')
@@ -170,6 +182,19 @@ export class UserController {
     }
 
     return cleanSensitiveFields(certificate);
+  }
+
+   @Post('reset-password')
+  async resetPassword(
+    @CurrentUser() user: User | Admin,
+    resetPasswordDto: ResetPasswordDto,
+  ) {
+   
+    await this.userService.resetPassword(user, resetPasswordDto);
+
+    return {
+      message: 'Password reset successful',
+    };
   }
 
   /// MUST BE AT THE END AND ADMIN ONLY

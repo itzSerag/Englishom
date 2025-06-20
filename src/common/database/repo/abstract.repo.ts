@@ -66,6 +66,38 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
     return document;
   }
 
+  async findWithPagination(
+    filterQuery: FilterQuery<TSchema>,
+    page: number = 1,
+    limit: number = 10,
+    session?: ClientSession,
+  ): Promise<{ data: TSchema[]; total: number; page: number; limit: number; totalPages: number }> {
+    // Convert string IDs to ObjectId
+    const convertedFilter = convertFilterToObjectId(filterQuery);
+    
+    const skip = (page - 1) * limit;
+    
+    const [data, total] = await Promise.all([
+      this.model
+        .find(convertedFilter)
+        .skip(skip)
+        .limit(limit)
+        .session(session || null)
+        .lean<TSchema[]>(true),
+      this.model.countDocuments(convertedFilter).session(session || null),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: data || [],
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
   async findOneAndUpdate(
     filterQuery: FilterQuery<TSchema>,
     updateQuery: UpdateQuery<TSchema>,
