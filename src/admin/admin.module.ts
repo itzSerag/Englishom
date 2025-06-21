@@ -15,11 +15,9 @@ import { ConfigService } from '@nestjs/config';
 @Module({
   imports: [
     ConfigModule,
-    DatabaseModule.forFeature([
-      { name: Admin.name, schema: AdminSchema },
-    ]),
-    forwardRef(() => UserModule), 
-    forwardRef(() => AuthModule), 
+    DatabaseModule.forFeature([{ name: Admin.name, schema: AdminSchema }]),
+    forwardRef(() => UserModule),
+    forwardRef(() => AuthModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

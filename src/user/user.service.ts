@@ -35,7 +35,6 @@ export class UserService {
   async create(createUserDto: CreateUserDto, ipAddress?: string) {
     const user = await this.userRepo.findOne({ email: createUserDto.email });
     if (user) {
-    
       return null;
     }
 
@@ -51,7 +50,7 @@ export class UserService {
     log('ipAddress', ipAddress);
     log('createUserDto country', createUserDto.country);
 
-    return await this.userRepo.create({...createUserDto});
+    return await this.userRepo.create({ ...createUserDto });
   }
 
   async findByEmail(email: string) {
@@ -92,25 +91,22 @@ export class UserService {
     return certificate;
   }
 
-   async resetPassword(user: User | Admin, restPasswordDto: ResetPasswordDto) {
-      // hash the new password
-      const {newPassword , oldPassword} = restPasswordDto;
-      //compare the old password and new password
+  async resetPassword(user: User | Admin, restPasswordDto: ResetPasswordDto) {
+    // hash the new password
+    const { newPassword, oldPassword } = restPasswordDto;
+    //compare the old password and new password
 
-      const isValid = await bcrypt.compare(
-        oldPassword,
-        user.password,
-      );
-      if (!isValid) {
-        throw new UnauthorizedException('Invalid old password');
-      }
-  
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      return await this.userRepo.findOneAndUpdate(
-        { _id: user._id },
-        { password: hashedPassword },
-      );
+    const isValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid old password');
     }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    return await this.userRepo.findOneAndUpdate(
+      { _id: user._id },
+      { password: hashedPassword },
+    );
+  }
 
   async getUserCompletedOrders(userId: string) {
     const userLevels = await this.orderService.findUserCompletedOrders(userId);

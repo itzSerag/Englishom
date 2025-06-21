@@ -37,7 +37,10 @@ export class AdminRoleGuard implements CanActivate {
     }
 
     // Check if user is actually an admin (using adminRole field)
-    if (!admin.adminRole || !Object.values(AdminRole).includes(admin.adminRole)) {
+    if (
+      !admin.adminRole ||
+      !Object.values(AdminRole).includes(admin.adminRole)
+    ) {
       throw new ForbiddenException('User is not an admin');
     }
 

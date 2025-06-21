@@ -19,4 +19,16 @@ export class OtpRepo {
   async delete(filter = {}): Promise<any> {
     return this.otpModel.deleteOne(filter).exec();
   }
+
+  async deleteMany(filter = {}): Promise<any> {
+    return this.otpModel.deleteMany(filter).exec();
+  }
+
+  async deleteByEmailAndCause(email: string, cause: string): Promise<any> {
+    return this.otpModel.deleteOne({ email, cause }).exec();
+  }
+
+  async deleteAllByEmail(email: string): Promise<any> {
+    return this.otpModel.deleteMany({ email }).exec();
+  }
 }

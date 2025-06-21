@@ -21,7 +21,6 @@ export abstract class AbstractUser extends AbstractDocument {
   })
   lastActivity: Date;
 
-  @Prop({ type : String, default : 'unknown' })
+  @Prop({ type: String, default: 'unknown' })
   country: string;
-
 }

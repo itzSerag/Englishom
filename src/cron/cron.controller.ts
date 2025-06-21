@@ -10,13 +10,13 @@ export class CronController {
   constructor(private readonly cronService: InactiveUserCronService) {}
 
   // Only super admin can trigger manually
-  @AdminRoles(AdminRole.SUPER) 
+  @AdminRoles(AdminRole.SUPER)
   @Post('trigger-inactive-users')
   async triggerInactiveUsersEmail() {
     await this.cronService.triggerManually();
-    return { 
+    return {
       message: 'Inactive user email job triggered manually',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }

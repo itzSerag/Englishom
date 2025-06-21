@@ -9,23 +9,20 @@ export class Admin extends AbstractUser {
   @Prop({ enum: AdminRole, default: AdminRole.VIEW })
   adminRole: AdminRole;
 
-  @Prop({ type: Boolean , default: true })
+  @Prop({ type: Boolean, default: true })
   isVerified: boolean;
 
   @Prop({ default: true })
   isActive: boolean;
 
-  @Prop({enum : Role, default: Role.ADMIN , required: false})
+  @Prop({ enum: Role, default: Role.ADMIN, required: false })
   role?: Role = Role.ADMIN;
 
   @Prop({ type: Types.ObjectId, ref: 'Admin' })
   createdBy?: Types.ObjectId; // Track who created this admin
 
-  @Prop({enum: Strategy, default: Strategy.LOCAL , required: false})
+  @Prop({ enum: Strategy, default: Strategy.LOCAL, required: false })
   strategy?: Strategy;
-
- 
-  
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

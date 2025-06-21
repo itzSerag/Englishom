@@ -46,7 +46,7 @@ export class UserController {
   @Get('me')
   async getMe(@CurrentUser() user: User | Admin) {
     // no need to get the levels for admin
-    if(user.role === Role.ADMIN) {
+    if (user.role === Role.ADMIN) {
       return {
         user: cleanSensitiveFields(user),
         levels: [],
@@ -65,7 +65,7 @@ export class UserController {
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto, @Req() req: Request) {
-    const ip =  this.ipService.getRealIp(req);
+    const ip = this.ipService.getRealIp(req);
     const user = await this.userService.create(createUserDto, ip);
     if (!user) {
       throw new ConflictException('User already exists');
@@ -78,7 +78,7 @@ export class UserController {
   @Get('all')
   async findAll(@Query() paginationDto: PaginationDto) {
     const result = await this.userService.findAllWithPagination(paginationDto);
-    
+
     return {
       ...result,
       data: result.data.map((user) => cleanSensitiveFields(user)),
@@ -184,12 +184,11 @@ export class UserController {
     return cleanSensitiveFields(certificate);
   }
 
-   @Post('reset-password')
+  @Post('reset-password')
   async resetPassword(
     @CurrentUser() user: User | Admin,
     resetPasswordDto: ResetPasswordDto,
   ) {
-   
     await this.userService.resetPassword(user, resetPasswordDto);
 
     return {

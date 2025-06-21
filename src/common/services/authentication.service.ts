@@ -17,7 +17,9 @@ export class AuthenticationService {
    * Find user by email in both User and Admin collections
    * Returns the found entity with type information
    */
-  async findUserByEmail(email: string): Promise<(User | Admin) & { userType: 'user' | 'admin' } | null> {
+  async findUserByEmail(
+    email: string,
+  ): Promise<((User | Admin) & { userType: 'user' | 'admin' }) | null> {
     // First try to find in User collection
     const user = await this.userRepo.findOne({ email });
     if (user) {
@@ -37,7 +39,9 @@ export class AuthenticationService {
    * Find user by ID in both User and Admin collections
    * Used by JWT strategy for token validation
    */
-  async findUserById(id: string): Promise<(User | Admin) & { userType: 'user' | 'admin' } | null> {
+  async findUserById(
+    id: string,
+  ): Promise<((User | Admin) & { userType: 'user' | 'admin' }) | null> {
     // First try to find in User collection
     const user = await this.userRepo.findOne({ _id: id });
     if (user) {
@@ -56,19 +60,16 @@ export class AuthenticationService {
   /**
    * Update last activity for user or admin
    */
-  async updateLastActivity(id: string, userType: 'user' | 'admin'): Promise<void> {
+  async updateLastActivity(
+    id: string,
+    userType: 'user' | 'admin',
+  ): Promise<void> {
     const now = this.timeService.now();
-    
+
     if (userType === 'user') {
-      await this.userRepo.findOneAndUpdate(
-        { _id: id },
-        { lastActivity: now },
-      );
+      await this.userRepo.findOneAndUpdate({ _id: id }, { lastActivity: now });
     } else {
-      await this.adminRepo.findOneAndUpdate(
-        { _id: id },
-        { lastActivity: now },
-      );
+      await this.adminRepo.findOneAndUpdate({ _id: id }, { lastActivity: now });
     }
   }
 
@@ -76,15 +77,21 @@ export class AuthenticationService {
    * Validate and get fresh user data with current role
    * This ensures role changes are immediately reflected
    */
-  async validateAndGetUser(payload: { sub: string; email: string }): Promise<User | Admin> {
+  async validateAndGetUser(payload: {
+    sub: string;
+    email: string;
+  }): Promise<User | Admin> {
     const userWithType = await this.findUserById(payload.sub);
-    
+
     if (!userWithType) {
       throw new UnauthorizedException('User not found');
     }
 
     // For admins, check if account is still active
-    if (userWithType.userType === 'admin' && !(userWithType as Admin).isActive) {
+    if (
+      userWithType.userType === 'admin' &&
+      !(userWithType as Admin).isActive
+    ) {
       throw new UnauthorizedException('Admin account is deactivated');
     }
 

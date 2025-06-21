@@ -20,7 +20,7 @@ export class AdminService {
   constructor(
     private readonly adminRepo: AdminRepo,
     private readonly jwtService: JwtService,
-    private readonly ipService : IpService
+    private readonly ipService: IpService,
   ) {}
 
   // Create new admin (only SUPER admin can create other admins)
@@ -35,12 +35,14 @@ export class AdminService {
     }
 
     // Check if admin already exists
-    const existingAdmin = await this.adminRepo.findByEmail(createAdminDto.email);
+    const existingAdmin = await this.adminRepo.findByEmail(
+      createAdminDto.email,
+    );
     if (existingAdmin) {
       throw new ConflictException('Admin with this email already exists');
     }
 
-     // Set country based on IP address during signup
+    // Set country based on IP address during signup
     if (ipAddress) {
       const country = this.ipService.getCountryFromIp(ipAddress);
       createAdminDto.country = country;
@@ -54,26 +56,23 @@ export class AdminService {
       ...createAdminDto,
       password: hashedPassword,
       createdBy: currentAdmin._id,
-      isActive: true, 
+      isActive: true,
     });
 
     return admin;
   }
 
-
   // Get all admins (SUPER and MANAGER can view all)
   async getAllActiveAdmins(): Promise<Admin[]> {
     return this.adminRepo.findActiveAdmins();
   }
-   async getAllAdmins(): Promise<Admin[]> {
+  async getAllAdmins(): Promise<Admin[]> {
     // no need for pagination there wont be many admins
     return this.adminRepo.finaAllAdmins();
   }
 
-  
   // Get admin by ID
   async getAdminById(id: string): Promise<Admin> {
-
     const admin = await this.adminRepo.findOne({ _id: new Types.ObjectId(id) });
     if (!admin) {
       throw new NotFoundException('Admin not found');
@@ -100,10 +99,15 @@ export class AdminService {
       if (currentAdmin._id.toString() !== id) {
         throw new ForbiddenException('You can only update your own profile');
       }
-      
+
       // Non-SUPER admins cannot change roles or activation status
-      if (updateAdminDto.adminRole || updateAdminDto.hasOwnProperty('isActive')) {
-        throw new ForbiddenException('You cannot change role or activation status');
+      if (
+        updateAdminDto.adminRole ||
+        updateAdminDto.hasOwnProperty('isActive')
+      ) {
+        throw new ForbiddenException(
+          'You cannot change role or activation status',
+        );
       }
     }
 
@@ -112,9 +116,7 @@ export class AdminService {
       updateAdminDto.isActive === false &&
       targetAdmin.adminRole === AdminRole.SUPER
     ) {
-
       throw new BadRequestException('Cannot deactivate Super Admin');
-      
     }
 
     // Hash password if provided
@@ -123,8 +125,8 @@ export class AdminService {
     }
 
     const updatedAdmin = await this.adminRepo.findOneAndUpdate(
-      { _id: id},
-      { ...updateAdminDto, lastActivity:  Date.now() },
+      { _id: id },
+      { ...updateAdminDto, lastActivity: Date.now() },
     );
 
     return updatedAdmin;
@@ -136,7 +138,9 @@ export class AdminService {
       throw new ForbiddenException('Only Super Admin can delete admins');
     }
 
-    const targetAdmin = await this.adminRepo.findOne({ _id: new Types.ObjectId(id) });
+    const targetAdmin = await this.adminRepo.findOne({
+      _id: new Types.ObjectId(id),
+    });
     if (!targetAdmin) {
       throw new NotFoundException('Admin not found');
     }
@@ -148,7 +152,9 @@ export class AdminService {
 
     // Cannot delete the last SUPER admin
     if (targetAdmin.adminRole === AdminRole.SUPER) {
-      const superAdminCount = await this.adminRepo.countAdminsByRole(AdminRole.SUPER);
+      const superAdminCount = await this.adminRepo.countAdminsByRole(
+        AdminRole.SUPER,
+      );
       if (superAdminCount <= 1) {
         throw new BadRequestException('Cannot delete the last Super Admin');
       }
@@ -176,8 +182,8 @@ export class AdminService {
 
   // Generate token for admin
   async generateToken(admin: Admin): Promise<string> {
-    const payload = { 
-      sub: admin._id, 
+    const payload = {
+      sub: admin._id,
       email: admin.email,
     };
     return this.jwtService.sign(payload);
@@ -185,14 +191,14 @@ export class AdminService {
 
   // Validate admin token payload
   async validateAdminPayload(payload: any): Promise<Admin> {
-    const admin = await this.adminRepo.findOne({ _id:payload.sub});
+    const admin = await this.adminRepo.findOne({ _id: payload.sub });
     if (!admin || !admin.isActive) {
       throw new UnauthorizedException('Admin not found or inactive');
     }
 
     // Update last activity
     await this.updateActivity(admin._id);
-    
+
     return admin;
   }
 
@@ -212,6 +218,5 @@ export class AdminService {
     );
   }
 
-
-  private
+  private;
 }

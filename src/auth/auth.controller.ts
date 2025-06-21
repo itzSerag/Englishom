@@ -21,14 +21,18 @@ import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { Response } from 'express';
-import { ForgetPasswordDto, ResetPasswordWithOtpDto } from './dto';
+import {
+  ForgetPasswordDto,
+  ResetPasswordWithTokenDto,
+} from './dto';
 import { cleanSensitiveFields } from '../common/utils/response.utils';
 import { Admin } from 'src/admin/models/admin.schema';
 import { Role } from 'src/common/shared';
+import { OtpCause } from './enum/otp-cause.enum';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService ) {}
+  constructor(private readonly authService: AuthService) {}
   private logger = new Logger(AuthController.name);
 
   @Public()
@@ -52,7 +56,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
-    const user : User | Admin= await this.authService.login(loginDto);
+    const user: User | Admin = await this.authService.login(loginDto);
     const access_token = await this.authService.generateToken(user);
 
     if (user.role === Role.ADMIN) {
@@ -77,22 +81,29 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    const user = await this.authService.verifyOtp(verifyOtpDto);
+    const result = await this.authService.verifyOtp(verifyOtpDto);
 
-    // Update user verification status
-    user.isVerified = true;
-    const access_token = await this.authService.generateToken(user);
+    // Handle different causes
+    if (verifyOtpDto.cause === OtpCause.EMAIL_VERIFICATION) {
+      // For email verification, return access token and user data
+      const user = result as User;
+      const access_token = await this.authService.generateToken(user);
 
-    return {
-      access_token,
-      user: cleanSensitiveFields(user),
-    };
+      return {
+        access_token,
+        user: cleanSensitiveFields(user),
+      };
+    } else if (verifyOtpDto.cause === OtpCause.FORGET_PASSWORD) {
+      // For forget password, just return success message
+      return result;
+    }
   }
 
   @Public()
   @Post('resend-otp')
   async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
-    return await this.authService.resendOtp(resendOtpDto.email);
+    const cause = resendOtpDto.cause || OtpCause.EMAIL_VERIFICATION;
+    return await this.authService.resendOtp(resendOtpDto.email, cause);
   }
 
   @Public()
@@ -104,9 +115,11 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Post('reset-password-otp')
-  async resetPasswordWithOtp(@Body() resetPasswordWithOtpDto: ResetPasswordWithOtpDto) {
-    return await this.authService.resetPasswordWithOtp(resetPasswordWithOtpDto);
+  @Post('reset-password-token')
+  async resetPasswordWithToken(
+    @Body() resetPasswordDto: ResetPasswordWithTokenDto,
+  ) {
+    return await this.authService.resetPasswordWithToken(resetPasswordDto);
   }
 
   // OAUTH
@@ -129,7 +142,7 @@ export class AuthController {
         throw new UnauthorizedException('No user data received from Facebook');
       }
 
-      const newUser : User = await this.authService.findOrCreateOAuthUser(user);
+      const newUser: User = await this.authService.findOrCreateOAuthUser(user);
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
@@ -162,7 +175,7 @@ export class AuthController {
         throw new UnauthorizedException('No user data received from Google');
       }
 
-      const newUser : User = await this.authService.findOrCreateOAuthUser(user);
+      const newUser: User = await this.authService.findOrCreateOAuthUser(user);
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
@@ -172,8 +185,6 @@ export class AuthController {
       );
     }
   }
-
- 
 
   @Post('logout')
   async logout(@CurrentUser() user: User) {

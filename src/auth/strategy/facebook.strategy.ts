@@ -8,11 +8,11 @@ import { TimeService } from 'src/common/config/time.service';
 
 @Injectable()
 export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
-  constructor( 
-      private readonly configService:ConfigService,
-      private readonly timeService: TimeService,
-      private readonly userRepo: UserRepo
-   ) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly timeService: TimeService,
+    private readonly userRepo: UserRepo,
+  ) {
     super({
       clientID: configService.get('FACEBOOK_APP_ID'),
       clientSecret: configService.get('FACEBOOK_APP_SECRET'),
@@ -29,19 +29,19 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     done: (err: any, user: any, info?: any) => void,
   ): Promise<any> {
     const { id, emails, name } = profile;
-      const user : Partial<User> = {
-        email: emails[0].value,
-        firstName: name.givenName,
-        lastName: name.familyName,
-        strategy: profile.provider,
-      };
-  
-      if (this.timeService.isActivityStale(user.lastActivity)) {
-        await this.userRepo.findOneAndUpdate(
-          { _id: user._id },
-          { lastActivity: this.timeService.now() },
-        );
-      }
+    const user: Partial<User> = {
+      email: emails[0].value,
+      firstName: name.givenName,
+      lastName: name.familyName,
+      strategy: profile.provider,
+    };
+
+    if (this.timeService.isActivityStale(user.lastActivity)) {
+      await this.userRepo.findOneAndUpdate(
+        { _id: user._id },
+        { lastActivity: this.timeService.now() },
+      );
+    }
     done(null, user);
   }
 }

@@ -6,7 +6,9 @@ import { Admin } from '../models/admin.schema';
 
 @Injectable()
 export class AdminRepo extends AbstractRepo<Admin> {
-  constructor(@InjectModel(Admin.name) private readonly adminModel: Model<Admin>) {
+  constructor(
+    @InjectModel(Admin.name) private readonly adminModel: Model<Admin>,
+  ) {
     super(adminModel);
   }
 
@@ -19,10 +21,13 @@ export class AdminRepo extends AbstractRepo<Admin> {
   }
 
   async countAdminsByRole(role: string): Promise<number> {
-    return await this.adminModel.countDocuments({ adminRole: role, isActive: true });
+    return await this.adminModel.countDocuments({
+      adminRole: role,
+      isActive: true,
+    });
   }
 
-  async countAllAdmins(){
+  async countAllAdmins() {
     return await this.adminModel.countDocuments();
   }
 

@@ -71,12 +71,18 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
     page: number = 1,
     limit: number = 10,
     session?: ClientSession,
-  ): Promise<{ data: TSchema[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<{
+    data: TSchema[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     // Convert string IDs to ObjectId
     const convertedFilter = convertFilterToObjectId(filterQuery);
-    
+
     const skip = (page - 1) * limit;
-    
+
     const [data, total] = await Promise.all([
       this.model
         .find(convertedFilter)

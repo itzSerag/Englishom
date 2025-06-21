@@ -10,22 +10,22 @@
  */
 export function cleanSensitiveFields<T extends Record<string, any>>(
   obj: T,
-  sensitiveFields: string[] = ['password']
+  sensitiveFields: string[] = ['password'],
 ): any {
   if (!obj) return obj;
-  
+
   const cleaned = { ...obj };
-  
+
   // Remove sensitive fields
-  sensitiveFields.forEach(field => {
+  sensitiveFields.forEach((field) => {
     delete cleaned[field];
   });
-  
+
   // Convert _id to string if it exists
   if ((cleaned as any)?._id) {
     (cleaned as any)._id = (cleaned as any)._id.toString();
   }
-  
+
   return cleaned;
 }
 
@@ -37,9 +37,9 @@ export function cleanSensitiveFields<T extends Record<string, any>>(
  */
 export function cleanSensitiveFieldsArray<T extends Record<string, any>>(
   array: T[],
-  sensitiveFields: string[] = ['password']
+  sensitiveFields: string[] = ['password'],
 ): any[] {
   if (!array || !Array.isArray(array)) return array;
-  
-  return array.map(obj => cleanSensitiveFields(obj, sensitiveFields));
+
+  return array.map((obj) => cleanSensitiveFields(obj, sensitiveFields));
 }

@@ -7,9 +7,7 @@ import * as bcrypt from 'bcrypt';
 export class AdminSeederService implements OnModuleInit {
   private readonly logger = new Logger(AdminSeederService.name);
 
-  constructor(
-    private readonly adminRepo: AdminRepo,
-  ) {}
+  constructor(private readonly adminRepo: AdminRepo) {}
 
   async onModuleInit() {
     await this.createInitialSuperAdmin();

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { OtpCause } from '../../auth/enum/otp-cause.enum';
 
 @Injectable()
 export class EmailService {
@@ -18,11 +19,28 @@ export class EmailService {
     });
   }
 
-  async sendEmail(to: string, otp: string): Promise<any> {
+  async sendEmail(to: string, otp: string, cause?: OtpCause): Promise<any> {
+    let subject = 'Your OTP';
+    let message = 'Your OTP is:';
+    let additionalInfo = '';
+
+    // Customize message based on OTP cause
+    if (cause === OtpCause.EMAIL_VERIFICATION) {
+      subject = 'Email Verification - Your OTP';
+      message = 'Please verify your email address with this OTP:';
+      additionalInfo =
+        '<p style="color: #666; font-size: 14px;">This OTP is for email verification and will expire in 10 minutes.</p>';
+    } else if (cause === OtpCause.FORGET_PASSWORD) {
+      subject = 'Password Reset - Your OTP';
+      message = 'Use this OTP to reset your password:';
+      additionalInfo =
+        '<p style="color: #666; font-size: 14px;">This OTP is for password reset and will expire in 10 minutes.</p>';
+    }
+
     const mailOptions = {
       from: `"Englishom" <${this.configService.get<string>('SMTP_USER')}>`,
       to,
-      subject: 'Your OTP',
+      subject,
       html: `
         <html>
           <head>
@@ -61,8 +79,9 @@ export class EmailService {
             <div class="container">
               <div class="content">
                 <h1>Hi there!</h1>
-                <p>Your OTP is:</p>
+                <p>${message}</p>
                 <p class="otp">${otp}</p>
+                ${additionalInfo}
                 <p>Thanks</p>
               </div>
             </div>

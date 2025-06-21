@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { UserRepo } from '../user/repo/user.repo';
 import { EmailService } from '../common/mail/mail.service';
 import { Role } from '../common/shared';
@@ -20,14 +20,17 @@ export class InactiveUserCronService {
       this.emailTemplate = fs.readFileSync(templatePath, 'utf8');
     } catch (error) {
       // Fallback template if file loading fails
-      this.logger.error('Failed to load email template file, using fallback template');
+      this.logger.error(
+        'Failed to load email template file, using fallback template',
+      );
       this.emailTemplate = this.getFallbackTemplate();
     }
   }
 
   @Cron('0 9 * * *', {
     name: 'send-inactive-user-emails',
-    timeZone: 'Asia/Riyadh'
+    timeZone: 'Asia/Riyadh',
+
   })
   async handleInactiveUsers() {
     const startTime = new Date();
@@ -63,7 +66,9 @@ export class InactiveUserCronService {
           this.logger.debug(`✉️ Email sent to: ${user.email}`);
         } catch (error) {
           failureCount++;
-          this.logger.error(`❌ Failed to send email to ${user.email}: ${error.message}`);
+          this.logger.error(
+            `❌ Failed to send email to ${user.email}: ${error.message}`,
+          );
         }
 
         // Add small delay to avoid overwhelming email service
@@ -74,10 +79,14 @@ export class InactiveUserCronService {
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
 
       this.logger.log(`✅ Inactive user email job completed in ${duration}s`);
-      this.logger.log(`📊 Results: ${successCount} successful, ${failureCount} failed`);
-
+      this.logger.log(
+        `📊 Results: ${successCount} successful, ${failureCount} failed`,
+      );
     } catch (error) {
-      this.logger.error(`💥 Error in inactive user job: ${error.message}`, error.stack);
+      this.logger.error(
+        `💥 Error in inactive user job: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -85,13 +94,16 @@ export class InactiveUserCronService {
     // Replace template variables
     const personalizedEmail = this.emailTemplate
       .replace(/{{userName}}/g, user.firstName || 'there')
-      .replace(/{{loginUrl}}/g, process.env.FRONTEND_URL || 'https://englishom.com/login');
+      .replace(
+        /{{loginUrl}}/g,
+        process.env.FRONTEND_URL || 'https://englishom.com/login',
+      );
 
     // Prepare email data
     const mailOptions = {
       from: `"Englishom Team" <${process.env.SMTP_USER}>`,
       to: user.email,
-      subject: "We miss you! Come back and continue your English journey 🌟",
+      subject: 'We miss you! Come back and continue your English journey 🌟',
       html: personalizedEmail,
     };
 
@@ -106,7 +118,7 @@ export class InactiveUserCronService {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // Manual trigger method for testing (optional)
@@ -121,27 +133,91 @@ export class InactiveUserCronService {
 <html>
 <head>
     <style>
-        .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
-        .header { background: #667eea; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background: #f8f9fa; }
-        .button { background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 30px 20px;
+            border-radius: 0 0 10px 10px;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>We Miss You at Englishom! 📚</h1>
+            <div class="emoji">📚✨</div>
+            <h1>We Miss You at Englishom!</h1>
         </div>
         <div class="content">
             <p>Hi {{userName}},</p>
-            <p>We noticed you haven't been active on Englishom lately. Don't let your English learning progress slip away!</p>
-            <p>Come back and continue your journey to English mastery.</p>
-            <a href="{{loginUrl}}" class="button">Continue Learning</a>
-            <p>Keep learning, keep growing!</p>
-            <p>The Englishom Team</p>
+            
+            <p>We noticed you haven't been active on Englishom lately, and we wanted to reach out because your English learning journey is important to us! 🌟</p>
+            
+            <p><strong>Don't let your progress slip away!</strong> Every day you practice English is a step closer to your goals. Whether you're preparing for exams, career advancement, or personal growth, consistency is key to success.</p>
+            
+            <p>Here's what's waiting for you when you return:</p>
+            <ul>
+                <li>🎯 Your personalized learning path</li>
+                <li>📈 Track your progress and achievements</li>
+                <li>🏆 Earn certificates as you complete levels</li>
+                <li>💪 Build confidence with daily practice</li>
+            </ul>
+            
+            <p>Remember, even 10 minutes of practice can make a big difference. Your future self will thank you for not giving up!</p>
+            
+            <div style="text-align: center;">
+                <a href="{{loginUrl}}" class="cta-button">Continue Learning Now</a>
+            </div>
+            
+            <p>We believe in you and your ability to master English. Come back and let's continue this amazing journey together!</p>
+            
+            <p>Keep learning, keep growing! 🚀</p>
+            
+            <p>With encouragement,<br>
+            <strong>The Englishom Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>© 2024 Englishom. Empowering English learners worldwide.</p>
         </div>
     </div>
 </body>
-</html>`;
+</html>
+`;
   }
 }

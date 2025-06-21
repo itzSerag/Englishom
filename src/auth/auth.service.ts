@@ -20,6 +20,9 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AuthenticationService } from 'src/common/services/authentication.service';
 import { Admin } from 'src/admin/models/admin.schema';
 import { Role } from 'src/common/shared';
+import { OtpCause } from './enum/otp-cause.enum';
+import { ResetPasswordWithTokenDto } from './dto/reset-password-with-token.dto';
+import { IResetTokenPayload } from './interfaces/reset-token-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -29,15 +32,15 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly otpRepo: OtpRepo,
-    private readonly globalAuthService : AuthenticationService
+    private readonly globalAuthService: AuthenticationService,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
 
     if (user) {
-      // Generate and send OTP
-      await this.generateAndSendOtp(user.email);
+      // Generate and send OTP for email verification
+      await this.generateAndSendOtp(user.email, OtpCause.EMAIL_VERIFICATION);
     } else {
       throw new ConflictException('User already exists with this email');
     }
@@ -45,17 +48,14 @@ export class AuthService {
     return user;
   }
 
-
-  
   async login(loginDto: LoginDto) {
-    const user  = await this.globalAuthService.findUserByEmail(loginDto.email);
+    const user = await this.globalAuthService.findUserByEmail(loginDto.email);
 
     if (!user) {
       throw new NotFoundException('Invalid Credentials');
     }
 
-    if (user.role === Role.USER){
-
+    if (user.role === Role.USER) {
       if (user.strategy !== 'local') {
         throw new ConflictException(
           'This email has signed-up with a different method ' + user.strategy,
@@ -65,7 +65,7 @@ export class AuthService {
 
     const isValid =
       user && (await bcrypt.compare(loginDto.password, user.password));
-  
+
     if (!isValid) {
       throw new UnauthorizedException('Invalid Credentials');
     }
@@ -75,24 +75,23 @@ export class AuthService {
     // Update last login time
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
-      { 
-        lastActivity: Date.now() ,
+      {
+        lastActivity: Date.now(),
       },
     );
 
     return user;
   }
 
-
   async logout(user: User | Admin) {
     // FRONTEND LOGOUT
     return true;
   }
 
-
-
-  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const { email, otp } = verifyOtpDto;
+  async verifyOtp(
+    verifyOtpDto: VerifyOtpDto,
+  ) {
+    const { email, otp, cause } = verifyOtpDto;
 
     const user = await this.userRepo.findOne({ email });
 
@@ -100,38 +99,72 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.isVerified) {
+    // Check if this is for email verification and user is already verified
+    if (cause === OtpCause.EMAIL_VERIFICATION && user.isVerified) {
       throw new BadRequestException('User already verified');
     }
 
-    const otpRecord = await this.otpRepo.findOne({ email });
+    const otpRecord = await this.otpRepo.findOne({ email, cause });
 
     if (!otpRecord || otpRecord.otp !== otp) {
       throw new BadRequestException('Invalid or expired OTP');
     }
 
-    const [_, __] = await Promise.all([
-      this.userRepo.findOneAndUpdate({ email }, { isVerified: true }),
-      this.otpRepo.delete({ email }),
-    ]);
+    // Handle different causes
+    if (cause === OtpCause.EMAIL_VERIFICATION) {
+      const [_, __] = await Promise.all([
+        this.userRepo.findOneAndUpdate({ email }, { isVerified: true }),
+        this.otpRepo.delete({ email, cause }),
+      ]);
+      return user;
+      
+    } else if (cause === OtpCause.FORGET_PASSWORD) {
+      // For forget password, delete the OTP and generate reset token
+      await this.otpRepo.delete({ email, cause });
 
-    return user;
+      // Generate JWT reset token (15 minutes expiration)
+      const resetTokenPayload: IResetTokenPayload = {
+        email,
+        type: 'password_reset',
+      };
+
+      const resetToken = this.jwtService.sign(resetTokenPayload, {
+        expiresIn: '15m', // 15 minutes
+      });
+
+      return {
+        resetToken,
+        message: 'OTP verified successfully. You can now reset your password.',
+      };
+    }
+
+    throw new BadRequestException('Invalid OTP cause');
   }
 
-
-  async resendOtp(email: string) {
+  async resendOtp(
+    email: string,
+    cause: OtpCause = OtpCause.EMAIL_VERIFICATION,
+  ) {
     const user = await this.userRepo.findOne({ email });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    if (user.isVerified) {
+    // For email verification, check if user is not already verified
+    if (cause === OtpCause.EMAIL_VERIFICATION && user.isVerified) {
       throw new BadRequestException('User already verified');
     }
-    await this.otpRepo.delete({ email });
-    await this.generateAndSendOtp(email);
-    return { message: 'OTP has been sent to your email' };
+
+    // Generate and send OTP (old OTP deletion is handled automatically)
+    await this.generateAndSendOtp(email, cause);
+
+    const message =
+      cause === OtpCause.EMAIL_VERIFICATION
+        ? 'OTP has been sent to your email'
+        : 'Password reset OTP has been sent to your email';
+
+    return { message };
   }
 
   async forgetPassword(email: string) {
@@ -141,51 +174,17 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    // Delete any existing OTP for this email
-    await this.otpRepo.delete({ email });
-    
-    // Generate and send new OTP
-    await this.generateAndSendOtp(email);
-    
+    // Generate and send new OTP for password reset
+    // (old OTP deletion is handled automatically in generateAndSendOtp)
+    await this.generateAndSendOtp(email, OtpCause.FORGET_PASSWORD);
+
     return { message: 'Password reset OTP has been sent to your email' };
   }
 
-  async resetPasswordWithOtp(resetPasswordWithOtpDto: any) {
-    const { email, otp, newPassword } = resetPasswordWithOtpDto;
-
-    const user = await this.userRepo.findOne({ email });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const otpRecord = await this.otpRepo.findOne({ email });
-
-    if (!otpRecord || otpRecord.otp !== otp) {
-      throw new BadRequestException('Invalid or expired OTP');
-    }
-
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update password and delete OTP
-    const [updatedUser, _] = await Promise.all([
-      this.userRepo.findOneAndUpdate(
-        { email }, 
-        { 
-          password: hashedPassword,
-          lastActivity: Date.now()
-        }
-      ),
-      this.otpRepo.delete({ email })
-    ]);
-
-    return { message: 'Password reset successful' };
-  }
-
+  // Old OTP-based password reset method removed
+  // Use resetPasswordWithToken instead for JWT-based flow
 
   async generateToken(user: User | Admin) {
-
     const payload: IPayload = { sub: user._id.toString(), email: user.email };
     try {
       return this.jwtService.sign(payload);
@@ -213,7 +212,7 @@ export class AuthService {
         password,
         strategy,
         isVerified: true,
-        lastActivity:  new Date(),
+        lastActivity: new Date(),
       });
 
       return newUser;
@@ -235,29 +234,76 @@ export class AuthService {
       updateData.lastName = lastName;
     }
 
-    await this.userRepo.findOneAndUpdate(
-      { _id: user._id },
-      updateData
-    );
+    await this.userRepo.findOneAndUpdate({ _id: user._id }, updateData);
 
     return user;
   }
-
 
   async getUserLevels(userId: string) {
     return await this.userService.getUserCompletedOrders(userId);
   }
 
-  private async generateAndSendOtp(email: string) {
+  async resetPasswordWithToken(resetPasswordDto: ResetPasswordWithTokenDto) {
+    const { resetToken, newPassword } = resetPasswordDto;
+
+    try {
+      // Verify and decode the reset token
+      const payload = this.jwtService.verify<IResetTokenPayload>(resetToken);
+
+      // Validate token type
+      if (payload.type !== 'password_reset') {
+        throw new BadRequestException('Invalid reset token type');
+      }
+
+      const { email } = payload;
+
+      // Find the user
+      const user = await this.userRepo.findOne({ email });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password and last activity
+      await this.userRepo.findOneAndUpdate(
+        { email },
+        {
+          password: hashedPassword,
+          lastActivity: Date.now(),
+        },
+      );
+
+      return { message: 'Password reset successful' };
+    } catch (error) {
+      if (error.name === 'JsonWebTokenError') {
+        throw new BadRequestException('Invalid reset token');
+      }
+      if (error.name === 'TokenExpiredError') {
+        throw new BadRequestException(
+          'Reset token has expired. Please request a new password reset.',
+        );
+      }
+      throw error; // Re-throw other errors (like NotFoundException, etc.)
+    }
+  }
+
+  private async generateAndSendOtp(email: string, cause: OtpCause) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     try {
-      await this.otpRepo.create({ email, otp });
+    
+      await this.otpRepo.delete({ email, cause });
+      
+      await this.otpRepo.create({ email, otp, cause });
 
-      await this.emailService.sendEmail(email, otp);
+      // Send email only after successful OTP creation
+      await this.emailService.sendEmail(email, otp, cause);
     } catch (err) {
+      // If OTP creation fails, don't send email
       throw new InternalServerErrorException(
-        'Something happened while sending the otp, Please try again, ' + err,
+        'Something happened while generating the OTP, Please try again, ' + err,
       );
     }
 

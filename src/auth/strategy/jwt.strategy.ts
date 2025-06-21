@@ -24,7 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: IPayload) {
     try {
       const user = await this.authenticationService.validateAndGetUser(payload);
-      
+
       // Return cleaned user object (password will be removed by cleanSensitiveFields)
       return cleanSensitiveFields(user);
     } catch (error) {

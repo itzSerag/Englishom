@@ -18,14 +18,19 @@ import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { AdminRoles } from './decorators/admin-roles.decorator';
 import { IsAdminGuard, AdminRoleGuard } from './guards';
 import { AdminRole } from '../common/shared';
-import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../common/utils/response.utils';
+import {
+  cleanSensitiveFields,
+  cleanSensitiveFieldsArray,
+} from '../common/utils/response.utils';
 import { IpService } from 'src/common/services/ip.service';
 
 @UseGuards(IsAdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService, 
-    private readonly ipService : IpService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly ipService: IpService,
+  ) {}
 
   // Create new admin - Only SUPER admin
   @AdminRoles(AdminRole.SUPER)
@@ -36,7 +41,11 @@ export class AdminController {
     @Req() req: Request,
   ) {
     const ip = this.ipService.getRealIp(req);
-    const admin = await this.adminService.createAdmin(createAdminDto, currentAdmin,ip);
+    const admin = await this.adminService.createAdmin(
+      createAdminDto,
+      currentAdmin,
+      ip,
+    );
     return cleanSensitiveFields(admin);
   }
 
@@ -54,13 +63,10 @@ export class AdminController {
 
   // Get admin by ID - SUPER and MANAGER
   @Get(':id')
-  async getAdminById(
-    @Param('id') id: string,
-  ) {
+  async getAdminById(@Param('id') id: string) {
     const admin = await this.adminService.getAdminById(id);
     return cleanSensitiveFields(admin);
   }
-
 
   // Update admin
   @AdminRoles(AdminRole.SUPER)
@@ -70,10 +76,13 @@ export class AdminController {
     @Body() updateAdminDto: UpdateAdminDto,
     @CurrentAdmin() currentAdmin: Admin,
   ) {
-    const admin = await this.adminService.updateAdmin(id, updateAdminDto, currentAdmin);
+    const admin = await this.adminService.updateAdmin(
+      id,
+      updateAdminDto,
+      currentAdmin,
+    );
     return cleanSensitiveFields(admin);
   }
-
 
   // Delete admin - Only SUPER admin
   @AdminRoles(AdminRole.SUPER)
@@ -87,7 +96,7 @@ export class AdminController {
 
   @AdminRoles(AdminRole.SUPER)
   @Post('deactivate-admin/:id')
-  async deactivateAdmin(@Param('id') id : string){
+  async deactivateAdmin(@Param('id') id: string) {
     const admin = await this.adminService.deactivateAdmin(id);
     return cleanSensitiveFields(admin);
   }

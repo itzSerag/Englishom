@@ -21,10 +21,10 @@ export class UserDto {
   role: Role;
 
   @Expose()
-  strategy?: String
+  strategy?: String;
 
   @Expose()
-  lastLoginAt?: Date
+  lastLoginAt?: Date;
 
   @Expose()
   country?: string;

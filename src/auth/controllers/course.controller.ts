@@ -4,7 +4,10 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { AdminRole, Level_Name } from 'src/common/shared/enums';
 import { Roles } from '../decorator/roles.decorator';
 import { Public } from '../decorator/public.decorator';
-import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../../common/utils/response.utils';
+import {
+  cleanSensitiveFields,
+  cleanSensitiveFieldsArray,
+} from '../../common/utils/response.utils';
 import { AdminRoles } from 'src/admin/decorators';
 import { Admin } from 'src/admin/models/admin.schema';
 
@@ -25,9 +28,7 @@ export class CourseController {
 
   @Get(':level_name')
   @Public()
-  async findByLevelName(
-    @Param('level_name') level_name: Level_Name,
-  ) {
+  async findByLevelName(@Param('level_name') level_name: Level_Name) {
     const course = await this.courseService.findByLevelName(level_name);
     return course;
   }
