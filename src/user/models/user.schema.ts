@@ -6,6 +6,8 @@ import { Strategy } from 'src/common/shared/enums';
 
 @Schema({ timestamps: true, versionKey: false })
 export class User extends AbstractUser {
+
+  
   @Prop({ enum: Strategy, default: Strategy.LOCAL, required: true })
   strategy: Strategy;
 

@@ -18,6 +18,7 @@ import { EmailService } from '../common/mail/mail.service';
 import { OtpRepo } from './repo/repo.otp';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AuthenticationService } from 'src/common/services/authentication.service';
+import { IpService } from 'src/common/services/ip.service';
 import { Admin } from 'src/admin/models/admin.schema';
 import { Role } from 'src/common/shared';
 import { OtpCause } from './enum/otp-cause.enum';
@@ -33,6 +34,7 @@ export class AuthService {
     private readonly emailService: EmailService,
     private readonly otpRepo: OtpRepo,
     private readonly globalAuthService: AuthenticationService,
+    private readonly ipService: IpService,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
@@ -194,7 +196,7 @@ export class AuthService {
     }
   }
 
-  async findOrCreateOAuthUser(profile: any) {
+  async findOrCreateOAuthUser(profile: any, req?: any) {
     const { email, strategy, firstName, lastName } = profile;
     // return user levels
     if (!email) {
@@ -204,8 +206,16 @@ export class AuthService {
     const user = await this.userService.findByEmail(email);
 
     if (!user) {
-      // Create new user
+      // Create new user with IP detection for country
       const password = Math.random().toString(36).slice(-8); // fallback password
+      
+      // Get country from IP if request is available
+      let country = 'unknown';
+      if (req) {
+        const ip = this.ipService.getRealIp(req);
+        country = this.ipService.getCountryFromIp(ip);
+      }
+
       const newUser = await this.userRepo.create({
         email,
         firstName,
@@ -215,6 +225,7 @@ export class AuthService {
         isVerified: true,
         lastActivity: new Date(),
         lastLoginAt: new Date(),
+        country,
       });
 
       return newUser;

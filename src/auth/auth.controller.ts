@@ -7,6 +7,7 @@ import {
   UseGuards,
   HttpStatus,
   Res,
+  Req,
   Logger,
   UnauthorizedException,
   HttpCode,
@@ -20,7 +21,7 @@ import { ResendOtpDto } from './dto/resend-otp.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import {
   ForgetPasswordDto,
   ResetPasswordWithTokenDto,
@@ -136,13 +137,14 @@ export class AuthController {
   async facebookLoginCallback(
     @CurrentUser() user: User,
     @Res() res: Response,
+    @Req() req: Request,
   ): Promise<any> {
     try {
       if (!user) {
         throw new UnauthorizedException('No user data received from Facebook');
       }
 
-      const newUser: User = await this.authService.findOrCreateOAuthUser(user);
+      const newUser: User = await this.authService.findOrCreateOAuthUser(user, req);
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
@@ -169,13 +171,14 @@ export class AuthController {
   async googleAuthRedirect(
     @CurrentUser() user: any,
     @Res() res: Response,
+    @Req() req: Request,
   ): Promise<any> {
     try {
       if (!user) {
         throw new UnauthorizedException('No user data received from Google');
       }
 
-      const newUser: User = await this.authService.findOrCreateOAuthUser(user);
+      const newUser: User = await this.authService.findOrCreateOAuthUser(user, req);
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
