@@ -12,7 +12,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix"
+    "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix",
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.782.0",
