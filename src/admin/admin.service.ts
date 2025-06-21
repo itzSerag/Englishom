@@ -126,7 +126,7 @@ export class AdminService {
 
     const updatedAdmin = await this.adminRepo.findOneAndUpdate(
       { _id: id },
-      { ...updateAdminDto, lastActivity: Date.now() },
+      { ...updateAdminDto, lastActivity: new Date() },
     );
 
     return updatedAdmin;
@@ -176,7 +176,7 @@ export class AdminService {
   async updateActivity(adminId: Types.ObjectId): Promise<void> {
     await this.adminRepo.findOneAndUpdate(
       { _id: adminId },
-      { lastActivity: Date.now() },
+      { lastActivity: new Date() },
     );
   }
 

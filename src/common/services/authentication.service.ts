@@ -74,6 +74,29 @@ export class AuthenticationService {
   }
 
   /**
+   * Centralized activity tracking with optional login tracking
+   * Use this method for consistent activity updates across the app
+   */
+  async trackUserActivity(
+    id: string,
+    userType: 'user' | 'admin',
+    includeLogin = false,
+  ): Promise<void> {
+    const now = this.timeService.now();
+    const updateData: any = { lastActivity: now };
+    
+    if (includeLogin) {
+      updateData.lastLoginAt = now;
+    }
+
+    if (userType === 'user') {
+      await this.userRepo.findOneAndUpdate({ _id: id }, updateData);
+    } else {
+      await this.adminRepo.findOneAndUpdate({ _id: id }, updateData);
+    }
+  }
+
+  /**
    * Validate and get fresh user data with current role
    * This ensures role changes are immediately reflected
    */

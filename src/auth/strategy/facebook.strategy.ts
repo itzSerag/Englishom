@@ -4,13 +4,11 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/user/models/user.schema';
 import { UserRepo } from 'src/user/repo/user.repo';
-import { TimeService } from 'src/common/config/time.service';
 
 @Injectable()
 export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   constructor(
     private readonly configService: ConfigService,
-    private readonly timeService: TimeService,
     private readonly userRepo: UserRepo,
   ) {
     super({
@@ -36,12 +34,8 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       strategy: profile.provider,
     };
 
-    if (this.timeService.isActivityStale(user.lastActivity)) {
-      await this.userRepo.findOneAndUpdate(
-        { _id: user._id },
-        { lastActivity: this.timeService.now() },
-      );
-    }
+    // Activity tracking is handled by JWT strategy during token validation
+    // No need to update lastActivity here
     done(null, user);
   }
 }

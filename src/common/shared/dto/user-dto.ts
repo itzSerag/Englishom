@@ -24,6 +24,9 @@ export class UserDto {
   strategy?: String;
 
   @Expose()
+  lastActivity?: Date;
+
+  @Expose()
   lastLoginAt?: Date;
 
   @Expose()

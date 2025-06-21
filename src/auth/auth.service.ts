@@ -72,11 +72,12 @@ export class AuthService {
 
     const access_token = await this.generateToken(user);
 
-    // Update last login time
+    // Update last login time and activity
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
       {
-        lastActivity: Date.now(),
+        lastActivity: new Date(),
+        lastLoginAt: new Date(),
       },
     );
 
@@ -117,7 +118,7 @@ export class AuthService {
         this.otpRepo.delete({ email, cause }),
       ]);
       return user;
-      
+
     } else if (cause === OtpCause.FORGET_PASSWORD) {
       // For forget password, delete the OTP and generate reset token
       await this.otpRepo.delete({ email, cause });
@@ -213,6 +214,7 @@ export class AuthService {
         strategy,
         isVerified: true,
         lastActivity: new Date(),
+        lastLoginAt: new Date(),
       });
 
       return newUser;
@@ -226,7 +228,8 @@ export class AuthService {
 
     // Update user profile if needed and update last login
     const updateData: any = {
-      lastActivity: Date.now(),
+      lastActivity: new Date(),
+      lastLoginAt: new Date(),
     };
 
     if (user.firstName !== firstName || user.lastName !== lastName) {
@@ -271,7 +274,7 @@ export class AuthService {
         { email },
         {
           password: hashedPassword,
-          lastActivity: Date.now(),
+          lastActivity: new Date(),
         },
       );
 
