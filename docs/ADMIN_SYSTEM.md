@@ -150,7 +150,6 @@ The admin system uses a separate `Admin` collection with the following fields:
 - `isActive`: Boolean flag for soft deletion
 - `isVerified`: Email verification status
 - `lastActivity`: Last activity timestamp
-- `lastLoginAt`: Last login timestamp
 - `createdBy`: Reference to admin who created this account
 - `country`, `city`: Optional location fields
 

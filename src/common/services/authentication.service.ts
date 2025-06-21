@@ -4,6 +4,7 @@ import { AdminRepo } from '../../admin/repo/admin.repo';
 import { User } from '../../user/models/user.schema';
 import { Admin } from '../../admin/models/admin.schema';
 import { TimeService } from '../config/time.service';
+import { Role } from '../shared';
 
 @Injectable()
 export class AuthenticationService {
@@ -15,21 +16,18 @@ export class AuthenticationService {
 
   /**
    * Find user by email in both User and Admin collections
-   * Returns the found entity with type information
    */
-  async findUserByEmail(
-    email: string,
-  ): Promise<((User | Admin) & { userType: 'user' | 'admin' }) | null> {
+  async findUserByEmail(email: string): Promise<User | Admin | null> {
     // First try to find in User collection
     const user = await this.userRepo.findOne({ email });
     if (user) {
-      return Object.assign(user, { userType: 'user' as const });
+      return user;
     }
 
     // Then try to find in Admin collection
     const admin = await this.adminRepo.findByEmail(email);
     if (admin && admin.isActive) {
-      return Object.assign(admin, { userType: 'admin' as const });
+      return admin;
     }
 
     return null;
@@ -39,19 +37,17 @@ export class AuthenticationService {
    * Find user by ID in both User and Admin collections
    * Used by JWT strategy for token validation
    */
-  async findUserById(
-    id: string,
-  ): Promise<((User | Admin) & { userType: 'user' | 'admin' }) | null> {
+  async findUserById(id: string): Promise<User | Admin | null> {
     // First try to find in User collection
     const user = await this.userRepo.findOne({ _id: id });
     if (user) {
-      return Object.assign(user, { userType: 'user' as const });
+      return user;
     }
 
     // Then try to find in Admin collection
     const admin = await this.adminRepo.findOne({ _id: id });
     if (admin && admin.isActive) {
-      return Object.assign(admin, { userType: 'admin' as const });
+      return admin;
     }
 
     return null;
@@ -60,39 +56,28 @@ export class AuthenticationService {
   /**
    * Update last activity for user or admin
    */
-  async updateLastActivity(
-    id: string,
-    userType: 'user' | 'admin',
-  ): Promise<void> {
+  async updateLastActivity(user: User | Admin): Promise<void> {
     const now = this.timeService.now();
 
-    if (userType === 'user') {
-      await this.userRepo.findOneAndUpdate({ _id: id }, { lastActivity: now });
+    if (user.role === Role.USER) {
+      await this.userRepo.findOneAndUpdate({ _id: user._id }, { lastActivity: now });
     } else {
-      await this.adminRepo.findOneAndUpdate({ _id: id }, { lastActivity: now });
+      await this.adminRepo.findOneAndUpdate({ _id: user._id }, { lastActivity: now });
     }
   }
 
   /**
-   * Centralized activity tracking with optional login tracking
+   * Centralized activity tracking
    * Use this method for consistent activity updates across the app
    */
-  async trackUserActivity(
-    id: string,
-    userType: 'user' | 'admin',
-    includeLogin = false,
-  ): Promise<void> {
+  async trackUserActivity(user: User | Admin): Promise<void> {
     const now = this.timeService.now();
     const updateData: any = { lastActivity: now };
-    
-    if (includeLogin) {
-      updateData.lastLoginAt = now;
-    }
 
-    if (userType === 'user') {
-      await this.userRepo.findOneAndUpdate({ _id: id }, updateData);
+    if (user.role === Role.USER) {
+      await this.userRepo.findOneAndUpdate({ _id: user._id }, updateData);
     } else {
-      await this.adminRepo.findOneAndUpdate({ _id: id }, updateData);
+      await this.adminRepo.findOneAndUpdate({ _id: user._id }, updateData);
     }
   }
 
@@ -104,27 +89,22 @@ export class AuthenticationService {
     sub: string;
     email: string;
   }): Promise<User | Admin> {
-    const userWithType = await this.findUserById(payload.sub);
+    const user = await this.findUserById(payload.sub);
 
-    if (!userWithType) {
+    if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
     // For admins, check if account is still active
-    if (
-      userWithType.userType === 'admin' &&
-      !(userWithType as Admin).isActive
-    ) {
+    if (user.role === Role.ADMIN && !(user as Admin).isActive) {
       throw new UnauthorizedException('Admin account is deactivated');
     }
 
     // Update activity if stale
-    if (this.timeService.isActivityStale(userWithType.lastActivity)) {
-      await this.updateLastActivity(payload.sub, userWithType.userType);
+    if (this.timeService.isActivityStale(user.lastActivity)) {
+      await this.updateLastActivity(user);
     }
 
-    // Return the user/admin object (without the userType property)
-    const { userType, ...cleanUser } = userWithType;
-    return cleanUser as User | Admin;
+    return user;
   }
 }

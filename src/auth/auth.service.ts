@@ -74,12 +74,11 @@ export class AuthService {
 
     const access_token = await this.generateToken(user);
 
-    // Update last login time and activity
+    // Update last activity
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
       {
         lastActivity: new Date(),
-        lastLoginAt: new Date(),
       },
     );
 
@@ -224,7 +223,6 @@ export class AuthService {
         strategy,
         isVerified: true,
         lastActivity: new Date(),
-        lastLoginAt: new Date(),
         country,
       });
 
@@ -237,10 +235,9 @@ export class AuthService {
       );
     }
 
-    // Update user profile if needed and update last login
+    // Update user profile if needed and update last activity
     const updateData: any = {
       lastActivity: new Date(),
-      lastLoginAt: new Date(),
     };
 
     if (user.firstName !== firstName || user.lastName !== lastName) {
