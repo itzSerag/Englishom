@@ -37,7 +37,6 @@ export class AdminSeederService implements OnModuleInit {
         password: hashedPassword,
         adminRole: AdminRole.SUPER,
         isActive: true,
-        isVerified: true,
       });
 
       this.logger.log('Initial Super Admin created successfully');

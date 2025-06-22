@@ -29,6 +29,10 @@ export class VerifiedGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
+    if (user?.adminRole){
+      return true
+    }
+
     if (!user) {
       throw new ForbiddenException('You must be logged in');
     }

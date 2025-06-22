@@ -112,13 +112,18 @@ export class UserService {
 
   async getUserCompletedOrders(userId: string) {
     const userLevels = await this.orderService.findUserCompletedOrders(userId);
+    return userLevels;
+  }
+
+  async getUserCompletedLevelNames(userId: string) {
+    const userLevels = await this.orderService.findUserCompletedOrders(userId);
     // i want the levelnames only
     const levelNames = userLevels.map((level) => level.levelName);
     return levelNames;
   }
 
   async getCompletedDaysInLevel(userId: string, levelName: Level_Name) {
-    const userLevels = await this.getUserCompletedOrders(userId);
+    const userLevels = await this.getUserCompletedLevelNames(userId);
     log('userLevels', userLevels);
     // if level name not included within userLevels throw an error
     if (!userLevels.includes(levelName)) {
@@ -132,7 +137,7 @@ export class UserService {
     userId: string,
     completeLevelDto: CompleteLevelDto,
   ) {
-    const userLevels = await this.getUserCompletedOrders(userId);
+    const userLevels = await this.getUserCompletedLevelNames(userId);
 
     if (!userLevels.includes(completeLevelDto.level_name)) {
       throw new NotFoundException('User does not have this level');
@@ -180,7 +185,7 @@ export class UserService {
     levelName: Level_Name,
     dayNumber: number,
   ) {
-    const userLevels = await this.getUserCompletedOrders(userId);
+    const userLevels = await this.getUserCompletedLevelNames(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
@@ -200,7 +205,7 @@ export class UserService {
     dayNumber: number,
     taskName: string,
   ) {
-    const userLevels = await this.getUserCompletedOrders(userId);
+    const userLevels = await this.getUserCompletedLevelNames(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
@@ -227,7 +232,7 @@ export class UserService {
     levelName: Level_Name,
     dayNumber: number,
   ) {
-    const userLevels = await this.getUserCompletedOrders(userId);
+    const userLevels = await this.getUserCompletedLevelNames(userId);
     if (!userLevels.includes(levelName)) {
       throw new NotFoundException('User does not have this level');
     }
@@ -312,23 +317,10 @@ export class UserService {
   }
 
   /**
-   * Get users by status with pagination
+   * Get users by status with pagination - optimized
    */
   async getUsersByStatus(status: UserStatus, paginationDto: PaginationDto) {
-    const { page = 1, limit = 10 } = paginationDto;
-    const skip = (page - 1) * limit;
-
-    // Use the repository find method with status filter
-    const allUsers = await this.userRepo.find({ status });
-    const paginatedUsers = allUsers.slice(skip, skip + limit);
-    const total = allUsers.length;
-
-    return {
-      data: paginatedUsers,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    // Use the repository's efficient pagination method
+    return await this.userRepo.findWithPagination({ status }, paginationDto.page, paginationDto.limit);
   }
 }

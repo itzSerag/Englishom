@@ -60,7 +60,7 @@ export class AuthController {
     const user: User | Admin = await this.authService.login(loginDto);
     const access_token = await this.authService.generateToken(user);
 
-    if (user.role === Role.ADMIN) {
+    if (user instanceof Admin) {
       // If the user is an admin, we can return the admin-specific fields
       return {
         access_token,

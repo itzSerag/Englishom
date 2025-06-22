@@ -57,12 +57,13 @@ export class AuthService {
       throw new NotFoundException('Invalid Credentials');
     }
 
-    if (user.role === Role.USER) {
-      if (user.strategy !== 'local') {
-        throw new ConflictException(
-          'This email has signed-up with a different method ' + user.strategy,
-        );
-      }
+
+    if (user instanceof User) {
+        if (user.strategy !== 'local') {
+          throw new ConflictException(
+            'This email has signed-up with a different method ' + user.strategy,
+          );
+    }
 
       // Check user status for regular users
       const userEntity = user as User;
@@ -271,7 +272,7 @@ export class AuthService {
   }
 
   async getUserLevels(userId: string) {
-    return await this.userService.getUserCompletedOrders(userId);
+    return await this.userService.getUserCompletedLevelNames(userId);
   }
 
   async resetPasswordWithToken(resetPasswordDto: ResetPasswordWithTokenDto) {

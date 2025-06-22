@@ -52,6 +52,6 @@ import { AuthenticationService } from '../common/services/authentication.service
     CourseService,
     AuthenticationService,
   ],
-  exports: [AuthService, CourseService],
+  exports: [AuthService, CourseService, CourseRepo], // Export CourseRepo for other modules
 })
 export class AuthModule {}

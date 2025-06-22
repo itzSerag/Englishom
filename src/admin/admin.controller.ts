@@ -7,8 +7,6 @@ import {
   Param,
   Delete,
   UseGuards,
-  HttpCode,
-  HttpStatus,
   Req,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
@@ -23,8 +21,10 @@ import {
   cleanSensitiveFieldsArray,
 } from '../common/utils/response.utils';
 import { IpService } from 'src/common/services/ip.service';
+import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 
 @UseGuards(IsAdminGuard)
+@SkipVerifiedGuard()
 @Controller('admin')
 export class AdminController {
   constructor(

@@ -16,6 +16,7 @@ import { RolesGuard } from './auth/guards/role.guard';
 import { VerifiedGuard } from './auth/guards/verified-user.guard';
 import { UserStatusGuard } from './auth/guards/user-status.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -35,7 +36,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
           limit: 100,
         },
       ],
-    }),
+    }), DashboardModule,
   ],
   controllers: [AppController],
   providers: [

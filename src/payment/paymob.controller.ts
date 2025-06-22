@@ -7,6 +7,9 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  Get,
+  Param,
+  Query,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
@@ -18,6 +21,8 @@ import { ConfigService } from '@nestjs/config';
 import { Public } from '../auth/decorator/public.decorator';
 import { CourseService } from '../auth/services/course.service';
 import { Course } from '../auth/models/admin-course';
+import { PaymentStatus } from './types';
+import { Admin } from '../admin/models/admin.schema';
 
 @Controller('payment')
 export class PaymobController {
@@ -33,20 +38,47 @@ export class PaymobController {
   @Public()
   @Post('callback')
   async callbackPost(@Body() data: any) {
+    this.logger.log('Paymob callback received:', JSON.stringify(data, null, 2));
+    
     const success = data.obj?.success;
     const orderId = data.obj?.id;
-    const userEmail = data.obj?.order?.shipping_data.email;
+    
+    // Try multiple ways to extract email in case structure is different
+    let userEmail = data.obj?.order?.shipping_data?.email;
+    if (!userEmail) {
+      userEmail = data.obj?.order?.billing_data?.email;
+    }
+    if (!userEmail) {
+      userEmail = data.obj?.billing_data?.email;
+    }
+    if (!userEmail) {
+      userEmail = data.obj?.shipping_data?.email;
+    }
+    
+    const isPending = data.obj?.pending;
+    const isCaptured = data.obj?.is_captured;
+    const amountCents = data.obj?.amount_cents;
+
+    this.logger.log(`Callback details: success=${success}, orderId=${orderId}, email=${userEmail}, pending=${isPending}, captured=${isCaptured}, amount=${amountCents}`);
+
+    if (!userEmail) {
+      this.logger.error('Could not extract user email from callback data');
+      this.logger.error('Callback data structure:', JSON.stringify(data, null, 2));
+      throw new BadRequestException('User email not found in callback data');
+    }
 
     try {
-      const userData = await this.paymobService.handlePaymobCallback(
+      const userData = await this.paymobService.handlePaymobCallbackWithRetry(
         orderId,
         success,
         data.obj.amount_cents,
         userEmail,
       );
 
+      this.logger.log('Callback handled successfully', { userData });
       return { userData };
     } catch (err) {
+      this.logger.error(`Failed to handle callback: ${err.message}`, err.stack);
       throw new InternalServerErrorException(
         `Failed to handle callback : ${err.message}`,
       );
@@ -56,7 +88,7 @@ export class PaymobController {
   @Post('process-payment')
   async processPayment(
     @Body() paymentIntention: PaymentRequestDTO,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User | Admin,
   ) {
     const integration_id = this.configService.get<number>(
       'PAYMOB_INTEGRATION_ID',
@@ -129,6 +161,49 @@ export class PaymobController {
     }
   }
 
+  @Get('debug/order/:userId')
+  async debugUserOrders(
+    @Param('userId') userId: string,
+    @Query('levelName') levelName?: Level_Name,
+  ) {
+    try {
+      const allOrders = await this.paymobService.orderRepo.find({
+        userId: userId,
+        ...(levelName && { levelName }),
+      });
+
+      const pendingOrders = await this.paymobService.orderRepo.find({
+        userId: userId,
+        paymentStatus: PaymentStatus.PENDING,
+        ...(levelName && { levelName }),
+      });
+
+      const completedOrders = await this.paymobService.orderRepo.find({
+        userId: userId,
+        paymentStatus: PaymentStatus.COMPLETED,
+        ...(levelName && { levelName }),
+      });
+
+      return {
+        total: allOrders?.length || 0,
+        pending: pendingOrders?.length || 0,
+        completed: completedOrders?.length || 0,
+        orders: allOrders?.map(order => ({
+          id: order._id,
+          levelName: order.levelName,
+          status: order.paymentStatus,
+          amount: order.amountCents,
+          paymentId: order.paymentId,
+          createdAt: order.createdAt,
+          paymentDate: order.paymentDate,
+        })) || [],
+      };
+    } catch (error) {
+      this.logger.error(`Debug orders failed: ${error.message}`, error.stack);
+      throw new BadRequestException(`Debug failed: ${error.message}`);
+    }
+  }
+
   @Post('refund')
   async refundOrder(@Req() req: any, @Body('levelName') levelName: Level_Name) {
     try {
@@ -170,6 +245,42 @@ export class PaymobController {
     } catch (error) {
       this.logger.error(`Refund failed: ${error.message}`, error.stack);
       throw new BadRequestException(`Refund failed: ${error.message}`);
+    }
+  }
+
+  @Post('verify/:paymentId')
+  async verifyPayment(@Param('paymentId') paymentId: string) {
+    try {
+      const paymentData = await this.paymobService.verifyPaymentStatus(paymentId);
+      
+      // Find the order with this payment ID
+      const order = await this.paymobService.orderRepo.findOne({
+        paymentId: paymentId
+      });
+
+      if (!order) {
+        return {
+          paymentData,
+          orderFound: false,
+          message: 'Payment verified but no matching order found'
+        };
+      }
+
+      return {
+        paymentData,
+        orderFound: true,
+        currentOrderStatus: order.paymentStatus,
+        order: {
+          id: order._id,
+          levelName: order.levelName,
+          amount: order.amountCents,
+          status: order.paymentStatus,
+          createdAt: order.createdAt,
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Payment verification failed: ${error.message}`, error.stack);
+      throw new BadRequestException(`Verification failed: ${error.message}`);
     }
   }
 }

@@ -46,14 +46,15 @@ export class UserController {
   @Get('me')
   async getMe(@CurrentUser() user: User | Admin) {
     // no need to get the levels for admin
-    if (user.role === Role.ADMIN) {
+
+    if(user instanceof Admin){
       return {
         user: cleanSensitiveFields(user),
         levels: [],
       };
     }
-
-    const userLevels = await this.userService.getUserCompletedOrders(
+    
+    const userLevels = await this.userService.getUserCompletedLevelNames(
       user._id.toString(),
     );
 
@@ -87,7 +88,7 @@ export class UserController {
 
   @Get('levels')
   async getUserLevels(@CurrentUser() user: User) {
-    return await this.userService.getUserCompletedOrders(user._id.toString());
+    return await this.userService.getUserCompletedLevelNames(user._id.toString());
   }
 
   @Patch(':id')

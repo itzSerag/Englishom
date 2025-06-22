@@ -47,7 +47,8 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
         levelName,
         paymentStatus: PaymentStatus.COMPLETED,
       })
-      .session(session || null);
+      .session(session || null)
+      .sort({ createdAt: -1 }); // Get the most recent completed order
   }
 
   async findUserCompletedOrders(
@@ -92,21 +93,71 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
     amountCents: number,
     session?: ClientSession,
   ): Promise<Order> {
-    // Convert userId to ObjectId
-    const userIdObjectId = toObjectId(userId);
+    try {
+      // Convert userId to ObjectId
+      const userIdObjectId = toObjectId(userId);
 
-    const order = await this.orderModel.findOneAndUpdate(
-      { userId: userIdObjectId, levelName },
-      {
+      // Check if there's already a pending order for this user and level
+      const existingPendingOrder = await this.orderModel.findOne({
         userId: userIdObjectId,
+        levelName,
+        paymentStatus: PaymentStatus.PENDING,
+      }).session(session || null);
+
+      if (existingPendingOrder) {
+        // Update the existing pending order
+        const updatedOrder = await this.orderModel.findByIdAndUpdate(
+          existingPendingOrder._id,
+          {
+            amountCents,
+            paymentDate: new Date(),
+          },
+          { new: true, session: session || null }
+        );
+        
+        if (!updatedOrder) {
+          throw new Error('Failed to update existing pending order');
+        }
+        
+        return updatedOrder;
+      }
+
+      // Create a new order if no pending order exists using the AbstractRepo's create method
+      const newOrder = await this.create({
+        userId: userIdObjectId as any, // Cast to avoid TypeScript issues with ObjectId vs User
         levelName,
         amountCents,
         paymentStatus: PaymentStatus.PENDING,
         paymentDate: new Date(),
-      },
-      { new: true, upsert: true, session: session || null },
-    );
+      }, session);
 
-    return order;
+      if (!newOrder) {
+        throw new Error('Failed to create new order');
+      }
+
+      return newOrder;
+    } catch (error) {
+      this.logger.error(`Error in upsertOrder: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  async findMostRecentOrder(
+    userId: string,
+    levelName?: Level_Name,
+    session?: ClientSession,
+  ): Promise<Order | null> {
+    // Convert userId to ObjectId
+    const userIdObjectId = toObjectId(userId);
+
+    const filter: any = { userId: userIdObjectId };
+    if (levelName) {
+      filter.levelName = levelName;
+    }
+
+    return await this.orderModel
+      .findOne(filter)
+      .session(session || null)
+      .sort({ createdAt: -1 });
   }
 }

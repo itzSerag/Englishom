@@ -14,9 +14,6 @@ export class User extends AbstractUser {
   @Prop({ type: Boolean, default: false })
   isVerified: boolean;
 
-  @Prop({ enum: Role, default: Role.USER })
-  role: Role;
-
   @Prop({ enum: UserStatus, default: UserStatus.ACTIVE })
   status: UserStatus;
 

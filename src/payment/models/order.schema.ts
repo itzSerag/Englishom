@@ -26,9 +26,13 @@ export class Order extends AbstractDocument {
 
   @Prop({ unique: true, sparse: true })
   paymentId?: string;
+
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
 
-// Create a unique compound index for userId and levelName
-OrderSchema.index({ userId: 1, levelName: 1 }, { unique: true });
+// Create compound indexes for efficient querying
+OrderSchema.index({ userId: 1, levelName: 1 });
+OrderSchema.index({ userId: 1, paymentStatus: 1 });
+OrderSchema.index({ paymentId: 1 }, { unique: true, sparse: true });
+OrderSchema.index({ paymentStatus: 1, createdAt: -1 });

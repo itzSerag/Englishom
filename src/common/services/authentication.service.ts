@@ -21,13 +21,13 @@ export class AuthenticationService {
     // First try to find in User collection
     const user = await this.userRepo.findOne({ email });
     if (user) {
-      return user;
+      return user as User;
     }
 
     // Then try to find in Admin collection
     const admin = await this.adminRepo.findByEmail(email);
     if (admin && admin.isActive) {
-      return admin;
+      return admin as Admin;
     }
 
     return null;
@@ -59,7 +59,7 @@ export class AuthenticationService {
   async updateLastActivity(user: User | Admin): Promise<void> {
     const now = this.timeService.now();
 
-    if (user.role === Role.USER) {
+    if ( user instanceof User) {
       await this.userRepo.findOneAndUpdate({ _id: user._id }, { lastActivity: now });
     } else {
       await this.adminRepo.findOneAndUpdate({ _id: user._id }, { lastActivity: now });
@@ -74,7 +74,7 @@ export class AuthenticationService {
     const now = this.timeService.now();
     const updateData: any = { lastActivity: now };
 
-    if (user.role === Role.USER) {
+    if ( user instanceof User) {
       await this.userRepo.findOneAndUpdate({ _id: user._id }, updateData);
     } else {
       await this.adminRepo.findOneAndUpdate({ _id: user._id }, updateData);
@@ -96,7 +96,7 @@ export class AuthenticationService {
     }
 
     // For regular users, check account status
-    if (user.role === Role.USER) {
+    if ( user instanceof User) {
       const userEntity = user as User;
       if (userEntity.status === UserStatus.SUSPENDED) {
         throw new UnauthorizedException({
@@ -118,7 +118,7 @@ export class AuthenticationService {
     }
 
     // For admins, check if account is still active
-    if (user.role === Role.ADMIN && !(user as Admin).isActive) {
+    if ( user instanceof Admin && !(user as Admin).isActive) {
       throw new UnauthorizedException('Admin account is deactivated');
     }
 
