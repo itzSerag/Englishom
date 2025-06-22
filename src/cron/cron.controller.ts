@@ -15,7 +15,7 @@ export class CronController {
   async triggerInactiveUsersEmail() {
     await this.cronService.triggerManually();
     return {
-      message: 'Inactive user email job triggered manually',
+      message: 'Inactive user management job triggered manually',
       timestamp: new Date().toISOString(),
     };
   }

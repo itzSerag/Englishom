@@ -14,6 +14,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt.guard';
 import { RolesGuard } from './auth/guards/role.guard';
 import { VerifiedGuard } from './auth/guards/verified-user.guard';
+import { UserStatusGuard } from './auth/guards/user-status.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -52,6 +53,11 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
       // this guard will be applied to all routes // but not the public routes
       provide: APP_GUARD,
       useClass: VerifiedGuard,
+    },
+    {
+      // Check user account status (suspended/blocked)
+      provide: APP_GUARD,
+      useClass: UserStatusGuard,
     },
     {
       provide: APP_GUARD,

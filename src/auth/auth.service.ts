@@ -20,7 +20,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AuthenticationService } from 'src/common/services/authentication.service';
 import { IpService } from 'src/common/services/ip.service';
 import { Admin } from 'src/admin/models/admin.schema';
-import { Role } from 'src/common/shared';
+import { Role, UserStatus } from 'src/common/shared';
 import { OtpCause } from './enum/otp-cause.enum';
 import { ResetPasswordWithTokenDto } from './dto/reset-password-with-token.dto';
 import { IResetTokenPayload } from './interfaces/reset-token-payload.interface';
@@ -62,6 +62,26 @@ export class AuthService {
         throw new ConflictException(
           'This email has signed-up with a different method ' + user.strategy,
         );
+      }
+
+      // Check user status for regular users
+      const userEntity = user as User;
+      if (userEntity.status === UserStatus.SUSPENDED) {
+        throw new UnauthorizedException({
+          message: 'Your account has been suspended. Please contact support to reactivate your account.',
+          statusCode: 401,
+          error: 'Account Suspended',
+          suspendedAt: userEntity.suspendedAt,
+          reason: userEntity.suspensionReason,
+        });
+      }
+
+      if (userEntity.status === UserStatus.BLOCKED) {
+        throw new UnauthorizedException({
+          message: 'Your account has been permanently blocked. Please contact support.',
+          statusCode: 401,
+          error: 'Account Blocked',
+        });
       }
     }
 

@@ -4,7 +4,7 @@ import { AdminRepo } from '../../admin/repo/admin.repo';
 import { User } from '../../user/models/user.schema';
 import { Admin } from '../../admin/models/admin.schema';
 import { TimeService } from '../config/time.service';
-import { Role } from '../shared';
+import { Role, UserStatus } from '../shared';
 
 @Injectable()
 export class AuthenticationService {
@@ -93,6 +93,28 @@ export class AuthenticationService {
 
     if (!user) {
       throw new UnauthorizedException('User not found');
+    }
+
+    // For regular users, check account status
+    if (user.role === Role.USER) {
+      const userEntity = user as User;
+      if (userEntity.status === UserStatus.SUSPENDED) {
+        throw new UnauthorizedException({
+          message: 'Your account has been suspended. Please contact support to reactivate your account.',
+          statusCode: 401,
+          error: 'Account Suspended',
+          suspendedAt: userEntity.suspendedAt,
+          reason: userEntity.suspensionReason,
+        });
+      }
+
+      if (userEntity.status === UserStatus.BLOCKED) {
+        throw new UnauthorizedException({
+          message: 'Your account has been permanently blocked. Please contact support.',
+          statusCode: 401,
+          error: 'Account Blocked',
+        });
+      }
     }
 
     // For admins, check if account is still active

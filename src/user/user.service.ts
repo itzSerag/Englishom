@@ -21,6 +21,8 @@ import { IpService } from '../common/services/ip.service';
 import { User } from './models/user.schema';
 import { Admin } from 'src/admin/models/admin.schema';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { UserStatus } from '../common/shared';
 
 @Injectable()
 export class UserService {
@@ -245,5 +247,88 @@ export class UserService {
       result += chars[randomIndex];
     }
     return result;
+  }
+
+  /**
+   * Update user status (suspend, activate, block)
+   * Only accessible by SUPER and MANAGER admins
+   */
+  async updateUserStatus(userId: string, updateStatusDto: UpdateUserStatusDto): Promise<User> {
+    const user = await this.userRepo.findOne({ _id: userId });
+    
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updateData: any = {
+      status: updateStatusDto.status,
+    };
+
+    if (updateStatusDto.status === UserStatus.SUSPENDED) {
+      updateData.suspendedAt = new Date();
+      updateData.suspensionReason = updateStatusDto.reason || 'Account suspended by admin';
+    } else if (updateStatusDto.status === UserStatus.ACTIVE) {
+      updateData.suspendedAt = null;
+      updateData.suspensionReason = null;
+    }
+
+    const updatedUser = await this.userRepo.findOneAndUpdate(
+      { _id: userId },
+      updateData
+    );
+
+    this.logger.log(`User ${user.email} status updated to ${updateStatusDto.status}`);
+    
+    return updatedUser;
+  }
+
+  /**
+   * Suspend a user
+   */
+  async suspendUser(userId: string, reason?: string): Promise<User> {
+    return this.updateUserStatus(userId, {
+      status: UserStatus.SUSPENDED,
+      reason: reason || 'Account suspended due to inactivity (65+ days)'
+    });
+  }
+
+  /**
+   * Activate a user
+   */
+  async activateUser(userId: string): Promise<User> {
+    return this.updateUserStatus(userId, {
+      status: UserStatus.ACTIVE
+    });
+  }
+
+  /**
+   * Block a user permanently
+   */
+  async blockUser(userId: string, reason?: string): Promise<User> {
+    return this.updateUserStatus(userId, {
+      status: UserStatus.BLOCKED,
+      reason: reason || 'Account blocked by admin'
+    });
+  }
+
+  /**
+   * Get users by status with pagination
+   */
+  async getUsersByStatus(status: UserStatus, paginationDto: PaginationDto) {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    // Use the repository find method with status filter
+    const allUsers = await this.userRepo.find({ status });
+    const paginatedUsers = allUsers.slice(skip, skip + limit);
+    const total = allUsers.length;
+
+    return {
+      data: paginatedUsers,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }

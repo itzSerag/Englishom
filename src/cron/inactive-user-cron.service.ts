@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { UserRepo } from '../user/repo/user.repo';
 import { EmailService } from '../common/mail/mail.service';
-import { Role } from '../common/shared';
+import { Role, UserStatus } from '../common/shared';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -10,6 +10,7 @@ import * as path from 'path';
 export class InactiveUserCronService {
   private readonly logger = new Logger(InactiveUserCronService.name);
   private readonly emailTemplate: string;
+  private readonly suspensionEmailTemplate: string;
 
   constructor(
     private readonly userRepo: UserRepo,
@@ -25,47 +26,96 @@ export class InactiveUserCronService {
       );
       this.emailTemplate = this.getFallbackTemplate();
     }
+
+    try {
+      const suspensionTemplatePath = path.join(__dirname, 'suspension-email-template.html');
+      this.suspensionEmailTemplate = fs.readFileSync(suspensionTemplatePath, 'utf8');
+    } catch (error) {
+      // Fallback template if file loading fails
+      this.logger.error(
+        'Failed to load suspension email template file, using fallback template',
+      );
+      this.suspensionEmailTemplate = this.getSuspensionEmailTemplate();
+    }
   }
 
   @Cron('0 9 * * *', {
-    name: 'send-inactive-user-emails',
+    name: 'check-inactive-users',
     timeZone: 'Asia/Riyadh',
-
   })
   async handleInactiveUsers() {
     const startTime = new Date();
-    this.logger.log('🔄 Starting inactive user email job...');
+    this.logger.log('🔄 Starting inactive user management job...');
 
     try {
-      // Calculate 7 days ago
+      // Calculate 7 days ago for motivational emails
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      // Find inactive users (exclude admins)
-      const inactiveUsers = await this.userRepo.find({
-        lastActivity: { $lt: sevenDaysAgo },
+      // Calculate 65 days ago for suspension
+      const sixtyFiveDaysAgo = new Date();
+      sixtyFiveDaysAgo.setDate(sixtyFiveDaysAgo.getDate() - 65);
+
+      // Find users to suspend (65+ days inactive)
+      const usersToSuspend = await this.userRepo.find({
+        lastActivity: { $lt: sixtyFiveDaysAgo },
         role: { $ne: Role.ADMIN },
-        isVerified: true, // Only send to verified users
+        isVerified: true,
+        status: UserStatus.ACTIVE, // Only suspend active users
       });
 
-      this.logger.log(`📧 Found ${inactiveUsers.length} inactive users`);
+      // Find users for motivational emails (7+ days inactive but less than 65 days)
+      const usersForMotivation = await this.userRepo.find({
+        lastActivity: { $gte: sixtyFiveDaysAgo, $lt: sevenDaysAgo },
+        role: { $ne: Role.ADMIN },
+        isVerified: true,
+        status: UserStatus.ACTIVE,
+      });
 
-      if (inactiveUsers.length === 0) {
-        this.logger.log('✅ No inactive users found. Job completed.');
-        return;
+      this.logger.log(`📧 Found ${usersForMotivation.length} users for motivational emails`);
+      this.logger.log(`⚠️ Found ${usersToSuspend.length} users to suspend`);
+
+      let motivationSuccessCount = 0;
+      let motivationFailureCount = 0;
+      let suspensionSuccessCount = 0;
+      let suspensionFailureCount = 0;
+
+      // Process suspensions first
+      for (const user of usersToSuspend) {
+        try {
+          // Update user status to suspended
+          await this.userRepo.findOneAndUpdate(
+            { _id: user._id },
+            {
+              status: UserStatus.SUSPENDED,
+              suspendedAt: new Date(),
+              suspensionReason: 'Account suspended due to inactivity (65+ days)',
+            }
+          );
+
+          // Send suspension notification email
+          await this.sendSuspensionEmail(user);
+          suspensionSuccessCount++;
+          this.logger.debug(`⚠️ User suspended: ${user.email}`);
+        } catch (error) {
+          suspensionFailureCount++;
+          this.logger.error(
+            `❌ Failed to suspend user ${user.email}: ${error.message}`,
+          );
+        }
+
+        // Add delay to avoid overwhelming email service
+        await this.delay(300);
       }
 
-      let successCount = 0;
-      let failureCount = 0;
-
-      // Process each inactive user
-      for (const user of inactiveUsers) {
+      // Process motivational emails
+      for (const user of usersForMotivation) {
         try {
           await this.sendMotivationalEmail(user);
-          successCount++;
+          motivationSuccessCount++;
           this.logger.debug(`✉️ Email sent to: ${user.email}`);
         } catch (error) {
-          failureCount++;
+          motivationFailureCount++;
           this.logger.error(
             `❌ Failed to send email to ${user.email}: ${error.message}`,
           );
@@ -78,9 +128,12 @@ export class InactiveUserCronService {
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
 
-      this.logger.log(`✅ Inactive user email job completed in ${duration}s`);
+      this.logger.log(`✅ Inactive user management job completed in ${duration}s`);
       this.logger.log(
-        `📊 Results: ${successCount} successful, ${failureCount} failed`,
+        `📊 Results: ${motivationSuccessCount} motivation emails sent, ${motivationFailureCount} failed`,
+      );
+      this.logger.log(
+        `📊 Suspensions: ${suspensionSuccessCount} successful, ${suspensionFailureCount} failed`,
       );
     } catch (error) {
       this.logger.error(
@@ -112,6 +165,26 @@ export class InactiveUserCronService {
     await this.sendCustomEmail(mailOptions);
   }
 
+  private async sendSuspensionEmail(user: any): Promise<void> {
+    // Create suspension email template
+    const suspensionEmail = this.suspensionEmailTemplate
+      .replace(/{{userName}}/g, user.firstName || 'there')
+      .replace(
+        /{{supportUrl}}/g,
+        process.env.FRONTEND_URL || 'https://englishom.com/contact',
+      );
+
+    // Prepare email data
+    const mailOptions = {
+      from: `"Englishom Team" <${process.env.SMTP_USER}>`,
+      to: user.email,
+      subject: '⚠️ Your Englishom Account Has Been Suspended - Contact Support',
+      html: suspensionEmail,
+    };
+
+    await this.sendCustomEmail(mailOptions);
+  }
+
   private async sendCustomEmail(mailOptions: any): Promise<void> {
     // Use the new sendCustomEmail method from EmailService
     await this.emailService.sendCustomEmail(mailOptions);
@@ -123,7 +196,7 @@ export class InactiveUserCronService {
 
   // Manual trigger method for testing (optional)
   async triggerManually(): Promise<void> {
-    this.logger.log('🔧 Manually triggering inactive user email job...');
+    this.logger.log('🔧 Manually triggering inactive user management job...');
     await this.handleInactiveUsers();
   }
 
@@ -214,6 +287,114 @@ export class InactiveUserCronService {
         </div>
         <div class="footer">
             <p>© 2024 Englishom. Empowering English learners worldwide.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+  }
+
+  private getSuspensionEmailTemplate(): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 30px 20px;
+            border-radius: 0 0 10px 10px;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="emoji">⚠️🔒</div>
+            <h1>Account Suspended</h1>
+        </div>
+        <div class="content">
+            <p>Hi {{userName}},</p>
+            
+            <div class="warning-box">
+                <strong>⚠️ Important Notice:</strong> Your Englishom account has been temporarily suspended due to extended inactivity (65+ days).
+            </div>
+            
+            <p>We understand that life gets busy, and learning schedules can change. Your account suspension is temporary and can be easily reactivated!</p>
+            
+            <h3>🔄 How to Reactivate Your Account:</h3>
+            <ul>
+                <li>📞 Contact our support team</li>
+                <li>💬 Use our live chat feature</li>
+                <li>📧 Send us an email explaining your situation</li>
+                <li>🌐 Visit our support center</li>
+            </ul>
+            
+            <p><strong>Why was my account suspended?</strong></p>
+            <p>Accounts are automatically suspended after 65 days of inactivity to maintain platform security and optimize our learning resources. This helps us ensure that active learners have the best experience possible.</p>
+            
+            <p><strong>Your Progress is Safe! 🛡️</strong></p>
+            <p>Don't worry - all your progress, certificates, and course data are safely stored and will be restored once your account is reactivated.</p>
+            
+            <div style="text-align: center;">
+                <a href="{{supportUrl}}" class="cta-button">Contact Support Now</a>
+            </div>
+            
+            <p>We're here to help you get back to your English learning journey. Our support team is ready to assist you with account reactivation.</p>
+            
+            <p>Thank you for your understanding! 🙏</p>
+            
+            <p>Best regards,<br>
+            <strong>The Englishom Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>© 2024 Englishom. Supporting English learners worldwide.</p>
+            <p>If you believe this was sent in error, please contact our support team immediately.</p>
         </div>
     </div>
 </body>

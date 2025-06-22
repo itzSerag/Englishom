@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 30px 20px;
+            border-radius: 0 0 10px 10px;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="emoji">⚠️🔒</div>
+            <h1>Account Suspended</h1>
+        </div>
+        <div class="content">
+            <p>Hi {{userName}},</p>
+            
+            <div class="warning-box">
+                <strong>⚠️ Important Notice:</strong> Your Englishom account has been temporarily suspended due to extended inactivity (65+ days).
+            </div>
+            
+            <p>We understand that life gets busy, and learning schedules can change. Your account suspension is temporary and can be easily reactivated!</p>
+            
+            <h3>🔄 How to Reactivate Your Account:</h3>
+            <ul>
+                <li>📞 Contact our support team</li>
+                <li>💬 Use our live chat feature</li>
+                <li>📧 Send us an email explaining your situation</li>
+                <li>🌐 Visit our support center</li>
+            </ul>
+            
+            <p><strong>Why was my account suspended?</strong></p>
+            <p>Accounts are automatically suspended after 65 days of inactivity to maintain platform security and optimize our learning resources. This helps us ensure that active learners have the best experience possible.</p>
+            
+            <p><strong>Your Progress is Safe! 🛡️</strong></p>
+            <p>Don't worry - all your progress, certificates, and course data are safely stored and will be restored once your account is reactivated.</p>
+            
+            <div style="text-align: center;">
+                <a href="{{supportUrl}}" class="cta-button">Contact Support Now</a>
+            </div>
+            
+            <p>We're here to help you get back to your English learning journey. Our support team is ready to assist you with account reactivation.</p>
+            
+            <p>Thank you for your understanding! 🙏</p>
+            
+            <p>Best regards,<br>
+            <strong>The Englishom Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>© 2024 Englishom. Supporting English learners worldwide.</p>
+            <p>If you believe this was sent in error, please contact our support team immediately.</p>
+        </div>
+    </div>
+</body>
+</html>
