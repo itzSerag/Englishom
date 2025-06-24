@@ -25,7 +25,6 @@ import { UserTaskDto } from './dto/user-task.dto';
 import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 import { CompleteLevelDto } from './dto/complete-level.dto';
 import { GetCertificateDto } from './dto/get-certificate';
-import { cleanSensitiveFields } from '../common/utils/response.utils';
 import { Admin } from '../admin/models/admin.schema';
 import { AdminRole, Role } from 'src/common/shared';
 import { IsAdminGuard } from '../admin/guards/is-admin.guard';
@@ -34,6 +33,7 @@ import { PaginationDto } from './dto/pagination.dto';
 import { IpService } from '../common/services/ip.service';
 import { Request } from 'express';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { cleanResponse } from '../common/utils/response.utils';
 
 @Controller('users')
 export class UserController {
@@ -49,7 +49,7 @@ export class UserController {
 
     if(user instanceof Admin){
       return {
-        user: cleanSensitiveFields(user),
+        user: cleanResponse(user),
         levels: [],
       };
     }
@@ -59,7 +59,7 @@ export class UserController {
     );
 
     return {
-      user: cleanSensitiveFields(user),
+      user: cleanResponse(user),
       levels: userLevels,
     };
   }
@@ -71,7 +71,7 @@ export class UserController {
     if (!user) {
       throw new ConflictException('User already exists');
     }
-    return cleanSensitiveFields(user);
+    return cleanResponse(user);
   }
 
   // Admin endpoint with pagination support
@@ -82,7 +82,7 @@ export class UserController {
 
     return {
       ...result,
-      data: result.data.map((user) => cleanSensitiveFields(user)),
+      data: result.data.map((user) => cleanResponse(user)),
     };
   }
 
@@ -118,7 +118,7 @@ export class UserController {
     if (!certificate) {
       throw new BadRequestException('Certificate not found');
     }
-    return cleanSensitiveFields(certificate);
+    return cleanResponse(certificate);
   }
 
   @Get('completed-days')
@@ -182,7 +182,7 @@ export class UserController {
       throw new Error('Something went wrong');
     }
 
-    return cleanSensitiveFields(certificate);
+    return cleanResponse(certificate);
   }
 
   @Post('reset-password')

@@ -35,6 +35,8 @@ export class PaymobController {
     private courseService: CourseService,
   ) {}
 
+
+  // Web hook
   @Public()
   @Post('callback')
   async callbackPost(@Body() data: any) {

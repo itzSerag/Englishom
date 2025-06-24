@@ -2,12 +2,11 @@ import { Injectable, NotFoundException, Logger, BadRequestException, ForbiddenEx
 import { UserRepo } from '../user/repo/user.repo';
 import { OrderRepo } from '../payment/repo/order.repo';
 import { CourseRepo } from '../auth/repo/course.repo';
-import { Types } from 'mongoose';
 import { PaymentStatus } from '../payment/types';
 import { UserStatus } from '../common/shared/enums';
-import { DashboardStatsDto, DashboardPaginationDto, DashboardSearchDto } from './dto';
-import { cleanSensitiveFields, cleanSensitiveFieldsArray } from '../common/utils/response.utils';
-import { log } from 'console';
+import { DashboardPaginationDto, DashboardSearchDto, AssignCourseDto } from './dto';
+import { TransactionService } from '../common/database/transaction.service';
+import { cleanResponse, cleanResponseArray } from '../common/utils/response.utils';
 
 @Injectable()
 export class DashboardService {
@@ -17,7 +16,7 @@ export class DashboardService {
     private readonly userRepo: UserRepo,
     private readonly orderRepo: OrderRepo,
     private readonly courseRepo: CourseRepo,
-    
+    private readonly transactionService: TransactionService,
   ) {}
 
   /**
@@ -37,8 +36,7 @@ export class DashboardService {
         totalRevenue,
         totalSubscribedUsers,
         totalCourses,
-        recentOrders,
-        revenueByMonth
+        recentOrders
       ] = await Promise.all([
         this.getTotalUsers(),
         this.getTotalActiveUsers(),
@@ -48,7 +46,6 @@ export class DashboardService {
         this.getTotalSubscribedUsers(),
         this.getTotalCourses(),
         this.getRecentOrders(),
-        this.getRevenueByMonth(),
       ]);
 
       const stats = {
@@ -63,9 +60,6 @@ export class DashboardService {
         },
         recentActivity: {
           recentOrders,
-        },
-        analytics: {
-          revenueByMonth,
         },
         generatedAt: new Date(),
       };
@@ -82,8 +76,68 @@ export class DashboardService {
    * Assign a course to a user manually (for cash payments or admin actions)
    * Only accessible by SUPER and MANAGER admins
    */
- 
+  async assignCourseToUser(assignCourseDto: AssignCourseDto) {
+    return await this.transactionService.withTransaction(async (session) => {
+      const { userId, levelName, reason } = assignCourseDto;
 
+      this.logger.log(`Assigning course ${levelName} to user ${userId}. Reason: ${reason || 'Not specified'}`);
+
+      // Check if user exists
+      const user = await this.userRepo.findOne({ _id: userId }, session);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Check if user is active
+      if (user.status !== UserStatus.ACTIVE) {
+        throw new BadRequestException(`Cannot assign course to user with status: ${user.status}`);
+      }
+
+      // Check if course exists
+      const course = await this.courseRepo.findByLevelName(levelName);
+      if (!course) {
+        throw new NotFoundException(`Course with level ${levelName} not found`);
+      }
+
+      // Check if user already has this course completed
+      const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
+        userId,
+        levelName,
+        session,
+      );
+
+      if (existingCompletedOrder) {
+        throw new BadRequestException(`User already has access to ${levelName} level`);
+      }
+
+
+      // Create a completed order record for the user
+      const order = await this.orderRepo.create({
+        userId: user,
+        levelName: levelName,
+        amountCents: course.price * 100, // Convert to cents
+        paymentStatus: PaymentStatus.COMPLETED,
+        paymentDate: new Date(),
+        paymentId: `ADMIN_ASSIGNED_${Date.now()}`, // Special payment ID to indicate admin assignment
+      }, session);
+
+      this.logger.log(`Successfully assigned course ${levelName} to user ${userId}. Order ID: ${order._id}`);
+
+      return {
+        success: true,
+        message: `Course ${levelName} successfully assigned to user`,
+        order: {
+          _id: order._id.toString(),
+          levelName: order.levelName,
+          assignedAt: order.paymentDate,
+          reason: reason || 'Admin assignment',
+        },
+        user: cleanResponse(user),
+      };
+    });
+  }
+
+  
   /**
    * Get user details for course assignment
    */
@@ -102,7 +156,7 @@ export class DashboardService {
       });
 
       return {
-          user : cleanSensitiveFields(user),
+          user : cleanResponse(user),
           completedCourses: (completedOrders || []).map(order => ({
           levelName: order.levelName,
           purchaseDate: order.createdAt || order.paymentDate,
@@ -128,15 +182,7 @@ export class DashboardService {
       );
 
       return {
-        data: result.data.map(user => ({
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          status: user.status,
-          createdAt: user.createdAt || new Date(),
-          lastActivity: user.lastActivity,
-        })),
+       users : cleanResponseArray(result.data),
         total: result.total,
         page: result.page,
         limit: result.limit,
@@ -196,8 +242,8 @@ export class DashboardService {
     );
 
     return {
-      users: cleanSensitiveFieldsArray(result.data),
-      pagination: {
+      users: cleanResponseArray(result.data),
+        pagination: {
         total: result.total,
         page: result.page,
         limit: result.limit,
@@ -260,56 +306,59 @@ export class DashboardService {
     return courses ? courses.length : 0;
   }
 
-  private async getRecentOrders(limit: number = 10) {
-    const orders = await this.orderRepo.find({ paymentStatus: PaymentStatus.COMPLETED });
-    if (!orders) return [];
-    
-    // Sort by creation date (newest first) and limit results
-    return orders
-      .sort((a, b) => new Date(b.createdAt || b.paymentDate).getTime() - new Date(a.createdAt || a.paymentDate).getTime())
-      .slice(0, limit);
-  }
+ private async getRecentOrders(limit: number = 10) {
+  const orders = await this.orderRepo.find({ paymentStatus: PaymentStatus.COMPLETED });
+  if (!orders) return [];
+
+  return cleanResponseArray(orders)
+    .sort((a, b) =>
+      new Date(b.createdAt || b.paymentDate).getTime() -
+      new Date(a.createdAt || a.paymentDate).getTime()
+    )
+    .slice(0, limit);
+}
+
 
  
 
-  private async getRevenueByMonth() {
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  // private async getRevenueByMonth() {
+  //   const sixMonthsAgo = new Date();
+  //   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const orders = await this.orderRepo.find({ 
-      paymentStatus: PaymentStatus.COMPLETED,
-      createdAt: { $gte: sixMonthsAgo }
-    });
+  //   const orders = await this.orderRepo.find({ 
+  //     paymentStatus: PaymentStatus.COMPLETED,
+  //     createdAt: { $gte: sixMonthsAgo }
+  //   });
 
-    if (!orders) return [];
+  //   if (!orders) return [];
 
-    // Group orders by month
-    const monthlyData = new Map();
+  //   // Group orders by month
+  //   const monthlyData = new Map();
     
-    orders.forEach(order => {
-      const createdAt = order.createdAt || order.paymentDate;
-      const monthKey = `${createdAt.getFullYear()}-${createdAt.getMonth() + 1}`;
+  //   orders.forEach(order => {
+  //     const createdAt = order.createdAt || order.paymentDate;
+  //     const monthKey = `${createdAt.getFullYear()}-${createdAt.getMonth() + 1}`;
       
-      if (!monthlyData.has(monthKey)) {
-        monthlyData.set(monthKey, {
-          _id: { 
-            year: createdAt.getFullYear(), 
-            month: createdAt.getMonth() + 1 
-          },
-          revenue: 0,
-          orders: 0
-        });
-      }
+  //     if (!monthlyData.has(monthKey)) {
+  //       monthlyData.set(monthKey, {
+  //         _id: { 
+  //           year: createdAt.getFullYear(), 
+  //           month: createdAt.getMonth() + 1 
+  //         },
+  //         revenue: 0,
+  //         orders: 0
+  //       });
+  //     }
       
-      const data = monthlyData.get(monthKey);
-      data.revenue += order.amountCents;
-      data.orders++;
-    });
+  //     const data = monthlyData.get(monthKey);
+  //     data.revenue += order.amountCents;
+  //     data.orders++;
+  //   });
 
-    return Array.from(monthlyData.values()).sort((a, b) => 
-      a._id.year - b._id.year || a._id.month - b._id.month
-    );
-  }
+  //   return Array.from(monthlyData.values()).sort((a, b) => 
+  //     a._id.year - b._id.year || a._id.month - b._id.month
+  //   );
+  // }
 
   
 }

@@ -26,10 +26,9 @@ import {
   ForgetPasswordDto,
   ResetPasswordWithTokenDto,
 } from './dto';
-import { cleanSensitiveFields } from '../common/utils/response.utils';
 import { Admin } from 'src/admin/models/admin.schema';
-import { Role } from 'src/common/shared';
 import { OtpCause } from './enum/otp-cause.enum';
+import { cleanResponse } from '../common/utils/response.utils';
 
 @Controller('auth')
 export class AuthController {
@@ -48,7 +47,7 @@ export class AuthController {
 
     return {
       access_token,
-      user: cleanSensitiveFields(user),
+      user: cleanResponse(user),
       levels: [],
     };
   }
@@ -64,7 +63,7 @@ export class AuthController {
       // If the user is an admin, we can return the admin-specific fields
       return {
         access_token,
-        user: cleanSensitiveFields(user),
+        user: cleanResponse(user),
         levels: [],
       };
     }
@@ -73,7 +72,7 @@ export class AuthController {
 
     return {
       access_token,
-      user: cleanSensitiveFields(user),
+      user: cleanResponse(user),
       levels: levels,
     };
   }
@@ -92,7 +91,7 @@ export class AuthController {
 
       return {
         access_token,
-        user: cleanSensitiveFields(user),
+        user: cleanResponse(user),
       };
     } else if (verifyOtpDto.cause === OtpCause.FORGET_PASSWORD) {
       // For forget password, just return success message

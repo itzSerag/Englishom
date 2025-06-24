@@ -16,12 +16,9 @@ import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { AdminRoles } from './decorators/admin-roles.decorator';
 import { IsAdminGuard, AdminRoleGuard } from './guards';
 import { AdminRole } from '../common/shared';
-import {
-  cleanSensitiveFields,
-  cleanSensitiveFieldsArray,
-} from '../common/utils/response.utils';
 import { IpService } from 'src/common/services/ip.service';
 import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
+import { cleanResponse, cleanResponseArray } from '../common/utils/response.utils';
 
 @UseGuards(IsAdminGuard)
 @SkipVerifiedGuard()
@@ -46,26 +43,26 @@ export class AdminController {
       currentAdmin,
       ip,
     );
-    return cleanSensitiveFields(admin);
+    return cleanResponse(admin);
   }
 
   @Get('all-active')
   async getAllActiveAdmins() {
     const admins = await this.adminService.getAllActiveAdmins();
-    return cleanSensitiveFieldsArray(admins);
+    return cleanResponseArray(admins);
   }
 
   @Get('all')
   async getAllAdmins() {
     const admins = await this.adminService.getAllAdmins();
-    return cleanSensitiveFieldsArray(admins);
+    return cleanResponseArray(admins);
   }
 
   // Get admin by ID - SUPER and MANAGER
   @Get(':id')
   async getAdminById(@Param('id') id: string) {
     const admin = await this.adminService.getAdminById(id);
-    return cleanSensitiveFields(admin);
+    return cleanResponse(admin);
   }
 
   // Update admin
@@ -81,7 +78,7 @@ export class AdminController {
       updateAdminDto,
       currentAdmin,
     );
-    return cleanSensitiveFields(admin);
+    return cleanResponse(admin);
   }
 
   // Delete admin - Only SUPER admin
@@ -98,6 +95,6 @@ export class AdminController {
   @Post('deactivate-admin/:id')
   async deactivateAdmin(@Param('id') id: string) {
     const admin = await this.adminService.deactivateAdmin(id);
-    return cleanSensitiveFields(admin);
+    return cleanResponse(admin);
   }
 }

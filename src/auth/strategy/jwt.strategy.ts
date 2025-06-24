@@ -4,9 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { IPayload } from '../../common/shared/interfaces/payload.interface';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticationService } from '../../common/services/authentication.service';
-import { User } from '../../user/models/user.schema';
-import { Admin } from '../../admin/models/admin.schema';
-import { cleanSensitiveFields } from '../../common/utils/response.utils';
+import { cleanResponse } from '../../common/utils/response.utils';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -26,7 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       const user = await this.authenticationService.validateAndGetUser(payload);
 
       // Return cleaned user object (password will be removed by cleanSensitiveFields)
-      return cleanSensitiveFields(user);
+      return cleanResponse(user);
     } catch (error) {
       throw new UnauthorizedException('Invalid token, ' + error.message);
     }

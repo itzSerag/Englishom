@@ -1,8 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { AdminRole } from '../../common/shared';
+import { AdminRole, Role } from '../../common/shared';
 import { AbstractUser } from '../../common/models/abstract-user.model';
 import { Types } from 'mongoose';
-
 
 
 @Schema({ timestamps: true, versionKey: false })
@@ -10,6 +9,9 @@ export class Admin extends AbstractUser {
 
   @Prop({ enum: AdminRole, default: AdminRole.VIEW })
   adminRole: AdminRole;
+
+  @Prop({  enum : Role , default: Role.ADMIN })
+  role : Role
 
   @Prop({ default: true })
   isActive: boolean;

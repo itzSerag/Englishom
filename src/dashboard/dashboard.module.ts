@@ -6,10 +6,12 @@ import { UserModule } from '../user/user.module';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { PaymentModule } from '../payment/paymob.module';
+import { DatabaseModule } from '../common/database/database.module';
 
 @Module({
   imports: [
     ConfigModule, 
+    DatabaseModule, // Add DatabaseModule to get TransactionService
     forwardRef(() => UserModule), 
     forwardRef(() => AdminModule),
     forwardRef(() => AuthModule),

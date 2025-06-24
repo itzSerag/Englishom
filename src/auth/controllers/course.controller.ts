@@ -1,15 +1,9 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import { UpdateCourseDto } from '../dto/update-course.dto';
 import { AdminRole, Level_Name } from 'src/common/shared/enums';
-import { Roles } from '../decorator/roles.decorator';
 import { Public } from '../decorator/public.decorator';
-import {
-  cleanSensitiveFields,
-  cleanSensitiveFieldsArray,
-} from '../../common/utils/response.utils';
 import { AdminRoles } from 'src/admin/decorators';
-import { Admin } from 'src/admin/models/admin.schema';
 
 @Controller('courses')
 export class CourseController {

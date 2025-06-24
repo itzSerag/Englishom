@@ -16,7 +16,7 @@ import { AdminRoleGuard } from '../guards/admin-roles.guard';
 import { UserService } from '../../user/user.service';
 import { UpdateUserStatusDto } from '../../user/dto/update-user-status.dto';
 import { PaginationDto } from '../../user/dto/pagination.dto';
-import { cleanSensitiveFields } from '../../common/utils/response.utils';
+import { cleanResponse } from '../../common/utils/response.utils';
 
 @UseGuards(IsAdminGuard, AdminRoleGuard)
 @Controller('admin/users')
@@ -32,7 +32,7 @@ export class AdminUserController {
     const result = await this.userService.findAllWithPagination(paginationDto);
     return {
       ...result,
-      data: result.data.map((user) => cleanSensitiveFields(user)),
+      data: result.data.map((user) => cleanResponse(user)),
     };
   }
 
@@ -48,7 +48,7 @@ export class AdminUserController {
     const result = await this.userService.getUsersByStatus(status, paginationDto);
     return {
       ...result,
-      data: result.data.map((user) => cleanSensitiveFields(user)),
+      data: result.data.map((user) => cleanResponse(user)),
     };
   }
 
@@ -59,7 +59,7 @@ export class AdminUserController {
   @Get(':id')
   async getUserById(@Param('id') id: string) {
     const user = await this.userService.findById(id);
-    return cleanSensitiveFields(user);
+    return cleanResponse(user);
   }
 
   /**
@@ -75,7 +75,7 @@ export class AdminUserController {
     const user = await this.userService.updateUserStatus(id, updateStatusDto);
     return {
       message: `User status updated to ${updateStatusDto.status}`,
-      user: cleanSensitiveFields(user),
+      user: cleanResponse(user),
     };
   }
 
@@ -92,7 +92,7 @@ export class AdminUserController {
     const user = await this.userService.suspendUser(id, reason);
     return {
       message: 'User has been suspended',
-      user: cleanSensitiveFields(user),
+      user: cleanResponse(user),
     };
   }
 
@@ -106,7 +106,7 @@ export class AdminUserController {
     const user = await this.userService.activateUser(id);
     return {
       message: 'User has been activated',
-      user: cleanSensitiveFields(user),
+      user: cleanResponse(user),
     };
   }
 
@@ -123,7 +123,7 @@ export class AdminUserController {
     const user = await this.userService.blockUser(id, reason);
     return {
       message: 'User has been blocked',
-      user: cleanSensitiveFields(user),
+      user: cleanResponse(user),
     };
   }
 }
