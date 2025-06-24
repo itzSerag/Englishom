@@ -10,5 +10,5 @@ export class ResendOtpDto {
     message: 'Cause must be either email_verification or forget_password',
   })
   @IsOptional()
-  cause: OtpCause;
+  cause?: OtpCause;
 }

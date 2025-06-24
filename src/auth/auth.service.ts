@@ -24,6 +24,7 @@ import { Role, UserStatus } from 'src/common/shared';
 import { OtpCause } from './enum/otp-cause.enum';
 import { ResetPasswordWithTokenDto } from './dto/reset-password-with-token.dto';
 import { IResetTokenPayload } from './interfaces/reset-token-payload.interface';
+import { ResendOtpDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -140,7 +141,7 @@ export class AuthService {
         this.otpRepo.delete({ email, cause }),
       ]);
 
-      
+
       return newUser;
 
     } else if (cause === OtpCause.FORGET_PASSWORD) {
@@ -166,26 +167,23 @@ export class AuthService {
     throw new BadRequestException('Invalid OTP cause');
   }
 
-  async resendOtp(
-    email: string,
-    cause: OtpCause = OtpCause.EMAIL_VERIFICATION,
-  ) {
-    const user = await this.userRepo.findOne({ email });
+  async resendOtp(resendOtpDto: ResendOtpDto) {
+    const user = await this.userRepo.findOne({ email: resendOtpDto.email });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
     // For email verification, check if user is not already verified
-    if (cause === OtpCause.EMAIL_VERIFICATION && user.isVerified) {
+    if (resendOtpDto.cause === OtpCause.EMAIL_VERIFICATION && user.isVerified) {
       throw new BadRequestException('User already verified');
     }
 
     // Generate and send OTP (old OTP deletion is handled automatically)
-    await this.generateAndSendOtp(email, cause);
+    await this.generateAndSendOtp(resendOtpDto.email, resendOtpDto.cause || OtpCause.EMAIL_VERIFICATION);
 
     const message =
-      cause === OtpCause.EMAIL_VERIFICATION
+      resendOtpDto.cause === OtpCause.EMAIL_VERIFICATION
         ? 'OTP has been sent to your email'
         : 'Password reset OTP has been sent to your email';
 

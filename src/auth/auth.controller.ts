@@ -109,8 +109,12 @@ export class AuthController {
   @Public()
   @Post('resend-otp')
   async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
-    const cause = resendOtpDto.cause || OtpCause.EMAIL_VERIFICATION;
-    return await this.authService.resendOtp(resendOtpDto.email, cause);
+
+    if (!resendOtpDto.cause) {
+      resendOtpDto.cause = OtpCause.EMAIL_VERIFICATION;
+    }
+
+    return await this.authService.resendOtp(resendOtpDto);
   }
 
   @Public()
