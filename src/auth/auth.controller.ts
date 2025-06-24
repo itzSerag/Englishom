@@ -29,6 +29,7 @@ import {
 import { Admin } from 'src/admin/models/admin.schema';
 import { OtpCause } from './enum/otp-cause.enum';
 import { cleanResponse } from '../common/utils/response.utils';
+import { log } from 'console';
 
 @Controller('auth')
 export class AuthController {
@@ -81,6 +82,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    
+    // if there is no cause in verifyOtpDto, default to EMAIL_VERIFICATION
+    if (!verifyOtpDto.cause) {
+      verifyOtpDto.cause = OtpCause.EMAIL_VERIFICATION;
+    }
+    
     const result = await this.authService.verifyOtp(verifyOtpDto);
 
     // Handle different causes

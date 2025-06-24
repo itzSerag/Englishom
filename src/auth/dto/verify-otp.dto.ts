@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { OtpCause } from '../enum/otp-cause.enum';
 
 export class VerifyOtpDto {
@@ -8,7 +8,6 @@ export class VerifyOtpDto {
 
   @IsString()
   @IsNotEmpty()
-  @Length(6, 6, { message: 'Wrong OTP' })
   otp: string;
 
   @IsOptional()

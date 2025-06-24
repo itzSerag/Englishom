@@ -135,11 +135,13 @@ export class AuthService {
 
     // Handle different causes
     if (cause === OtpCause.EMAIL_VERIFICATION) {
-      const [_, __] = await Promise.all([
+      const [newUser, __] = await Promise.all([
         this.userRepo.findOneAndUpdate({ email }, { isVerified: true }),
         this.otpRepo.delete({ email, cause }),
       ]);
-      return user;
+
+      
+      return newUser;
 
     } else if (cause === OtpCause.FORGET_PASSWORD) {
       // For forget password, delete the OTP and generate reset token
