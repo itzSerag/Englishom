@@ -7,6 +7,7 @@ import { UserStatus } from '../common/shared/enums';
 import { DashboardPaginationDto, DashboardSearchDto, AssignCourseDto } from './dto';
 import { TransactionService } from '../common/database/transaction.service';
 import { cleanResponse, cleanResponseArray } from '../common/utils/response.utils';
+import { User } from '../user/models/user.schema';
 
 @Injectable()
 export class DashboardService {
@@ -83,7 +84,7 @@ export class DashboardService {
       this.logger.log(`Assigning course ${levelName} to user ${userId}. Reason: ${reason || 'Not specified'}`);
 
       // Check if user exists
-      const user = await this.userRepo.findOne({ _id: userId }, session);
+      const user : User = await this.userRepo.findOne({ _id: userId }, session);
       if (!user) {
         throw new NotFoundException('User not found');
       }
@@ -113,7 +114,7 @@ export class DashboardService {
 
       // Create a completed order record for the user
       const order = await this.orderRepo.create({
-        userId: user,
+        userId: user._id as any, 
         levelName: levelName,
         amountCents: course.price * 100, // Convert to cents
         paymentStatus: PaymentStatus.COMPLETED,

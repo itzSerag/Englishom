@@ -23,44 +23,6 @@ import { cleanResponse } from '../../common/utils/response.utils';
 export class AdminUserController {
   constructor(private readonly userService: UserService) {}
 
-  /**
-   * Get all users with pagination (MANAGER+ access)
-   */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Get()
-  async getAllUsers(@Query() paginationDto: PaginationDto) {
-    const result = await this.userService.findAllWithPagination(paginationDto);
-    return {
-      ...result,
-      data: result.data.map((user) => cleanResponse(user)),
-    };
-  }
-
-  /**
-   * Get users by status (MANAGER+ access)
-   */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Get('status/:status')
-  async getUsersByStatus(
-    @Param('status') status: UserStatus,
-    @Query() paginationDto: PaginationDto,
-  ) {
-    const result = await this.userService.getUsersByStatus(status, paginationDto);
-    return {
-      ...result,
-      data: result.data.map((user) => cleanResponse(user)),
-    };
-  }
-
-  /**
-   * Get a specific user by ID (MANAGER+ access)
-   */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Get(':id')
-  async getUserById(@Param('id') id: string) {
-    const user = await this.userService.findById(id);
-    return cleanResponse(user);
-  }
 
   /**
    * Update user status - suspend, activate, or block (SUPER and MANAGER only)

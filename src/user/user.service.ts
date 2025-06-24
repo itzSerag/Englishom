@@ -269,7 +269,12 @@ export class UserService {
       status: updateStatusDto.status,
     };
 
-    if (updateStatusDto.status === UserStatus.SUSPENDED) {
+
+    // with defualt messages
+     if (updateStatusDto.status === UserStatus.BLOCKED) {
+      updateData.suspendedAt = new Date();
+      updateData.suspensionReason = updateStatusDto.reason || 'Account blocked by admin';
+    } else if (updateStatusDto.status === UserStatus.SUSPENDED) {
       updateData.suspendedAt = new Date();
       updateData.suspensionReason = updateStatusDto.reason || 'Account suspended by admin';
     } else if (updateStatusDto.status === UserStatus.ACTIVE) {
