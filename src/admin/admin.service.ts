@@ -167,11 +167,7 @@ export class AdminService {
     );
   }
 
-  // Get admin profile
-  async getProfile(admin: Admin): Promise<Admin> {
-    return this.adminRepo.findOne({ _id: admin._id });
-  }
-
+  
   // Update admin activity
   async updateActivity(adminId: Types.ObjectId): Promise<void> {
     await this.adminRepo.findOneAndUpdate(
@@ -218,5 +214,4 @@ export class AdminService {
     );
   }
 
-  private;
 }

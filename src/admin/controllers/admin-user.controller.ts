@@ -28,7 +28,7 @@ export class AdminUserController {
    * Update user status - suspend, activate, or block (SUPER and MANAGER only)
    */
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Patch(':id/status')
+  @Patch('status/:id')
   @HttpCode(HttpStatus.OK)
   async updateUserStatus(
     @Param('id') id: string,
@@ -41,51 +41,4 @@ export class AdminUserController {
     };
   }
 
-  /**
-   * Quick suspend user (SUPER and MANAGER only)
-   */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Patch(':id/suspend')
-  @HttpCode(HttpStatus.OK)
-  async suspendUser(
-    @Param('id') id: string,
-    @Body('reason') reason?: string,
-  ) {
-    const user = await this.userService.suspendUser(id, reason);
-    return {
-      message: 'User has been suspended',
-      user: cleanResponse(user),
-    };
-  }
-
-  /**
-   * Quick activate user (SUPER and MANAGER only)
-   */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Patch(':id/activate')
-  @HttpCode(HttpStatus.OK)
-  async activateUser(@Param('id') id: string) {
-    const user = await this.userService.activateUser(id);
-    return {
-      message: 'User has been activated',
-      user: cleanResponse(user),
-    };
-  }
-
-  /**
-   * Block user permanently (SUPER only)
-   */
-  @AdminRoles(AdminRole.SUPER)
-  @Patch(':id/block')
-  @HttpCode(HttpStatus.OK)
-  async blockUser(
-    @Param('id') id: string,
-    @Body('reason') reason?: string,
-  ) {
-    const user = await this.userService.blockUser(id, reason);
-    return {
-      message: 'User has been blocked',
-      user: cleanResponse(user),
-    };
-  }
 }

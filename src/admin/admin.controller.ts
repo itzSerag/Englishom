@@ -58,7 +58,6 @@ export class AdminController {
     return cleanResponseArray(admins);
   }
 
-  // Get admin by ID - SUPER and MANAGER
   @Get(':id')
   async getAdminById(@Param('id') id: string) {
     const admin = await this.adminService.getAdminById(id);
@@ -96,5 +95,10 @@ export class AdminController {
   async deactivateAdmin(@Param('id') id: string) {
     const admin = await this.adminService.deactivateAdmin(id);
     return cleanResponse(admin);
+  }
+
+  @Get('me')
+  async getCurrentAdmin(@CurrentAdmin() currentAdmin: Admin) {
+    return cleanResponse(currentAdmin);
   }
 }
