@@ -38,8 +38,8 @@ export class AuthController {
 
   @Public()
   @Post('signup')
-  async register(@Body() createAuthDto: CreateUserDto) {
-    const user = await this.authService.register(createAuthDto);
+  async register(@Body() createAuthDto: CreateUserDto, @Req() req: Request) {
+    const user = await this.authService.register(createAuthDto, req);
     if (!user) {
       throw new ConflictException('User already exist');
     }

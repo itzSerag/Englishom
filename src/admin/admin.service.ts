@@ -44,7 +44,7 @@ export class AdminService {
 
     // Set country based on IP address during signup
     if (ipAddress) {
-      const country = this.ipService.getCountryFromIp(ipAddress);
+      const country = await this.ipService.getCountryFromIp(ipAddress);
       createAdminDto.country = country;
     }
 

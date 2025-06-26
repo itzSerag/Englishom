@@ -38,8 +38,14 @@ export class AuthService {
     private readonly ipService: IpService,
   ) {}
 
-  async register(createUserDto: CreateUserDto) {
-    const user = await this.userService.create(createUserDto);
+  async register(createUserDto: CreateUserDto, req?: any) {
+    // Get IP address for country detection
+    let ipAddress: string | undefined;
+    if (req) {
+      ipAddress = this.ipService.getRealIp(req);
+    }
+
+    const user = await this.userService.create(createUserDto, ipAddress);
 
     if (user) {
       // Generate and send OTP for email verification
@@ -233,7 +239,7 @@ export class AuthService {
       let country = 'unknown';
       if (req) {
         const ip = this.ipService.getRealIp(req);
-        country = this.ipService.getCountryFromIp(ip);
+        country = await this.ipService.getCountryFromIp(ip);
       }
 
       const newUser = await this.userRepo.create({

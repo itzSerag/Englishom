@@ -1,30 +1,38 @@
-import { Injectable } from '@nestjs/common';
-import * as geoip from 'geoip-lite';
+import { Injectable, Logger } from '@nestjs/common';
+import * as geoip from 'fast-geoip';
 
 @Injectable()
 export class IpService {
+  private readonly logger = new Logger(IpService.name);
+
   /**
    * Get country from IP address
    * @param ip - IP address to lookup
    * @returns Country code (e.g., 'SA', 'US') or 'Unknown' if not found
    */
-  getCountryFromIp(ip: string): string {
-    // this Handles the case where is Local or private IP
+  async getCountryFromIp(ip: string): Promise<string> {
     try {
       // Handle localhost and private IPs
       if (
         ip === '127.0.0.1' ||
         ip === '::1' ||
         ip.startsWith('192.168.') ||
-        ip.startsWith('10.')
+        ip.startsWith('10.') ||
+        ip.startsWith('172.') ||
+        ip === 'localhost'
       ) {
+        this.logger.debug(`Local/Private IP detected: ${ip}`);
         return 'Local';
       }
 
-      const geo = geoip.lookup(ip);
-      return geo?.country || 'Unknown';
+      // Use fast-geoip for country lookup
+      const geo = await geoip.lookup(ip);
+      const country = geo?.country || 'Unknown';
+      
+      this.logger.debug(`IP ${ip} resolved to country: ${country}`);
+      return country;
     } catch (error) {
-      console.warn(`Failed to get country for IP ${ip}:`, error);
+      this.logger.warn(`Failed to get country for IP ${ip}:`, error.message);
       return 'Unknown';
     }
   }
