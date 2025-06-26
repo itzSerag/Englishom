@@ -36,7 +36,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
           limit: 100,
         },
       ],
-    }), DashboardModule,
+    }),
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,20 +1,24 @@
-import { 
-  Controller, 
-  Get, 
-  Param, 
+import {
+  Controller,
+  Get,
+  Param,
   Query,
   UseGuards,
   ValidationPipe,
   BadRequestException,
   Logger,
   Post,
-  Body
+  Body,
 } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { AdminRoles } from '../admin/decorators/admin-roles.decorator';
 import { AdminRole } from '../common/shared/enums';
 import { IsAdminGuard, AdminRoleGuard } from '../admin/guards';
-import { DashboardSearchDto, DashboardPaginationDto, AssignCourseDto } from './dto';
+import {
+  DashboardSearchDto,
+  DashboardPaginationDto,
+  AssignCourseDto,
+} from './dto';
 import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
 
 @UseGuards(IsAdminGuard, AdminRoleGuard)
@@ -58,18 +62,14 @@ export class DashboardController {
     return await this.dashboardService.searchUsers(searchDto);
   }
 
-
   /**
    * Assign a course to a user manually
    * Access: SUPER and MANAGER only
    */
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Post('assign-course')
-  async assignCourse(
-    @Body() assignCourseDto: AssignCourseDto) {
+  async assignCourse(@Body() assignCourseDto: AssignCourseDto) {
     this.logger.log(`Assigning course with data:`, assignCourseDto);
     return await this.dashboardService.assignCourseToUser(assignCourseDto);
   }
-
-  
 }

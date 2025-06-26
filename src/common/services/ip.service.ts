@@ -28,7 +28,7 @@ export class IpService {
       // Use fast-geoip for country lookup
       const geo = await geoip.lookup(ip);
       const country = geo?.country || 'Unknown';
-      
+
       this.logger.debug(`IP ${ip} resolved to country: ${country}`);
       return country;
     } catch (error) {

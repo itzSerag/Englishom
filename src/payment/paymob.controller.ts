@@ -35,16 +35,15 @@ export class PaymobController {
     private courseService: CourseService,
   ) {}
 
-
   // Web hook
   @Public()
   @Post('callback')
   async callbackPost(@Body() data: any) {
     this.logger.log('Paymob callback received:', JSON.stringify(data, null, 2));
-    
+
     const success = data.obj?.success;
     const orderId = data.obj?.id;
-    
+
     // Try multiple ways to extract email in case structure is different
     let userEmail = data.obj?.order?.shipping_data?.email;
     if (!userEmail) {
@@ -56,16 +55,21 @@ export class PaymobController {
     if (!userEmail) {
       userEmail = data.obj?.shipping_data?.email;
     }
-    
+
     const isPending = data.obj?.pending;
     const isCaptured = data.obj?.is_captured;
     const amountCents = data.obj?.amount_cents;
 
-    this.logger.log(`Callback details: success=${success}, orderId=${orderId}, email=${userEmail}, pending=${isPending}, captured=${isCaptured}, amount=${amountCents}`);
+    this.logger.log(
+      `Callback details: success=${success}, orderId=${orderId}, email=${userEmail}, pending=${isPending}, captured=${isCaptured}, amount=${amountCents}`,
+    );
 
     if (!userEmail) {
       this.logger.error('Could not extract user email from callback data');
-      this.logger.error('Callback data structure:', JSON.stringify(data, null, 2));
+      this.logger.error(
+        'Callback data structure:',
+        JSON.stringify(data, null, 2),
+      );
       throw new BadRequestException('User email not found in callback data');
     }
 
@@ -190,15 +194,16 @@ export class PaymobController {
         total: allOrders?.length || 0,
         pending: pendingOrders?.length || 0,
         completed: completedOrders?.length || 0,
-        orders: allOrders?.map(order => ({
-          id: order._id,
-          levelName: order.levelName,
-          status: order.paymentStatus,
-          amount: order.amountCents,
-          paymentId: order.paymentId,
-          createdAt: order.createdAt,
-          paymentDate: order.paymentDate,
-        })) || [],
+        orders:
+          allOrders?.map((order) => ({
+            id: order._id,
+            levelName: order.levelName,
+            status: order.paymentStatus,
+            amount: order.amountCents,
+            paymentId: order.paymentId,
+            createdAt: order.createdAt,
+            paymentDate: order.paymentDate,
+          })) || [],
       };
     } catch (error) {
       this.logger.error(`Debug orders failed: ${error.message}`, error.stack);
@@ -253,18 +258,19 @@ export class PaymobController {
   @Post('verify/:paymentId')
   async verifyPayment(@Param('paymentId') paymentId: string) {
     try {
-      const paymentData = await this.paymobService.verifyPaymentStatus(paymentId);
-      
+      const paymentData =
+        await this.paymobService.verifyPaymentStatus(paymentId);
+
       // Find the order with this payment ID
       const order = await this.paymobService.orderRepo.findOne({
-        paymentId: paymentId
+        paymentId: paymentId,
       });
 
       if (!order) {
         return {
           paymentData,
           orderFound: false,
-          message: 'Payment verified but no matching order found'
+          message: 'Payment verified but no matching order found',
         };
       }
 
@@ -278,10 +284,13 @@ export class PaymobController {
           amount: order.amountCents,
           status: order.paymentStatus,
           createdAt: order.createdAt,
-        }
+        },
       };
     } catch (error) {
-      this.logger.error(`Payment verification failed: ${error.message}`, error.stack);
+      this.logger.error(
+        `Payment verification failed: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException(`Verification failed: ${error.message}`);
     }
   }

@@ -22,14 +22,10 @@ import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { Request, Response } from 'express';
-import {
-  ForgetPasswordDto,
-  ResetPasswordWithTokenDto,
-} from './dto';
+import { ForgetPasswordDto, ResetPasswordWithTokenDto } from './dto';
 import { Admin } from 'src/admin/models/admin.schema';
 import { OtpCause } from './enum/otp-cause.enum';
 import { cleanResponse } from '../common/utils/response.utils';
-import { log } from 'console';
 
 @Controller('auth')
 export class AuthController {
@@ -57,9 +53,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
-    const user: User | Admin = await this.authService.login(loginDto);
-    const access_token = await this.authService.generateToken(user);
-
+    const {user ,  access_token }  = await this.authService.login(loginDto);
     if (user instanceof Admin) {
       // If the user is an admin, we can return the admin-specific fields
       return {
@@ -82,12 +76,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    
     // if there is no cause in verifyOtpDto, default to EMAIL_VERIFICATION
     if (!verifyOtpDto.cause) {
       verifyOtpDto.cause = OtpCause.EMAIL_VERIFICATION;
     }
-    
+
     const result = await this.authService.verifyOtp(verifyOtpDto);
 
     // Handle different causes
@@ -109,7 +102,6 @@ export class AuthController {
   @Public()
   @Post('resend-otp')
   async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
-
     if (!resendOtpDto.cause) {
       resendOtpDto.cause = OtpCause.EMAIL_VERIFICATION;
     }
@@ -154,7 +146,10 @@ export class AuthController {
         throw new UnauthorizedException('No user data received from Facebook');
       }
 
-      const newUser: User = await this.authService.findOrCreateOAuthUser(user, req);
+      const newUser: User = await this.authService.findOrCreateOAuthUser(
+        user,
+        req,
+      );
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {
@@ -188,7 +183,10 @@ export class AuthController {
         throw new UnauthorizedException('No user data received from Google');
       }
 
-      const newUser: User = await this.authService.findOrCreateOAuthUser(user, req);
+      const newUser: User = await this.authService.findOrCreateOAuthUser(
+        user,
+        req,
+      );
       const jwt = await this.authService.generateToken(newUser);
       res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
     } catch (err) {

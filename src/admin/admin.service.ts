@@ -167,7 +167,6 @@ export class AdminService {
     );
   }
 
-  
   // Update admin activity
   async updateActivity(adminId: Types.ObjectId): Promise<void> {
     await this.adminRepo.findOneAndUpdate(
@@ -213,5 +212,4 @@ export class AdminService {
       { isActive: false },
     );
   }
-
 }

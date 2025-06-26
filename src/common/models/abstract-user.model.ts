@@ -2,8 +2,6 @@ import { Prop } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database/abstract.schema';
 
 export abstract class AbstractUser extends AbstractDocument {
-
-  
   @Prop({ required: true, unique: true })
   email: string;
 

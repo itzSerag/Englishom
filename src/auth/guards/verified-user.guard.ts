@@ -29,8 +29,8 @@ export class VerifiedGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (user?.adminRole){
-      return true
+    if (user?.adminRole) {
+      return true;
     }
 
     if (!user) {

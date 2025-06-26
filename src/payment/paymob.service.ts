@@ -33,7 +33,7 @@ export class PaymobService {
       'PAYMOB_INTEGRATION_ID',
     );
     this.integrationId = integrationIdValue.toString();
-    
+
     this.PAYMOB_PUBLIC_KEY =
       this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
     this.PAYMOB_SECRET_KEY =
@@ -125,8 +125,10 @@ export class PaymobService {
       }
 
       // Create or update order record with transaction session
-      this.logger.log(`Creating/updating order for user ${userId}, level ${levelName}, amount ${paymentRequest.amount}`);
-      
+      this.logger.log(
+        `Creating/updating order for user ${userId}, level ${levelName}, amount ${paymentRequest.amount}`,
+      );
+
       try {
         const order = await this.orderRepo.upsertOrder(
           userId,
@@ -134,11 +136,13 @@ export class PaymobService {
           paymentRequest.amount,
           session,
         );
-        
+
         this.logger.log(`Order upserted successfully: ${order._id}`);
       } catch (err) {
         this.logger.error('Failed to upsert the order:', err);
-        this.logger.error(`Details - userId: ${userId}, levelName: ${levelName}, amount: ${paymentRequest.amount}`);
+        this.logger.error(
+          `Details - userId: ${userId}, levelName: ${levelName}, amount: ${paymentRequest.amount}`,
+        );
         throw new InternalServerErrorException('Failed to upsert the order');
       }
 
@@ -155,8 +159,10 @@ export class PaymobService {
     amount: number,
     userEmail: string,
   ): Promise<boolean> {
-    this.logger.log(`Processing callback: orderId=${orderId}, success=${success}, amount=${amount}, email=${userEmail}`);
-    
+    this.logger.log(
+      `Processing callback: orderId=${orderId}, success=${success}, amount=${amount}, email=${userEmail}`,
+    );
+
     return await this.transactionService.withTransaction(async (session) => {
       if (!userEmail) {
         this.logger.error('User email is missing from callback');
@@ -185,7 +191,9 @@ export class PaymobService {
         );
 
         if (pendingOrder) {
-          this.logger.log(`Updating failed order ${pendingOrder._id} to FAILED status`);
+          this.logger.log(
+            `Updating failed order ${pendingOrder._id} to FAILED status`,
+          );
           await this.orderRepo.updateOrderStatus(
             pendingOrder._id.toString(),
             PaymentStatus.FAILED,
@@ -198,8 +206,10 @@ export class PaymobService {
       }
 
       // Payment was successful
-      this.logger.log('Payment successful, looking for pending order to complete');
-      
+      this.logger.log(
+        'Payment successful, looking for pending order to complete',
+      );
+
       // Find the pending order for this user and amount
       const pendingOrder = await this.orderRepo.findOne(
         {
@@ -211,8 +221,10 @@ export class PaymobService {
       );
 
       if (!pendingOrder) {
-        this.logger.error(`No pending order found for user ${user._id} with amount ${amount}`);
-        
+        this.logger.error(
+          `No pending order found for user ${user._id} with amount ${amount}`,
+        );
+
         // Check if there's an order with same amount but different status
         const existingOrder = await this.orderRepo.findOne(
           {
@@ -223,7 +235,9 @@ export class PaymobService {
         );
 
         if (existingOrder) {
-          this.logger.error(`Order already exists with status: ${existingOrder.paymentStatus}`);
+          this.logger.error(
+            `Order already exists with status: ${existingOrder.paymentStatus}`,
+          );
           throw new BadRequestException(
             `Order already exists with status: ${existingOrder.paymentStatus}`,
           );
@@ -232,7 +246,9 @@ export class PaymobService {
         throw new NotFoundException('No matching pending order found');
       }
 
-      this.logger.log(`Found pending order ${pendingOrder._id}, updating to COMPLETED`);
+      this.logger.log(
+        `Found pending order ${pendingOrder._id}, updating to COMPLETED`,
+      );
 
       // Update order status to COMPLETED
       await this.orderRepo.updateOrderStatus(
@@ -249,11 +265,15 @@ export class PaymobService {
       );
 
       if (updatedOrder?.paymentStatus !== PaymentStatus.COMPLETED) {
-        this.logger.error(`Failed to update order status. Current status: ${updatedOrder?.paymentStatus}`);
+        this.logger.error(
+          `Failed to update order status. Current status: ${updatedOrder?.paymentStatus}`,
+        );
         throw new InternalServerErrorException('Failed to update order status');
       }
 
-      this.logger.log(`Successfully updated order ${pendingOrder._id} to COMPLETED status`);
+      this.logger.log(
+        `Successfully updated order ${pendingOrder._id} to COMPLETED status`,
+      );
       return true;
     });
   }
@@ -272,26 +292,34 @@ export class PaymobService {
     const retryDelayMs = 1000; // 1 second
 
     try {
-      return await this.handlePaymobCallback(orderId, success, amount, userEmail);
+      return await this.handlePaymobCallback(
+        orderId,
+        success,
+        amount,
+        userEmail,
+      );
     } catch (error) {
-      if (retryCount < maxRetries && 
-          (error.message.includes('No matching pending order found') || 
-           error.message.includes('Failed to update order status'))) {
-        
-        this.logger.warn(`Callback failed, retrying in ${retryDelayMs}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
-        
+      if (
+        retryCount < maxRetries &&
+        (error.message.includes('No matching pending order found') ||
+          error.message.includes('Failed to update order status'))
+      ) {
+        this.logger.warn(
+          `Callback failed, retrying in ${retryDelayMs}ms (attempt ${retryCount + 1}/${maxRetries + 1})`,
+        );
+
         // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
-        
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+
         return await this.handlePaymobCallbackWithRetry(
-          orderId, 
-          success, 
-          amount, 
-          userEmail, 
-          retryCount + 1
+          orderId,
+          success,
+          amount,
+          userEmail,
+          retryCount + 1,
         );
       }
-      
+
       throw error;
     }
   }
@@ -334,14 +362,17 @@ export class PaymobService {
     );
 
     try {
-      const res = await fetch(`https://accept.paymob.com/api/acceptance/transactions/${paymentId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Token ${this.PAYMOB_SECRET_KEY}`,
-          'Content-Type': 'application/json',
+      const res = await fetch(
+        `https://accept.paymob.com/api/acceptance/transactions/${paymentId}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Token ${this.PAYMOB_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
         },
-        signal: controller.signal,
-      });
+      );
 
       clearTimeout(timeoutId);
 
@@ -355,7 +386,7 @@ export class PaymobService {
 
       const paymentData = await res.json();
       this.logger.log(`Payment verification for ${paymentId}:`, paymentData);
-      
+
       return paymentData;
     } catch (error) {
       clearTimeout(timeoutId);

@@ -9,7 +9,8 @@ import { UserStatus, Role } from '../../common/shared';
 import { User } from '../../user/models/user.schema';
 
 export const SKIP_USER_STATUS_KEY = 'skipUserStatus';
-export const SkipUserStatusGuard = () => SetMetadata(SKIP_USER_STATUS_KEY, true);
+export const SkipUserStatusGuard = () =>
+  SetMetadata(SKIP_USER_STATUS_KEY, true);
 
 import { SetMetadata } from '@nestjs/common';
 
@@ -48,7 +49,8 @@ export class UserStatusGuard implements CanActivate {
     const userEntity = user as User;
     if (userEntity.status === UserStatus.SUSPENDED) {
       throw new ForbiddenException({
-        message: 'Your account has been suspended. Please contact support to reactivate your account.',
+        message:
+          'Your account has been suspended. Please contact support to reactivate your account.',
         statusCode: 403,
         error: 'Account Suspended',
         suspendedAt: userEntity.suspendedAt,
@@ -58,7 +60,8 @@ export class UserStatusGuard implements CanActivate {
 
     if (userEntity.status === UserStatus.BLOCKED) {
       throw new ForbiddenException({
-        message: 'Your account has been permanently blocked. Please contact support.',
+        message:
+          'Your account has been permanently blocked. Please contact support.',
         statusCode: 403,
         error: 'Account Blocked',
       });

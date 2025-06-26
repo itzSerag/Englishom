@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { AdminRepo } from '../repo/admin.repo';
 import { AdminRole } from '../../common/shared';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AdminSeederService implements OnModuleInit {

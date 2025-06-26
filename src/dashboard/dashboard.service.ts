@@ -1,12 +1,25 @@
-import { Injectable, NotFoundException, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { UserRepo } from '../user/repo/user.repo';
 import { OrderRepo } from '../payment/repo/order.repo';
 import { CourseRepo } from '../auth/repo/course.repo';
 import { PaymentStatus } from '../payment/types';
 import { UserStatus } from '../common/shared/enums';
-import { DashboardPaginationDto, DashboardSearchDto, AssignCourseDto } from './dto';
+import {
+  DashboardPaginationDto,
+  DashboardSearchDto,
+  AssignCourseDto,
+} from './dto';
 import { TransactionService } from '../common/database/transaction.service';
-import { cleanResponse, cleanResponseArray } from '../common/utils/response.utils';
+import {
+  cleanResponse,
+  cleanResponseArray,
+} from '../common/utils/response.utils';
 import { User } from '../user/models/user.schema';
 
 @Injectable()
@@ -37,7 +50,7 @@ export class DashboardService {
         totalRevenue,
         totalSubscribedUsers,
         totalCourses,
-        recentOrders
+        recentOrders,
       ] = await Promise.all([
         this.getTotalUsers(),
         this.getTotalActiveUsers(),
@@ -68,7 +81,10 @@ export class DashboardService {
       this.logger.log('Dashboard statistics generated successfully');
       return stats;
     } catch (error) {
-      this.logger.error(`Error generating dashboard stats: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error generating dashboard stats: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -81,17 +97,21 @@ export class DashboardService {
     return await this.transactionService.withTransaction(async (session) => {
       const { userId, levelName, reason } = assignCourseDto;
 
-      this.logger.log(`Assigning course ${levelName} to user ${userId}. Reason: ${reason || 'Not specified'}`);
+      this.logger.log(
+        `Assigning course ${levelName} to user ${userId}. Reason: ${reason || 'Not specified'}`,
+      );
 
       // Check if user exists
-      const user : User = await this.userRepo.findOne({ _id: userId }, session);
+      const user: User = await this.userRepo.findOne({ _id: userId }, session);
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
       // Check if user is active
       if (user.status !== UserStatus.ACTIVE) {
-        throw new BadRequestException(`Cannot assign course to user with status: ${user.status}`);
+        throw new BadRequestException(
+          `Cannot assign course to user with status: ${user.status}`,
+        );
       }
 
       // Check if course exists
@@ -108,21 +128,27 @@ export class DashboardService {
       );
 
       if (existingCompletedOrder) {
-        throw new BadRequestException(`User already has access to ${levelName} level`);
+        throw new BadRequestException(
+          `User already has access to ${levelName} level`,
+        );
       }
 
-
       // Create a completed order record for the user
-      const order = await this.orderRepo.create({
-        userId: user._id as any, 
-        levelName: levelName,
-        amountCents: course.price * 100, // Convert to cents
-        paymentStatus: PaymentStatus.COMPLETED,
-        paymentDate: new Date(),
-        paymentId: `ADMIN_ASSIGNED_${Date.now()}`, // Special payment ID to indicate admin assignment
-      }, session);
+      const order = await this.orderRepo.create(
+        {
+          userId: user._id as any,
+          levelName: levelName,
+          amountCents: course.price * 100, // Convert to cents
+          paymentStatus: PaymentStatus.COMPLETED,
+          paymentDate: new Date(),
+          paymentId: `ADMIN_ASSIGNED_${Date.now()}`, // Special payment ID to indicate admin assignment
+        },
+        session,
+      );
 
-      this.logger.log(`Successfully assigned course ${levelName} to user ${userId}. Order ID: ${order._id}`);
+      this.logger.log(
+        `Successfully assigned course ${levelName} to user ${userId}. Order ID: ${order._id}`,
+      );
 
       return {
         success: true,
@@ -138,7 +164,6 @@ export class DashboardService {
     });
   }
 
-  
   /**
    * Get user details for course assignment
    */
@@ -153,22 +178,24 @@ export class DashboardService {
       // Get user's completed orders
       const completedOrders = await this.orderRepo.find({
         userId: userId,
-        paymentStatus: PaymentStatus.COMPLETED
+        paymentStatus: PaymentStatus.COMPLETED,
       });
 
       return {
-          user : cleanResponse(user),
-          completedCourses: (completedOrders || []).map(order => ({
+        user: cleanResponse(user),
+        completedCourses: (completedOrders || []).map((order) => ({
           levelName: order.levelName,
           purchaseDate: order.createdAt || order.paymentDate,
         })),
       };
     } catch (error) {
-      this.logger.error(`Error fetching user details: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error fetching user details: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
- 
 
   /**
    * Get paginated list of users for dashboard
@@ -177,20 +204,23 @@ export class DashboardService {
   async getPaginatedUsers(paginationDto: DashboardPaginationDto) {
     try {
       const result = await this.userRepo.findWithPagination(
-        {}, 
-        paginationDto.page, 
-        paginationDto.limit
+        {},
+        paginationDto.page,
+        paginationDto.limit,
       );
 
       return {
-       users : cleanResponseArray(result.data),
+        users: cleanResponseArray(result.data),
         total: result.total,
         page: result.page,
         limit: result.limit,
         totalPages: result.totalPages,
       };
     } catch (error) {
-      this.logger.error(`Error fetching paginated users: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error fetching paginated users: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -200,65 +230,59 @@ export class DashboardService {
    * Uses the repository's pagination method for consistency
    */
   async searchUsers(searchDto: DashboardSearchDto) {
-  try {
-    const { email, firstName, lastName, page = 1, limit = 10 } = searchDto;
+    try {
+      const { email, firstName, lastName, page = 1, limit = 10 } = searchDto;
 
-    // Validate that at least one search parameter is provided
-    if (!email && !firstName && !lastName) {
-
-      // if nothing provided, return all wihin the page and the limit
-      return await this.getPaginatedUsers({ page, limit });
-    }
-
-    // Build search filter
-    const searchFilters = [];
-
-
-    // Specific field searches
-    if (email) {
-      const emailRegex = new RegExp(email.trim(), 'i');
-      searchFilters.push({ email: emailRegex });
-    }
-
-    if (firstName) {
-      const firstNameRegex = new RegExp(firstName.trim(), 'i');
-      searchFilters.push({ firstName: firstNameRegex });
-    }
-
-    if (lastName) {
-      const lastNameRegex = new RegExp(lastName.trim(), 'i');
-      searchFilters.push({ lastName: lastNameRegex });
-    }
-
-    // Combine all filters with AND logic
-    const finalFilter = searchFilters.length > 1 
-      ? { $and: searchFilters }
-      : searchFilters[0];
-
-    // Use the repository's pagination method
-    const result = await this.userRepo.findWithPagination(
-      finalFilter,
-      page,
-      limit
-    );
-
-    return {
-      users: cleanResponseArray(result.data),
-        pagination: {
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-        totalPages: result.totalPages,
-
+      // Validate that at least one search parameter is provided
+      if (!email && !firstName && !lastName) {
+        // if nothing provided, return all wihin the page and the limit
+        return await this.getPaginatedUsers({ page, limit });
       }
-    };
 
-  } catch (error) {
-    this.logger.error(`Error searching users: ${error.message}`, error.stack);
-    throw error;
+      // Build search filter
+      const searchFilters = [];
+
+      // Specific field searches
+      if (email) {
+        const emailRegex = new RegExp(email.trim(), 'i');
+        searchFilters.push({ email: emailRegex });
+      }
+
+      if (firstName) {
+        const firstNameRegex = new RegExp(firstName.trim(), 'i');
+        searchFilters.push({ firstName: firstNameRegex });
+      }
+
+      if (lastName) {
+        const lastNameRegex = new RegExp(lastName.trim(), 'i');
+        searchFilters.push({ lastName: lastNameRegex });
+      }
+
+      // Combine all filters with AND logic
+      const finalFilter =
+        searchFilters.length > 1 ? { $and: searchFilters } : searchFilters[0];
+
+      // Use the repository's pagination method
+      const result = await this.userRepo.findWithPagination(
+        finalFilter,
+        page,
+        limit,
+      );
+
+      return {
+        users: cleanResponseArray(result.data),
+        pagination: {
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error searching users: ${error.message}`, error.stack);
+      throw error;
+    }
   }
-}
-
 
   // Private helper methods for statistics - optimized for performance
   private async getTotalUsers(): Promise<number> {
@@ -278,28 +302,32 @@ export class DashboardService {
   }
 
   private async getTotalRevenue(): Promise<number> {
-    const orders = await this.orderRepo.find({ paymentStatus: PaymentStatus.COMPLETED });
+    const orders = await this.orderRepo.find({
+      paymentStatus: PaymentStatus.COMPLETED,
+    });
     if (!orders) return 0;
-    
-    return orders.reduce((total, order) => total + (order.amountCents / 100), 0);
+
+    return orders.reduce((total, order) => total + order.amountCents / 100, 0);
   }
 
- private async getTotalSubscribedUsers(): Promise<number> {
-  const orders = await this.orderRepo.find({
-    paymentStatus: PaymentStatus.COMPLETED,
-  });
+  private async getTotalSubscribedUsers(): Promise<number> {
+    const orders = await this.orderRepo.find({
+      paymentStatus: PaymentStatus.COMPLETED,
+    });
 
-  if (!orders || orders.length === 0) return 0;
+    if (!orders || orders.length === 0) return 0;
 
-  // Get unique user IDs from the orders
-  const uniqueUserIds = [...new Set(orders.map(order => order.userId.toString()))];
+    // Get unique user IDs from the orders
+    const uniqueUserIds = [
+      ...new Set(orders.map((order) => order.userId.toString())),
+    ];
 
-  // Now check which of these users actually exist in the User collection
-  const existingUsers = await this.userRepo.find({
-    _id: { $in: uniqueUserIds },
-  });
+    // Now check which of these users actually exist in the User collection
+    const existingUsers = await this.userRepo.find({
+      _id: { $in: uniqueUserIds },
+    });
 
-  return existingUsers.length;
+    return existingUsers.length;
   }
 
   private async getTotalCourses(): Promise<number> {
@@ -307,26 +335,26 @@ export class DashboardService {
     return courses ? courses.length : 0;
   }
 
- private async getRecentOrders(limit: number = 10) {
-  const orders = await this.orderRepo.find({ paymentStatus: PaymentStatus.COMPLETED });
-  if (!orders) return [];
+  private async getRecentOrders(limit: number = 10) {
+    const orders = await this.orderRepo.find({
+      paymentStatus: PaymentStatus.COMPLETED,
+    });
+    if (!orders) return [];
 
-  return cleanResponseArray(orders)
-    .sort((a, b) =>
-      new Date(b.createdAt || b.paymentDate).getTime() -
-      new Date(a.createdAt || a.paymentDate).getTime()
-    )
-    .slice(0, limit);
-}
-
-
- 
+    return cleanResponseArray(orders)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || b.paymentDate).getTime() -
+          new Date(a.createdAt || a.paymentDate).getTime(),
+      )
+      .slice(0, limit);
+  }
 
   // private async getRevenueByMonth() {
   //   const sixMonthsAgo = new Date();
   //   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-  //   const orders = await this.orderRepo.find({ 
+  //   const orders = await this.orderRepo.find({
   //     paymentStatus: PaymentStatus.COMPLETED,
   //     createdAt: { $gte: sixMonthsAgo }
   //   });
@@ -335,31 +363,29 @@ export class DashboardService {
 
   //   // Group orders by month
   //   const monthlyData = new Map();
-    
+
   //   orders.forEach(order => {
   //     const createdAt = order.createdAt || order.paymentDate;
   //     const monthKey = `${createdAt.getFullYear()}-${createdAt.getMonth() + 1}`;
-      
+
   //     if (!monthlyData.has(monthKey)) {
   //       monthlyData.set(monthKey, {
-  //         _id: { 
-  //           year: createdAt.getFullYear(), 
-  //           month: createdAt.getMonth() + 1 
+  //         _id: {
+  //           year: createdAt.getFullYear(),
+  //           month: createdAt.getMonth() + 1
   //         },
   //         revenue: 0,
   //         orders: 0
   //       });
   //     }
-      
+
   //     const data = monthlyData.get(monthKey);
   //     data.revenue += order.amountCents;
   //     data.orders++;
   //   });
 
-  //   return Array.from(monthlyData.values()).sort((a, b) => 
+  //   return Array.from(monthlyData.values()).sort((a, b) =>
   //     a._id.year - b._id.year || a._id.month - b._id.month
   //   );
   // }
-
-  
 }

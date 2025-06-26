@@ -64,32 +64,11 @@ export class AuthService {
       throw new NotFoundException('Invalid Credentials');
     }
 
-
     if (user instanceof User) {
-        if (user.strategy !== 'local') {
-          throw new ConflictException(
-            'This email has signed-up with a different method ' + user.strategy,
-          );
-    }
-
-      // Check user status for regular users
-      const userEntity = user as User;
-      if (userEntity.status === UserStatus.SUSPENDED) {
-        throw new UnauthorizedException({
-          message: 'Your account has been suspended. Please contact support to reactivate your account.',
-          statusCode: 401,
-          error: 'Account Suspended',
-          suspendedAt: userEntity.suspendedAt,
-          reason: userEntity.suspensionReason,
-        });
-      }
-
-      if (userEntity.status === UserStatus.BLOCKED) {
-        throw new UnauthorizedException({
-          message: 'Your account has been permanently blocked. Please contact support.',
-          statusCode: 401,
-          error: 'Account Blocked',
-        });
+      if (user.strategy !== 'local') {
+        throw new ConflictException(
+          'This email has signed-up with a different method ' + user.strategy,
+        );
       }
     }
 
@@ -110,7 +89,7 @@ export class AuthService {
       },
     );
 
-    return user;
+    return {access_token, user};
   }
 
   async logout(user: User | Admin) {
@@ -118,9 +97,7 @@ export class AuthService {
     return true;
   }
 
-  async verifyOtp(
-    verifyOtpDto: VerifyOtpDto,
-  ) {
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { email, otp, cause } = verifyOtpDto;
 
     const user = await this.userRepo.findOne({ email });
@@ -147,9 +124,7 @@ export class AuthService {
         this.otpRepo.delete({ email, cause }),
       ]);
 
-
       return newUser;
-
     } else if (cause === OtpCause.FORGET_PASSWORD) {
       // For forget password, delete the OTP and generate reset token
       await this.otpRepo.delete({ email, cause });
@@ -186,7 +161,10 @@ export class AuthService {
     }
 
     // Generate and send OTP (old OTP deletion is handled automatically)
-    await this.generateAndSendOtp(resendOtpDto.email, resendOtpDto.cause || OtpCause.EMAIL_VERIFICATION);
+    await this.generateAndSendOtp(
+      resendOtpDto.email,
+      resendOtpDto.cause || OtpCause.EMAIL_VERIFICATION,
+    );
 
     const message =
       resendOtpDto.cause === OtpCause.EMAIL_VERIFICATION
@@ -234,7 +212,7 @@ export class AuthService {
     if (!user) {
       // Create new user with IP detection for country
       const password = Math.random().toString(36).slice(-8); // fallback password
-      
+
       // Get country from IP if request is available
       let country = 'unknown';
       if (req) {
@@ -331,9 +309,8 @@ export class AuthService {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     try {
-    
       await this.otpRepo.delete({ email, cause });
-      
+
       await this.otpRepo.create({ email, otp, cause });
 
       // Send email only after successful OTP creation

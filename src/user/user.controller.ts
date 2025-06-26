@@ -47,13 +47,13 @@ export class UserController {
   async getMe(@CurrentUser() user: User | Admin) {
     // no need to get the levels for admin
 
-    if(user instanceof Admin){
+    if (user instanceof Admin) {
       return {
         user: cleanResponse(user),
         levels: [],
       };
     }
-    
+
     const userLevels = await this.userService.getUserCompletedLevelNames(
       user._id.toString(),
     );
@@ -88,7 +88,9 @@ export class UserController {
 
   @Get('levels')
   async getUserLevels(@CurrentUser() user: User) {
-    return await this.userService.getUserCompletedLevelNames(user._id.toString());
+    return await this.userService.getUserCompletedLevelNames(
+      user._id.toString(),
+    );
   }
 
   @Patch(':id')

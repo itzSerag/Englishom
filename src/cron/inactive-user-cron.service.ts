@@ -28,8 +28,14 @@ export class InactiveUserCronService {
     }
 
     try {
-      const suspensionTemplatePath = path.join(__dirname, 'suspension-email-template.html');
-      this.suspensionEmailTemplate = fs.readFileSync(suspensionTemplatePath, 'utf8');
+      const suspensionTemplatePath = path.join(
+        __dirname,
+        'suspension-email-template.html',
+      );
+      this.suspensionEmailTemplate = fs.readFileSync(
+        suspensionTemplatePath,
+        'utf8',
+      );
     } catch (error) {
       // Fallback template if file loading fails
       this.logger.error(
@@ -72,7 +78,9 @@ export class InactiveUserCronService {
         status: UserStatus.ACTIVE,
       });
 
-      this.logger.log(`📧 Found ${usersForMotivation.length} users for motivational emails`);
+      this.logger.log(
+        `📧 Found ${usersForMotivation.length} users for motivational emails`,
+      );
       this.logger.log(`⚠️ Found ${usersToSuspend.length} users to suspend`);
 
       let motivationSuccessCount = 0;
@@ -89,8 +97,9 @@ export class InactiveUserCronService {
             {
               status: UserStatus.SUSPENDED,
               suspendedAt: new Date(),
-              suspensionReason: 'Account suspended due to inactivity (65+ days)',
-            }
+              suspensionReason:
+                'Account suspended due to inactivity (65+ days)',
+            },
           );
 
           // Send suspension notification email
@@ -128,7 +137,9 @@ export class InactiveUserCronService {
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
 
-      this.logger.log(`✅ Inactive user management job completed in ${duration}s`);
+      this.logger.log(
+        `✅ Inactive user management job completed in ${duration}s`,
+      );
       this.logger.log(
         `📊 Results: ${motivationSuccessCount} motivation emails sent, ${motivationFailureCount} failed`,
       );

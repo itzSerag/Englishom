@@ -222,9 +222,7 @@ export class UserRepo extends AbstractRepo<User> {
     return day;
   }
 
-  async countDocuments(
-    filter: Record<string, any> = {},
-  ): Promise<number> {  
+  async countDocuments(filter: Record<string, any> = {}): Promise<number> {
     try {
       // Convert filter _id to ObjectId if it's a string
       if (filter._id && typeof filter._id === 'string') {

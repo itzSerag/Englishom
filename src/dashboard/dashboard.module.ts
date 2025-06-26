@@ -10,16 +10,15 @@ import { DatabaseModule } from '../common/database/database.module';
 
 @Module({
   imports: [
-    ConfigModule, 
+    ConfigModule,
     DatabaseModule, // Add DatabaseModule to get TransactionService
-    forwardRef(() => UserModule), 
-    forwardRef(() => AdminModule),
-    forwardRef(() => AuthModule),
-    forwardRef(() => PaymentModule),
-     // Assuming CourseModule is defined elsewhere
+    UserModule,
+    AdminModule,
+    AuthModule,
+    PaymentModule,
+    // Assuming CourseModule is defined elsewhere
   ],
   controllers: [DashboardController],
   providers: [DashboardService],
-  exports: [DashboardService],
 })
 export class DashboardModule {}

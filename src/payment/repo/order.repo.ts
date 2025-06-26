@@ -98,11 +98,13 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       const userIdObjectId = toObjectId(userId);
 
       // Check if there's already a pending order for this user and level
-      const existingPendingOrder = await this.orderModel.findOne({
-        userId: userIdObjectId,
-        levelName,
-        paymentStatus: PaymentStatus.PENDING,
-      }).session(session || null);
+      const existingPendingOrder = await this.orderModel
+        .findOne({
+          userId: userIdObjectId,
+          levelName,
+          paymentStatus: PaymentStatus.PENDING,
+        })
+        .session(session || null);
 
       if (existingPendingOrder) {
         // Update the existing pending order
@@ -112,24 +114,27 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
             amountCents,
             paymentDate: new Date(),
           },
-          { new: true, session: session || null }
+          { new: true, session: session || null },
         );
-        
+
         if (!updatedOrder) {
           throw new Error('Failed to update existing pending order');
         }
-        
+
         return updatedOrder;
       }
 
       // Create a new order if no pending order exists using the AbstractRepo's create method
-      const newOrder = await this.create({
-        userId: userIdObjectId as any, // Cast to avoid TypeScript issues with ObjectId vs User
-        levelName,
-        amountCents,
-        paymentStatus: PaymentStatus.PENDING,
-        paymentDate: new Date(),
-      }, session);
+      const newOrder = await this.create(
+        {
+          userId: userIdObjectId as any, // Cast to avoid TypeScript issues with ObjectId vs User
+          levelName,
+          amountCents,
+          paymentStatus: PaymentStatus.PENDING,
+          paymentDate: new Date(),
+        },
+        session,
+      );
 
       if (!newOrder) {
         throw new Error('Failed to create new order');

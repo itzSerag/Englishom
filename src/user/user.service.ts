@@ -258,9 +258,12 @@ export class UserService {
    * Update user status (suspend, activate, block)
    * Only accessible by SUPER and MANAGER admins
    */
-  async updateUserStatus(userId: string, updateStatusDto: UpdateUserStatusDto): Promise<User> {
+  async updateUserStatus(
+    userId: string,
+    updateStatusDto: UpdateUserStatusDto,
+  ): Promise<User> {
     const user = await this.userRepo.findOne({ _id: userId });
-    
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -269,14 +272,15 @@ export class UserService {
       status: updateStatusDto.status,
     };
 
-
     // with defualt messages
-     if (updateStatusDto.status === UserStatus.BLOCKED) {
+    if (updateStatusDto.status === UserStatus.BLOCKED) {
       updateData.suspendedAt = new Date();
-      updateData.suspensionReason = updateStatusDto.reason || 'Account blocked by admin';
+      updateData.suspensionReason =
+        updateStatusDto.reason || 'Account blocked by admin';
     } else if (updateStatusDto.status === UserStatus.SUSPENDED) {
       updateData.suspendedAt = new Date();
-      updateData.suspensionReason = updateStatusDto.reason || 'Account suspended by admin';
+      updateData.suspensionReason =
+        updateStatusDto.reason || 'Account suspended by admin';
     } else if (updateStatusDto.status === UserStatus.ACTIVE) {
       updateData.suspendedAt = null;
       updateData.suspensionReason = null;
@@ -284,11 +288,13 @@ export class UserService {
 
     const updatedUser = await this.userRepo.findOneAndUpdate(
       { _id: userId },
-      updateData
+      updateData,
     );
 
-    this.logger.log(`User ${user.email} status updated to ${updateStatusDto.status}`);
-    
+    this.logger.log(
+      `User ${user.email} status updated to ${updateStatusDto.status}`,
+    );
+
     return updatedUser;
   }
 
@@ -298,7 +304,7 @@ export class UserService {
   async suspendUser(userId: string, reason?: string): Promise<User> {
     return this.updateUserStatus(userId, {
       status: UserStatus.SUSPENDED,
-      reason: reason || 'Account suspended due to inactivity (65+ days)'
+      reason: reason || 'Account suspended due to inactivity (65+ days)',
     });
   }
 
@@ -307,7 +313,7 @@ export class UserService {
    */
   async activateUser(userId: string): Promise<User> {
     return this.updateUserStatus(userId, {
-      status: UserStatus.ACTIVE
+      status: UserStatus.ACTIVE,
     });
   }
 
@@ -317,7 +323,7 @@ export class UserService {
   async blockUser(userId: string, reason?: string): Promise<User> {
     return this.updateUserStatus(userId, {
       status: UserStatus.BLOCKED,
-      reason: reason || 'Account blocked by admin'
+      reason: reason || 'Account blocked by admin',
     });
   }
 
@@ -326,6 +332,10 @@ export class UserService {
    */
   async getUsersByStatus(status: UserStatus, paginationDto: PaginationDto) {
     // Use the repository's efficient pagination method
-    return await this.userRepo.findWithPagination({ status }, paginationDto.page, paginationDto.limit);
+    return await this.userRepo.findWithPagination(
+      { status },
+      paginationDto.page,
+      paginationDto.limit,
+    );
   }
 }

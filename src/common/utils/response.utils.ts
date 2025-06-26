@@ -26,7 +26,7 @@ function normalizeObject<T extends Record<string, any>>(obj: T): T {
  */
 export function cleanResponse<T extends Record<string, any>>(
   obj: T,
-  sensitiveFields: string[] = ['password', 'otp', '__v']
+  sensitiveFields: string[] = ['password', 'otp', '__v'],
 ): T {
   if (!obj) return obj;
 
@@ -49,13 +49,12 @@ export function cleanResponse<T extends Record<string, any>>(
  */
 export function cleanResponseArray<T extends Record<string, any>>(
   array: T[],
-  sensitiveFields: string[] = ['password', 'otp', '__v']
+  sensitiveFields: string[] = ['password', 'otp', '__v'],
 ): T[] {
   if (!Array.isArray(array)) return array;
 
-  return array.map(item => cleanResponse(item, sensitiveFields));
+  return array.map((item) => cleanResponse(item, sensitiveFields));
 }
-
 
 /**
  * Normalize ObjectId fields to strings without changing field names

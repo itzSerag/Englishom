@@ -26,7 +26,6 @@ export class Order extends AbstractDocument {
 
   @Prop({ unique: true, sparse: true })
   paymentId?: string;
-
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

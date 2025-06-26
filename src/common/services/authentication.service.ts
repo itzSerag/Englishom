@@ -59,10 +59,16 @@ export class AuthenticationService {
   async updateLastActivity(user: User | Admin): Promise<void> {
     const now = this.timeService.now();
 
-    if ( user instanceof User) {
-      await this.userRepo.findOneAndUpdate({ _id: user._id }, { lastActivity: now });
+    if (user instanceof User) {
+      await this.userRepo.findOneAndUpdate(
+        { _id: user._id },
+        { lastActivity: now },
+      );
     } else {
-      await this.adminRepo.findOneAndUpdate({ _id: user._id }, { lastActivity: now });
+      await this.adminRepo.findOneAndUpdate(
+        { _id: user._id },
+        { lastActivity: now },
+      );
     }
   }
 
@@ -74,7 +80,7 @@ export class AuthenticationService {
     const now = this.timeService.now();
     const updateData: any = { lastActivity: now };
 
-    if ( user instanceof User) {
+    if (user instanceof User) {
       await this.userRepo.findOneAndUpdate({ _id: user._id }, updateData);
     } else {
       await this.adminRepo.findOneAndUpdate({ _id: user._id }, updateData);
@@ -96,11 +102,12 @@ export class AuthenticationService {
     }
 
     // For regular users, check account status
-    if ( user instanceof User) {
+    if (user instanceof User) {
       const userEntity = user as User;
       if (userEntity.status === UserStatus.SUSPENDED) {
         throw new UnauthorizedException({
-          message: 'Your account has been suspended. Please contact support to reactivate your account.',
+          message:
+            'Your account has been suspended. Please contact support to reactivate your account.',
           statusCode: 401,
           error: 'Account Suspended',
           suspendedAt: userEntity.suspendedAt,
@@ -110,7 +117,8 @@ export class AuthenticationService {
 
       if (userEntity.status === UserStatus.BLOCKED) {
         throw new UnauthorizedException({
-          message: 'Your account has been permanently blocked. Please contact support.',
+          message:
+            'Your account has been permanently blocked. Please contact support.',
           statusCode: 401,
           error: 'Account Blocked',
         });
@@ -118,7 +126,7 @@ export class AuthenticationService {
     }
 
     // For admins, check if account is still active
-    if ( user instanceof Admin && !(user as Admin).isActive) {
+    if (user instanceof Admin && !(user as Admin).isActive) {
       throw new UnauthorizedException('Admin account is deactivated');
     }
 

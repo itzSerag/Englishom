@@ -23,7 +23,6 @@ import { cleanResponse } from '../../common/utils/response.utils';
 export class AdminUserController {
   constructor(private readonly userService: UserService) {}
 
-
   /**
    * Update user status - suspend, activate, or block (SUPER and MANAGER only)
    */
@@ -40,5 +39,4 @@ export class AdminUserController {
       user: cleanResponse(user),
     };
   }
-
 }

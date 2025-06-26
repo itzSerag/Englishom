@@ -9,7 +9,11 @@ export class Otp {
   @Prop({ required: true })
   otp: string;
 
-  @Prop({ required: true, enum: OtpCause, default: OtpCause.EMAIL_VERIFICATION })
+  @Prop({
+    required: true,
+    enum: OtpCause,
+    default: OtpCause.EMAIL_VERIFICATION,
+  })
   cause: OtpCause;
 }
 

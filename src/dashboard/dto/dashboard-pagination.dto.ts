@@ -2,7 +2,6 @@ import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { PaginationDto } from '../../user/dto/pagination.dto';
 
 export class DashboardSearchDto extends PaginationDto {
-
   @IsOptional()
   email?: string;
 
@@ -14,7 +13,6 @@ export class DashboardSearchDto extends PaginationDto {
   @IsOptional()
   lastName?: string;
 }
-
 
 export class DashboardPaginationDto extends PaginationDto {
   // Inherits page and limit from PaginationDto
