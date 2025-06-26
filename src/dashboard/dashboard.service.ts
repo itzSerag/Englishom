@@ -21,17 +21,24 @@ import {
   cleanResponseArray,
 } from '../common/utils/response.utils';
 import { User } from '../user/models/user.schema';
+import { EmailService } from '../common/mail/mail.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
+  private courseAssignmentEmailTemplate: string;
 
   constructor(
     private readonly userRepo: UserRepo,
     private readonly orderRepo: OrderRepo,
     private readonly courseRepo: CourseRepo,
     private readonly transactionService: TransactionService,
-  ) {}
+    private readonly emailService: EmailService,
+  ) {
+    this.loadCourseAssignmentEmailTemplate();
+  }
 
   /**
    * Get comprehensive dashboard statistics
@@ -150,8 +157,10 @@ export class DashboardService {
         `Successfully assigned course ${levelName} to user ${userId}. Order ID: ${order._id}`,
       );
 
+      // Send course assignment email
+      await this.sendCourseAssignmentEmail(user, levelName, reason);
+
       return {
-        success: true,
         message: `Course ${levelName} successfully assigned to user`,
         order: {
           _id: order._id.toString(),
@@ -348,6 +357,109 @@ export class DashboardService {
           new Date(a.createdAt || a.paymentDate).getTime(),
       )
       .slice(0, limit);
+  }
+
+  /**
+   * Load course assignment email template
+   */
+  private loadCourseAssignmentEmailTemplate(): void {
+    try {
+      // Try to load from payment template directory first, since it's similar
+      const templatePath = path.join(
+        __dirname,
+        '..',
+        'payment',
+        'templates',
+        'payment-success-email-template.html',
+      );
+      this.courseAssignmentEmailTemplate = fs.readFileSync(templatePath, 'utf-8');
+    } catch (error) {
+      this.logger.warn(
+        'Failed to load course assignment email template, using fallback template',
+      );
+      this.courseAssignmentEmailTemplate = this.getFallbackCourseAssignmentTemplate();
+    }
+  }
+
+  /**
+   * Get fallback course assignment email template
+   */
+  private getFallbackCourseAssignmentTemplate(): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
+          .header { background: #28a745; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f8f9fa; }
+          .success-box { background: #d4edda; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Course Assigned!</h1>
+          </div>
+          <div class="content">
+            <p>Hi {{userName}},</p>
+            <div class="success-box">
+              <strong>Great news!</strong> You have been granted access to a new course level.
+            </div>
+            <p><strong>Level:</strong> {{levelName}}</p>
+            <p><strong>Assigned by:</strong> Englishom Team</p>
+            <p><strong>Reason:</strong> {{reason}}</p>
+            <p>You can now access all materials for this level!</p>
+            <p>Best regards,<br>The Englishom Team</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Send course assignment email to user
+   */
+  private async sendCourseAssignmentEmail(
+    user: any,
+    levelName: string,
+    reason: string,
+  ): Promise<void> {
+    try {
+      // Replace template variables
+      const personalizedEmail = this.courseAssignmentEmailTemplate
+        .replace(/{{userName}}/g, user.firstName || 'there')
+        .replace(/{{levelName}}/g, levelName)
+        .replace(/{{reason}}/g, reason || 'Admin assignment')
+        .replace(/{{amount}}/g, 'Complimentary') // Since this is admin assignment
+        .replace(/{{paymentDate}}/g, new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }))
+        .replace(/{{orderId}}/g, `ADMIN_${Date.now()}`)
+
+
+      // Prepare email data
+      const mailOptions = {
+        from: `"Englishom Team" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: `🎉 Course Access Granted - Welcome to ${levelName} Level!`,
+        html: personalizedEmail,
+      };
+
+      await this.emailService.sendCustomEmail(mailOptions);
+      this.logger.log(
+        `Course assignment email sent to ${user.email} for level ${levelName}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send course assignment email to ${user.email}: ${error.message}`,
+        error.stack,
+      );
+      // Don't throw error to avoid breaking the assignment flow
+    }
   }
 
   // private async getRevenueByMonth() {

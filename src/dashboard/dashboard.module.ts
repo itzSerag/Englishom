@@ -7,6 +7,7 @@ import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { PaymentModule } from '../payment/paymob.module';
 import { DatabaseModule } from '../common/database/database.module';
+import { MailModule } from '../common/mail/mail.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { DatabaseModule } from '../common/database/database.module';
     AdminModule,
     AuthModule,
     PaymentModule,
+    MailModule,
     // Assuming CourseModule is defined elsewhere
   ],
   controllers: [DashboardController],

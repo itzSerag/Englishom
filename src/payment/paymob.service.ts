@@ -13,6 +13,9 @@ import { Level_Name } from '../common/shared/enums';
 import { OrderRepo } from './repo/order.repo';
 import { TransactionService } from '../common/database/transaction.service';
 import { UserRepo } from '../user/repo/user.repo';
+import { EmailService } from '../common/mail/mail.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class PaymobService {
@@ -21,12 +24,14 @@ export class PaymobService {
   private readonly integrationId: string;
   private readonly PAYMOB_PUBLIC_KEY: string;
   private readonly REQUEST_TIMEOUT = 10000; // Reduced to 10 seconds timeout
+  private paymentSuccessEmailTemplate: string;
 
   constructor(
     private readonly configService: ConfigService,
     public readonly orderRepo: OrderRepo,
     private readonly transactionService: TransactionService,
     private readonly userRepo: UserRepo,
+    private readonly emailService: EmailService,
   ) {
     // Integration ID can be either string or number from config
     const integrationIdValue = this.configService.getOrThrow<string | number>(
@@ -38,6 +43,61 @@ export class PaymobService {
       this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
     this.PAYMOB_SECRET_KEY =
       this.configService.getOrThrow<string>('PAYMOB_SECRET_KEY');
+    
+    // Load email template
+    this.loadPaymentSuccessEmailTemplate();
+  }
+
+  /**
+   * Load payment success email template
+   */
+  private loadPaymentSuccessEmailTemplate(): void {
+    try {
+      const templatePath = path.join(__dirname, 'templates', 'payment-success-email-template.html');
+      this.paymentSuccessEmailTemplate = fs.readFileSync(templatePath, 'utf-8');
+      this.logger.log('Payment success email template loaded successfully');
+    } catch (error) {
+      this.logger.warn('Failed to load payment success email template, using fallback template');
+      this.paymentSuccessEmailTemplate = this.getFallbackPaymentSuccessTemplate();
+    }
+  }
+
+  /**
+   * Get fallback payment success email template
+   */
+  private getFallbackPaymentSuccessTemplate(): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
+          .header { background: #28a745; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f8f9fa; }
+          .success-box { background: #d4edda; padding: 15px; margin: 20px 0; border-radius: 5px; }
+          .price { font-size: 24px; font-weight: bold; color: #28a745; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Payment Successful!</h1>
+          </div>
+          <div class="content">
+            <p>Hi {{userName}},</p>
+            <div class="success-box">
+              <strong>Congratulations!</strong> Your payment has been successfully processed.
+            </div>
+            <p><strong>Level:</strong> {{levelName}}</p>
+            <p><strong>Amount Paid:</strong> <span class="price">{{amount}} EGP</span></p>
+            <p><strong>Payment Date:</strong> {{paymentDate}}</p>
+            <p>You now have access to your new course level!</p>
+            <p>Best regards,<br>The Englishom Team</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
   }
 
   /**
@@ -274,6 +334,15 @@ export class PaymobService {
       this.logger.log(
         `Successfully updated order ${pendingOrder._id} to COMPLETED status`,
       );
+
+      // Send payment success email
+      await this.sendPaymentSuccessEmail(
+        user,
+        pendingOrder.levelName,
+        pendingOrder.amountCents,
+        orderId.toString(),
+      );
+
       return true;
     });
   }
@@ -400,6 +469,53 @@ export class PaymobService {
         `Payment verification error: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  /**
+   * Send payment success email to user
+   */
+  private async sendPaymentSuccessEmail(
+    user: any,
+    levelName: string,
+    amount: number,
+    orderId: string,
+  ): Promise<void> {
+    try {
+      const paymentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      // Replace template variables
+      const personalizedEmail = this.paymentSuccessEmailTemplate
+        .replace(/{{userName}}/g, user.firstName || 'there')
+        .replace(/{{levelName}}/g, levelName)
+        .replace(/{{amount}}/g, (amount / 100).toString()) // Convert cents to EGP
+        .replace(/{{paymentDate}}/g, paymentDate)
+        .replace(/{{orderId}}/g, orderId)
+        .replace(
+          /{{courseUrl}}/g,
+          `${process.env.WEBSITE_URL || 'https://englishom.com'}/courses/${levelName.toLowerCase()}`,
+        );
+
+      // Prepare email data
+      const mailOptions = {
+        from: `"Englishom Team" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: `🎉 Payment Successful - Welcome to ${levelName} Level!`,
+        html: personalizedEmail,
+      };
+
+      await this.emailService.sendCustomEmail(mailOptions);
+      this.logger.log(`Payment success email sent to ${user.email} for level ${levelName}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send payment success email to ${user.email}: ${error.message}`,
+        error.stack,
+      );
+      // Don't throw error to avoid breaking the payment flow
     }
   }
 }

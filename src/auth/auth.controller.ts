@@ -35,13 +35,8 @@ export class AuthController {
   @Public()
   @Post('signup')
   async register(@Body() createAuthDto: CreateUserDto, @Req() req: Request) {
-    const user = await this.authService.register(createAuthDto, req);
-    if (!user) {
-      throw new ConflictException('User already exist');
-    }
-
-    const access_token = await this.authService.generateToken(user);
-
+    const {user , access_token} = await this.authService.register(createAuthDto, req);
+  
     return {
       access_token,
       user: cleanResponse(user),
@@ -99,6 +94,7 @@ export class AuthController {
     }
   }
 
+  
   @Public()
   @Post('resend-otp')
   async resendOtp(@Body() resendOtpDto: ResendOtpDto) {

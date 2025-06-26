@@ -8,6 +8,7 @@ import { Order, OrderSchema } from './models/order.schema';
 import { UserModule } from '../user/user.module';
 import { OrderService } from '../common/shared/services/order.service';
 import { PaymobController } from './paymob.controller';
+import { MailModule } from '../common/mail/mail.module';
 
 // filepath: /mnt/DATA/Englishom/src/payment/paymob.module.ts
 @Module({
@@ -25,6 +26,7 @@ import { PaymobController } from './paymob.controller';
     forwardRef(() => AuthModule),
     DatabaseModule,
     DatabaseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
+    MailModule,
   ],
   exports: [PaymobService, OrderRepo, OrderService],
 })
