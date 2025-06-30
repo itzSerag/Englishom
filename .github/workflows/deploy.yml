@@ -22,6 +22,6 @@ jobs:
             git pull origin master
             # Add your build/restart commands here
             # For example:
-            npm install
-            npm run build
-            pm2 restart your-app
+            sudo npm install
+            sudo npm run build
+            sudo pm2 restart your-app
