@@ -8,7 +8,6 @@ import {
 import * as express from 'express';
 import * as dotenv from 'dotenv';
 import { AllExceptionsFilter } from './common/filters/all-exception';
-import { TimeService } from './common/config/time.service';
 
 dotenv.config();
 
@@ -51,7 +50,6 @@ async function bootstrap() {
     app.useGlobalInterceptors(
       new ClassSerializerInterceptor(app.get(Reflector)),
     );
-    const timeService = app.get(TimeService);
 
     app.use(express.json({ limit: '20mb' }));
     app.use(express.urlencoded({ extended: true, limit: '20mb' }));
@@ -59,7 +57,7 @@ async function bootstrap() {
     const port = process.env.PORT ?? 3000;
     await app.listen(port);
     logger.log(
-      `Server successfully started on port ${port} ${timeService.now()}`,
+      `Server successfully started on port ${port} ${Date.now()}`,
     );
   } catch (error) {
     logger.error(

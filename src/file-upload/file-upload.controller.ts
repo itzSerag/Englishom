@@ -174,12 +174,7 @@ export class FileUploadController {
   @Delete()
   async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
     try {
-      const res = await this.uploadService.deleteFile(uploadFileDTO);
-      if (!res) {
-        throw new NotFoundException(
-          `Can't find any file by this name: ${uploadFileDTO.lesson_name}`,
-        );
-      }
+      await this.uploadService.deleteFile(uploadFileDTO);
       return { message: 'File deleted successfully' };
     } catch (error) {
       if (error.name === 'NoSuchKey' || error.name === 'NotFound') {

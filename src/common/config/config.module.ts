@@ -33,12 +33,9 @@ import { ConfigService } from './config.service';
         GOOGLE_CLIENT_ID: Joi.string().required(),
         GOOGLE_CLIENT_SECRET: Joi.string().required(),
 
-        // AWS
-        AWS_ACCESS_KEY_ID: Joi.string().required(),
-        AWS_SECRET_ACCESS_KEY: Joi.string().required(),
-        AWS_REGION: Joi.string().required(),
-        AWS_S3_BUCKET: Joi.string().required(),
-        AWS_S3_BUCKET_RES: Joi.string().required(),
+        // Local Storage
+        LOCAL_STORAGE_PATH: Joi.string().default('./uploads'),
+        LOCAL_STORAGE_URL: Joi.string().uri().default('http://localhost:3000/uploads'),
 
         // Email
         SMTP_HOST: Joi.string().required(),

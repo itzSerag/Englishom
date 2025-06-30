@@ -3,15 +3,13 @@ import { UserRepo } from '../../user/repo/user.repo';
 import { AdminRepo } from '../../admin/repo/admin.repo';
 import { User } from '../../user/models/user.schema';
 import { Admin } from '../../admin/models/admin.schema';
-import { TimeService } from '../config/time.service';
-import { Role, UserStatus } from '../shared';
+import {  UserStatus } from '../shared';
 
 @Injectable()
 export class AuthenticationService {
   constructor(
     private readonly userRepo: UserRepo,
-    private readonly adminRepo: AdminRepo,
-    private readonly timeService: TimeService,
+    private readonly adminRepo: AdminRepo
   ) {}
 
   /**
@@ -57,7 +55,7 @@ export class AuthenticationService {
    * Update last activity for user or admin
    */
   async updateLastActivity(user: User | Admin): Promise<void> {
-    const now = this.timeService.now();
+    const now = Date.now();
 
     if (user instanceof User) {
       await this.userRepo.findOneAndUpdate(
@@ -77,7 +75,7 @@ export class AuthenticationService {
    * Use this method for consistent activity updates across the app
    */
   async trackUserActivity(user: User | Admin): Promise<void> {
-    const now = this.timeService.now();
+    const now = Date.now();
     const updateData: any = { lastActivity: now };
 
     if (user instanceof User) {
@@ -130,11 +128,22 @@ export class AuthenticationService {
       throw new UnauthorizedException('Admin account is deactivated');
     }
 
+    
+
     // Update activity if stale
-    if (this.timeService.isActivityStale(user.lastActivity)) {
+    if (this.isActivityStale(user.lastActivity)) {
       await this.updateLastActivity(user);
     }
 
     return user;
+  }
+
+
+  private  isActivityStale(lastActivityTime: Date, staleMinutes = 1): boolean {
+    const currentTime = Date.now();
+    const staleThreshold = new Date(
+      currentTime - staleMinutes * 60000,
+    );
+    return lastActivityTime < staleThreshold;
   }
 }

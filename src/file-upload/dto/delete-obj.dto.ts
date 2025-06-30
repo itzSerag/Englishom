@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsString } from 'class-validator';
-import { UploadFileDTO } from './get-content-aws';
+import { UploadFileDTO } from './lesson-upload.dto';
 
 export class DeleteObjDTO extends UploadFileDTO {
   @IsString()

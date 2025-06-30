@@ -10,13 +10,14 @@ import { DatabaseModule } from './common/database/database.module';
 import { CommonModule } from './common/common.module';
 import { PaymentModule } from './payment/paymob.module';
 import { CronModule } from './cron/cron.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt.guard';
 import { RolesGuard } from './auth/guards/role.guard';
 import { VerifiedGuard } from './auth/guards/verified-user.guard';
 import { UserStatusGuard } from './auth/guards/user-status.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ObjectIdTransformInterceptor } from './common/interceptors/objectid-transform.interceptor';
 
 @Module({
   imports: [
@@ -42,6 +43,10 @@ import { DashboardModule } from './dashboard/dashboard.module';
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ObjectIdTransformInterceptor,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard, // First, ensure user is authenticated
