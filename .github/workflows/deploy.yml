@@ -24,4 +24,4 @@ jobs:
             # For example:
             sudo npm install
             sudo npm run build
-            sudo pm2 restart your-app
+            sudo pm2 restart main
