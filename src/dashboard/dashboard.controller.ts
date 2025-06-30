@@ -56,7 +56,7 @@ export class DashboardController {
    * Access: SUPER and MANAGER only
    */
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Get('search-users')
+  @Get('users')
   async searchUsers(@Query(ValidationPipe) searchDto: DashboardSearchDto) {
     this.logger.log(`Searching users with params:`, searchDto);
     return await this.dashboardService.searchUsers(searchDto);

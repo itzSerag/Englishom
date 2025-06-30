@@ -3,7 +3,6 @@ import {
   NotFoundException,
   Logger,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { UserRepo } from '../user/repo/user.repo';
 import { OrderRepo } from '../payment/repo/order.repo';
@@ -240,36 +239,24 @@ export class DashboardService {
    */
   async searchUsers(searchDto: DashboardSearchDto) {
     try {
-      const { email, firstName, lastName, page = 1, limit = 10 } = searchDto;
+      const { query, page, limit } = searchDto;
 
-      // Validate that at least one search parameter is provided
-      if (!email && !firstName && !lastName) {
-        // if nothing provided, return all wihin the page and the limit
+      // If no query provided, return all users within the page and limit
+      if (!query || query.trim() === '') {
         return await this.getPaginatedUsers({ page, limit });
       }
 
-      // Build search filter
-      const searchFilters = [];
+      // Create regex for case-insensitive search
+      const searchRegex = new RegExp(query.trim(), 'i');
 
-      // Specific field searches
-      if (email) {
-        const emailRegex = new RegExp(email.trim(), 'i');
-        searchFilters.push({ email: emailRegex });
-      }
-
-      if (firstName) {
-        const firstNameRegex = new RegExp(firstName.trim(), 'i');
-        searchFilters.push({ firstName: firstNameRegex });
-      }
-
-      if (lastName) {
-        const lastNameRegex = new RegExp(lastName.trim(), 'i');
-        searchFilters.push({ lastName: lastNameRegex });
-      }
-
-      // Combine all filters with AND logic
-      const finalFilter =
-        searchFilters.length > 1 ? { $and: searchFilters } : searchFilters[0];
+      // Build search filter using OR logic across email, firstName, and lastName
+      const finalFilter = {
+        $or: [
+          { email: searchRegex },
+          { firstName: searchRegex },
+          { lastName: searchRegex }
+        ]
+      };
 
       // Use the repository's pagination method
       const result = await this.userRepo.findWithPagination(
@@ -280,12 +267,10 @@ export class DashboardService {
 
       return {
         users: cleanResponseArray(result.data),
-        pagination: {
-          total: result.total,
-          page: result.page,
-          limit: result.limit,
-          totalPages: result.totalPages,
-        },
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
       };
     } catch (error) {
       this.logger.error(`Error searching users: ${error.message}`, error.stack);
