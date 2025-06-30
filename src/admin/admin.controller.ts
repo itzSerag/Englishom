@@ -8,9 +8,10 @@ import {
   Delete,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { CreateAdminDto, UpdateAdminDto } from './dto';
+import { CreateAdminDto, UpdateAdminDto, AdminSearchDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { AdminRoles } from './decorators/admin-roles.decorator';
@@ -49,16 +50,10 @@ export class AdminController {
     return cleanResponse(admin);
   }
 
-  @Get('all-active')
-  async getAllActiveAdmins() {
-    const admins = await this.adminService.getAllActiveAdmins();
-    return cleanResponseArray(admins);
-  }
-
-  @Get('all')
-  async getAllAdmins() {
-    const admins = await this.adminService.getAllAdmins();
-    return cleanResponseArray(admins);
+  // Search/filter admins with pagination
+  @Get('search')
+  async searchAdmins(@Query() searchDto: AdminSearchDto) {
+    return await this.adminService.searchAdmins(searchDto);
   }
 
   @Get(':id')

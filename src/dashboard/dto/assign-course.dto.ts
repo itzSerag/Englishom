@@ -14,7 +14,7 @@ export class AssignCourseDto {
 
   @IsEnum(Level_Name)
   @IsNotEmpty()
-  levelName: Level_Name;
+  level_name: Level_Name;
 
   @IsString()
   @IsOptional()

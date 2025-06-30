@@ -101,10 +101,10 @@ export class DashboardService {
    */
   async assignCourseToUser(assignCourseDto: AssignCourseDto) {
     return await this.transactionService.withTransaction(async (session) => {
-      const { userId, levelName, reason } = assignCourseDto;
+      const { userId, level_name, reason } = assignCourseDto;
 
       this.logger.log(
-        `Assigning course ${levelName} to user ${userId}. Reason: ${reason || 'Not specified'}`,
+        `Assigning course ${level_name} to user ${userId}. Reason: ${reason || 'Not specified'}`,
       );
 
       // Check if user exists
@@ -121,21 +121,21 @@ export class DashboardService {
       }
 
       // Check if course exists
-      const course = await this.courseRepo.findByLevelName(levelName);
+      const course = await this.courseRepo.findByLevelName(level_name);
       if (!course) {
-        throw new NotFoundException(`Course with level ${levelName} not found`);
+        throw new NotFoundException(`Course with level ${level_name} not found`);
       }
 
       // Check if user already has this course completed
       const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
         userId,
-        levelName,
+        level_name,
         session,
       );
 
       if (existingCompletedOrder) {
         throw new BadRequestException(
-          `User already has access to ${levelName} level`,
+          `User already has access to ${level_name} level`,
         );
       }
 
@@ -143,7 +143,7 @@ export class DashboardService {
       const order = await this.orderRepo.create(
         {
           userId: user._id as any,
-          levelName: levelName,
+          levelName: level_name,
           amountCents: course.price * 100, // Convert to cents
           paymentStatus: PaymentStatus.COMPLETED,
           paymentDate: new Date(),
@@ -153,14 +153,14 @@ export class DashboardService {
       );
 
       this.logger.log(
-        `Successfully assigned course ${levelName} to user ${userId}. Order ID: ${order._id}`,
+        `Successfully assigned course ${level_name} to user ${userId}. Order ID: ${order._id}`,
       );
 
       // Send course assignment email
-      await this.sendCourseAssignmentEmail(user, levelName, reason);
+      await this.sendCourseAssignmentEmail(user, level_name, reason);
 
       return {
-        message: `Course ${levelName} successfully assigned to user`,
+        message: `Course ${level_name} successfully assigned to user`,
         order: {
           _id: order._id.toString(),
           levelName: order.levelName,

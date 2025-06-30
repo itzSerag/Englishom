@@ -9,11 +9,12 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AdminRepo } from './repo/admin.repo';
-import { CreateAdminDto, UpdateAdminDto } from './dto';
+import { CreateAdminDto, UpdateAdminDto, AdminSearchDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { AdminRole } from '../common/shared';
 import { Types } from 'mongoose';
 import { IpService } from 'src/common/services/ip.service';
+import { cleanResponseArray } from '../common/utils/response.utils';
 
 @Injectable()
 export class AdminService {
@@ -69,6 +70,49 @@ export class AdminService {
   async getAllAdmins(): Promise<Admin[]> {
     // no need for pagination there wont be many admins
     return this.adminRepo.finaAllAdmins();
+  }
+
+  // Search admins with pagination and filtering
+  async searchAdmins(searchDto: AdminSearchDto) {
+    const { query, isActive, page = 1, limit = 10 , adminRole } = searchDto;
+
+    // Build search filter
+    const searchFilter: any = {};
+
+    // Add isActive filter if provided
+    if (typeof isActive === 'boolean') {
+      searchFilter.isActive = isActive;
+    }
+
+    // Add adminRole filter if provided
+    if (adminRole) {
+      searchFilter.adminRole = adminRole;
+    }
+
+    // Add text search filter if query is provided
+    if (query && query.trim() !== '') {
+      const searchRegex = new RegExp(query.trim(), 'i');
+      searchFilter.$or = [
+        { email: searchRegex },
+        { firstName: searchRegex },
+        { lastName: searchRegex } ,
+      ];
+    }
+
+    // Use repository pagination method
+    const result = await this.adminRepo.findWithPagination(
+      searchFilter,
+      page,
+      limit,
+    );
+
+    return {
+      admins: cleanResponseArray(result.data),
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+    };
   }
 
   // Get admin by ID

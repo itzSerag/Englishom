@@ -27,6 +27,9 @@ export class CreateAdminDto {
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   country?: string;
+
+  @IsOptional()
+  @IsEnum(AdminRole)
+  adminRole?: AdminRole;
 }
