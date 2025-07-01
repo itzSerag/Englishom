@@ -165,4 +165,18 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       .session(session || null)
       .sort({ createdAt: -1 });
   }
+
+  async getRecentOrdersWithUsers(limit: number = 10): Promise<Order[]> {
+    return await this.orderModel
+      .find({
+        paymentStatus: PaymentStatus.COMPLETED,
+      })
+      .populate({
+        path: 'userId',
+        select: 'firstName lastName email',
+      })
+      .sort({ createdAt: -1, paymentDate: -1 })
+      .limit(limit)
+      .exec();
+  }
 }

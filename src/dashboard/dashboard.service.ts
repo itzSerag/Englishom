@@ -330,18 +330,21 @@ export class DashboardService {
   }
 
   private async getRecentOrders(limit: number = 10) {
-    const orders = await this.orderRepo.find({
-      paymentStatus: PaymentStatus.COMPLETED,
-    });
+    const orders = await this.orderRepo.getRecentOrdersWithUsers(limit);
     if (!orders) return [];
 
-    return cleanResponseArray(orders)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || b.paymentDate).getTime() -
-          new Date(a.createdAt || a.paymentDate).getTime(),
-      )
-      .slice(0, limit);
+    return orders
+      .filter(order => order.userId) // Filter out orders with null/undefined user data
+      .map(order => ({
+        _id: order._id,
+        userId: order.userId._id,
+        levelName: order.levelName,
+        amountCents: order.amountCents,
+        paymentStatus: order.paymentStatus,
+        paymentDate: order.paymentDate,
+        createdAt: order.createdAt,
+        username: order.userId ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim() : 'Unknown User',
+      }));
   }
 
   /**

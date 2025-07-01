@@ -14,6 +14,9 @@ export class Admin extends AbstractUser {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ default: true})
+  isVerified: boolean;
+
   @Prop({ type: SchemaTypes.ObjectId, ref: 'Admin', default : null })
   createdBy: Types.ObjectId; // Track who created this admin
 }
