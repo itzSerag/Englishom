@@ -40,6 +40,6 @@ import { CertificateRepo } from './repo/certificate.repo';
   ],
   controllers: [UserController],
   providers: [UserService, UserRepo, CertificateRepo],
-  exports: [UserService, UserRepo], // Export UserService
+  exports: [UserService, UserRepo, CertificateRepo], // Export UserService
 })
 export class UserModule {}

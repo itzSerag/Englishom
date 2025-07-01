@@ -16,6 +16,37 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
     super(orderModel);
   }
 
+
+  async getNumberOfEachCourse() {
+    try {
+      const orders = await this.orderModel.aggregate([
+        {
+          $match: {
+            paymentStatus: PaymentStatus.COMPLETED,
+          },
+        },
+        {
+          $group: {
+            _id: '$levelName',
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            levelName: '$_id',
+            count: 1,
+            _id: 0,
+          },
+        },
+      ]);
+
+      return orders;
+    } catch (error) {
+      throw new Error(`Failed to get number of each course: ${error.message}`);
+    }
+  }
+   
+
   async findPendingOrder(
     userId: string,
     levelName: Level_Name,

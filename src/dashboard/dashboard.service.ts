@@ -7,8 +7,9 @@ import {
 import { UserRepo } from '../user/repo/user.repo';
 import { OrderRepo } from '../payment/repo/order.repo';
 import { CourseRepo } from '../auth/repo/course.repo';
+import { CertificateRepo } from '../user/repo/certificate.repo';
 import { PaymentStatus } from '../payment/types';
-import { UserStatus } from '../common/shared/enums';
+import { UserStatus, Level_Name } from '../common/shared/enums';
 import {
   DashboardPaginationDto,
   DashboardSearchDto,
@@ -33,6 +34,7 @@ export class DashboardService {
     private readonly userRepo: UserRepo,
     private readonly orderRepo: OrderRepo,
     private readonly courseRepo: CourseRepo,
+    private readonly certificateRepo: CertificateRepo,
     private readonly transactionService: TransactionService,
     private readonly emailService: EmailService,
   ) {
@@ -57,6 +59,7 @@ export class DashboardService {
         totalSubscribedUsers,
         totalCourses,
         recentOrders,
+        levelStatistics,
       ] = await Promise.all([
         this.getTotalUsers(),
         this.getTotalActiveUsers(),
@@ -66,6 +69,7 @@ export class DashboardService {
         this.getTotalSubscribedUsers(),
         this.getTotalCourses(),
         this.getRecentOrders(),
+        this.getLevelStatistics(),
       ]);
 
       const stats = {
@@ -81,6 +85,7 @@ export class DashboardService {
         recentActivity: {
           recentOrders,
         },
+        levelStatistics,
         generatedAt: new Date(),
       };
 
@@ -328,6 +333,7 @@ export class DashboardService {
     const courses = await this.courseRepo.find({});
     return courses ? courses.length : 0;
   }
+ 
 
   private async getRecentOrders(limit: number = 10) {
     const orders = await this.orderRepo.getRecentOrdersWithUsers(limit);
@@ -450,42 +456,50 @@ export class DashboardService {
     }
   }
 
-  // private async getRevenueByMonth() {
-  //   const sixMonthsAgo = new Date();
-  //   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  /**
+   * Get statistics for each level
+   * Includes total purchases and completions per level
+   */
+  private async getLevelStatistics() {
+    try {
+      // Get all courses
+      const courses = await this.courseRepo.find({});
+      if (!courses || courses.length === 0) {
+        return [];
+      }
 
-  //   const orders = await this.orderRepo.find({
-  //     paymentStatus: PaymentStatus.COMPLETED,
-  //     createdAt: { $gte: sixMonthsAgo }
-  //   });
+      const levelStats = await Promise.all(
+        courses.map(async (course) => {
+          // Count total purchases (completed orders) for this level
+          const purchasedOrders = await this.orderRepo.find({
+            levelName: course.level_name,
+            paymentStatus: PaymentStatus.COMPLETED,
+          });
+          const totalPurchases = purchasedOrders ? purchasedOrders.length : 0;
 
-  //   if (!orders) return [];
+          // Count total completions (certificates issued) for this level
+          const completedCertificates = await this.certificateRepo.find({
+            level_name: course.level_name,
+          });
+          const totalCompletions = completedCertificates ? completedCertificates.length : 0;
 
-  //   // Group orders by month
-  //   const monthlyData = new Map();
+          return {
+            level: course.level_name,
+            all: totalPurchases,
+            completed: totalCompletions,
+          };
+        })
+      );
 
-  //   orders.forEach(order => {
-  //     const createdAt = order.createdAt || order.paymentDate;
-  //     const monthKey = `${createdAt.getFullYear()}-${createdAt.getMonth() + 1}`;
+      return levelStats;
+    } catch (error) {
+      this.logger.error(
+        `Error generating level statistics: ${error.message}`,
+        error.stack,
+      );
+      return [];
+    }
+  }
 
-  //     if (!monthlyData.has(monthKey)) {
-  //       monthlyData.set(monthKey, {
-  //         _id: {
-  //           year: createdAt.getFullYear(),
-  //           month: createdAt.getMonth() + 1
-  //         },
-  //         revenue: 0,
-  //         orders: 0
-  //       });
-  //     }
-
-  //     const data = monthlyData.get(monthKey);
-  //     data.revenue += order.amountCents;
-  //     data.orders++;
-  //   });
-
-  //   return Array.from(monthlyData.values()).sort((a, b) =>
-  //     a._id.year - b._id.year || a._id.month - b._id.month
-  //   );
-  // }
+ 
 }
