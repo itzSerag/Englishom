@@ -12,6 +12,7 @@ import { UserProgress } from '../models/user-progress.schema';
 import { Day } from '../models/day.schema';
 import { Task } from '../models/task.schema';
 import { UserTask } from '../models/user-task.schema';
+import { Level } from '../models/level.schema';
 import { toObjectId } from '../../common/utils/mongoose.utils';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class UserRepo extends AbstractRepo<User> {
     @InjectModel(Day.name) private readonly dayModel: Model<Day>,
     @InjectModel(Task.name) private readonly taskModel: Model<any>,
     @InjectModel(UserTask.name) private readonly userTaskModel: Model<any>,
+    @InjectModel(Level.name) private readonly levelModel: Model<Level>,
   ) {
     super(userModel);
   }

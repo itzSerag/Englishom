@@ -143,4 +143,16 @@ export abstract class AbstractRepo<TSchema extends AbstractDocument> {
 
     return document;
   }
+
+  async count(
+    filterQuery: FilterQuery<TSchema> = {},
+    session?: ClientSession,
+  ): Promise<number> {
+    // Convert string IDs to ObjectId
+    const convertedFilter = convertFilterToObjectId(filterQuery);
+
+    return await this.model
+      .countDocuments(convertedFilter)
+      .session(session || null);
+  }
 }

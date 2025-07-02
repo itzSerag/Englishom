@@ -18,6 +18,7 @@ import { UserStatusGuard } from './auth/guards/user-status.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ObjectIdTransformInterceptor } from './common/interceptors/objectid-transform.interceptor';
+import { SeederModule } from './common/seeds/seeder.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ObjectIdTransformInterceptor } from './common/interceptors/objectid-tra
       ],
     }),
     DashboardModule,
+    SeederModule, // Add seeder module for development data generation
   ],
   controllers: [AppController],
   providers: [
