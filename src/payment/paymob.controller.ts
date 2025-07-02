@@ -23,6 +23,7 @@ import { CourseService } from '../auth/services/course.service';
 import { Course } from '../auth/models/admin-course';
 import { PaymentStatus } from './types';
 import { Admin } from '../admin/models/admin.schema';
+import { CurrencyUtils } from '../common/utils/currency.utils';
 
 @Controller('payment')
 export class PaymobController {
@@ -119,13 +120,13 @@ export class PaymobController {
       }
 
       const data = {
-        amount: course.price * 100,
+        amount: course.price, // Use whole currency amount for our internal processing
         currency: 'EGP',
         payment_methods: [integration_id],
         items: [
           {
             name: paymentIntention.level_name,
-            amount: course.price * 100,
+            amount: course.price, // Use whole currency amount for our internal processing
             description: course.descriptionEn || `${course.titleEn} course`,
             quantity: 1,
           },
@@ -199,7 +200,7 @@ export class PaymobController {
             id: order._id,
             levelName: order.levelName,
             status: order.paymentStatus,
-            amount: order.amountCents,
+            amount: order.amount, // Now using whole currency amount
             paymentId: order.paymentId,
             createdAt: order.createdAt,
             paymentDate: order.paymentDate,
@@ -281,7 +282,7 @@ export class PaymobController {
         order: {
           id: order._id,
           levelName: order.levelName,
-          amount: order.amountCents,
+          amount: order.amount, // Now using whole currency amount
           status: order.paymentStatus,
           createdAt: order.createdAt,
         },

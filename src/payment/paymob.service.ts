@@ -14,6 +14,7 @@ import { OrderRepo } from './repo/order.repo';
 import { TransactionService } from '../common/database/transaction.service';
 import { UserRepo } from '../user/repo/user.repo';
 import { EmailService } from '../common/mail/mail.service';
+import { CurrencyUtils } from '../common/utils/currency.utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -111,13 +112,23 @@ export class PaymobService {
     );
 
     try {
+      // Convert whole currency amounts to cents for the payment provider
+      const paymentProviderRequest = {
+        ...paymentRequest,
+        amount: paymentRequest.amount * 100, // Convert to cents for payment provider
+        items: paymentRequest.items.map(item => ({
+          ...item,
+          amount: item.amount * 100 // Convert to cents for payment provider
+        }))
+      };
+
       const res = await fetch('https://accept.paymob.com/v1/intention/', {
         method: 'POST',
         headers: {
           Authorization: `Token ${this.PAYMOB_SECRET_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(paymentRequest),
+        body: JSON.stringify(paymentProviderRequest),
         signal: controller.signal,
       });
 
@@ -245,7 +256,7 @@ export class PaymobService {
           {
             userId: user._id,
             paymentStatus: PaymentStatus.PENDING,
-            amountCents: amount,
+            amount: Math.round(amount / 100), // Convert cents from payment provider to whole currency
           },
           session,
         );
@@ -275,21 +286,21 @@ export class PaymobService {
         {
           userId: user._id,
           paymentStatus: PaymentStatus.PENDING,
-          amountCents: amount,
+          amount: Math.round(amount / 100), // Convert cents from payment provider to whole currency
         },
         session,
       );
 
       if (!pendingOrder) {
         this.logger.error(
-          `No pending order found for user ${user._id} with amount ${amount}`,
+          `No pending order found for user ${user._id} with amount ${Math.round(amount / 100)}`,
         );
 
         // Check if there's an order with same amount but different status
         const existingOrder = await this.orderRepo.findOne(
           {
             userId: user._id,
-            amountCents: amount,
+            amount: Math.round(amount / 100), // Convert cents to whole currency
           },
           session,
         );
@@ -339,7 +350,7 @@ export class PaymobService {
       await this.sendPaymentSuccessEmail(
         user,
         pendingOrder.levelName,
-        pendingOrder.amountCents,
+        pendingOrder.amount, // Now using whole currency amount
         orderId.toString(),
       );
 
@@ -492,7 +503,7 @@ export class PaymobService {
       const personalizedEmail = this.paymentSuccessEmailTemplate
         .replace(/{{userName}}/g, user.firstName || 'there')
         .replace(/{{levelName}}/g, levelName)
-        .replace(/{{amount}}/g, (amount / 100).toString()) // Convert cents to EGP
+        .replace(/{{amount}}/g, amount.toString()) // Amount is already in whole currency
         .replace(/{{paymentDate}}/g, paymentDate)
         .replace(/{{orderId}}/g, orderId)
         .replace(

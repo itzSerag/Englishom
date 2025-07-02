@@ -121,7 +121,7 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
   async upsertOrder(
     userId: string,
     levelName: Level_Name,
-    amountCents: number,
+    amount: number,
     session?: ClientSession,
   ): Promise<Order> {
     try {
@@ -142,7 +142,7 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
         const updatedOrder = await this.orderModel.findByIdAndUpdate(
           existingPendingOrder._id,
           {
-            amountCents,
+            amount,
             paymentDate: new Date(),
           },
           { new: true, session: session || null },
@@ -160,7 +160,7 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
         {
           userId: userIdObjectId as any, // Cast to avoid TypeScript issues with ObjectId vs User
           levelName,
-          amountCents,
+          amount,
           paymentStatus: PaymentStatus.PENDING,
           paymentDate: new Date(),
         },

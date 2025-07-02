@@ -22,6 +22,7 @@ import {
 } from '../common/utils/response.utils';
 import { User } from '../user/models/user.schema';
 import { EmailService } from '../common/mail/mail.service';
+import { CurrencyUtils } from '../common/utils/currency.utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -149,7 +150,7 @@ export class DashboardService {
         {
           userId: user._id as any,
           levelName: level_name,
-          amountCents: course.price * 100, // Convert to cents
+          amount: course.price, // Use whole currency amount directly
           paymentStatus: PaymentStatus.COMPLETED,
           paymentDate: new Date(),
           paymentId: `ADMIN_ASSIGNED_${Date.now()}`, // Special payment ID to indicate admin assignment
@@ -306,7 +307,7 @@ export class DashboardService {
     });
     if (!orders) return 0;
 
-    return orders.reduce((total, order) => total + order.amountCents / 100, 0);
+    return orders.reduce((total, order) => total + order.amount, 0);
   }
 
   private async getTotalSubscribedUsers(): Promise<number> {
@@ -345,7 +346,7 @@ export class DashboardService {
         _id: order._id,
         userId: order.userId._id,
         levelName: order.levelName,
-        amountCents: order.amountCents,
+        amount: order.amount, // Now using whole currency amount
         paymentStatus: order.paymentStatus,
         paymentDate: order.paymentDate,
         createdAt: order.createdAt,

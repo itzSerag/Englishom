@@ -16,7 +16,7 @@ export class Order extends AbstractDocument {
   levelName: Level_Name;
 
   @Prop({ required: true })
-  amountCents: number;
+  amount: number;
 
   @Prop({ type: String, enum: PaymentStatus, default: PaymentStatus.PENDING })
   paymentStatus: PaymentStatus;

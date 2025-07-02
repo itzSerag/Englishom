@@ -545,12 +545,10 @@ export class SeederService implements OnModuleInit {
       for (let j = 0; j < numOrders; j++) {
         const course = courses[Math.floor(Math.random() * courses.length)];
         const status = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
-        const daysAgo = Math.floor(Math.random() * 90);
-
-        const orderData = {
+        const daysAgo = Math.floor(Math.random() * 90);        const orderData = {
           userId: user._id as any, // Type assertion for ObjectId compatibility
           levelName: course.level_name,
-          amountCents: course.price * 100,
+          amount: course.price, // Use whole currency amount directly
           paymentStatus: status,
           paymentDate: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
           ...(status === PaymentStatus.COMPLETED && {
