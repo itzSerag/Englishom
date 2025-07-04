@@ -23,6 +23,7 @@ import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin/decorators';
+import { Admin } from '../admin/models/admin.schema';
 
 @Controller('files')
 export class FileUploadController {
@@ -138,7 +139,7 @@ export class FileUploadController {
   }
 
   @Post('')
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER,AdminRole.OPERATOR)
   async upload(@Body() dataUploadDTO: UploadDTO) {
     dataUploadDTO.data = this.parseData(dataUploadDTO.data);
     await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
@@ -163,14 +164,14 @@ export class FileUploadController {
     return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER,AdminRole.OPERATOR)
   @Delete('delete-obj')
   async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
     await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
     return { message: 'Object deleted successfully' };
   }
 
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER,AdminRole.OPERATOR)
   @Delete()
   async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
     try {

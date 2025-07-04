@@ -20,7 +20,12 @@ export class StaticFilesController {
   private readonly storagePath: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.storagePath = this.configService.get('LOCAL_STORAGE_PATH') || './uploads';
+    const configuredPath = this.configService.get('LOCAL_STORAGE_PATH') || './uploads';
+    // Convert relative path to absolute path to avoid working directory issues
+    this.storagePath = path.isAbsolute(configuredPath) 
+      ? configuredPath 
+      : path.resolve(process.cwd(), configuredPath);
+    this.logger.log(`Static files storage path resolved to: ${this.storagePath}`);
   }
 
   @Get('*')

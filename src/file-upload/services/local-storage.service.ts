@@ -16,20 +16,29 @@ export class LocalStorageService implements FileStorageInterface {
   private readonly storageUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.storagePath = this.configService.get<string>('LOCAL_STORAGE_PATH') || './uploads';
+    const configuredPath = this.configService.get<string>('LOCAL_STORAGE_PATH') || './uploads';
+    // Convert relative path to absolute path to avoid working directory issues
+    this.storagePath = path.isAbsolute(configuredPath) 
+      ? configuredPath 
+      : path.resolve(process.cwd(), configuredPath);
     this.storageUrl = this.configService.get<string>('LOCAL_STORAGE_URL') || 'http://localhost:3000/uploads';
+    this.logger.log(`Storage path resolved to: ${this.storagePath}`);
     this.ensureStorageDirectories();
   }
 
   private async ensureStorageDirectories(): Promise<void> {
     try {
+      this.logger.debug(`Creating storage directories at: ${this.storagePath}`);
       await fs.mkdir(this.storagePath, { recursive: true });
       await fs.mkdir(path.join(this.storagePath, 'Images'), { recursive: true });
       await fs.mkdir(path.join(this.storagePath, 'Audio'), { recursive: true });
       await fs.mkdir(path.join(this.storagePath, 'UserAudios'), { recursive: true });
       await fs.mkdir(path.join(this.storagePath, 'json'), { recursive: true });
+      this.logger.log(`Storage directories ensured at: ${this.storagePath}`);
     } catch (error) {
-      this.logger.error(`Failed to create storage directories: ${error.message}`);
+      this.logger.error(`Failed to create storage directories at ${this.storagePath}: ${error.message}`);
+      this.logger.error(`Error details:`, error);
+      throw new InternalServerErrorException(`Storage initialization failed: ${error.message}`);
     }
   }
 
