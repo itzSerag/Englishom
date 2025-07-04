@@ -183,7 +183,7 @@ export class AdminService {
     }
 
     const targetAdmin = await this.adminRepo.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
     });
     if (!targetAdmin) {
       throw new NotFoundException('Admin not found');
@@ -204,10 +204,9 @@ export class AdminService {
       }
     }
 
-    // Soft delete by deactivating
-    await this.adminRepo.findOneAndUpdate(
+    // Soft delete by deactivating or By Deleting the admin 
+    await this.adminRepo.findOneAndDelete(
       { _id: new Types.ObjectId(id) },
-      { isActive: false },
     );
   }
 

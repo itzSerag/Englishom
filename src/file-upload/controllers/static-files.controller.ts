@@ -23,7 +23,7 @@ export class StaticFilesController {
     this.storagePath = this.configService.get('LOCAL_STORAGE_PATH') || './uploads';
   }
 
-  @Get('')
+  @Get('*')
   async serveFile(
     @Param('0') filePath: string,
     @Res() res: Response,
