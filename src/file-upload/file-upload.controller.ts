@@ -24,6 +24,7 @@ import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin/decorators';
 import { Admin } from '../admin/models/admin.schema';
+import { LocalStorageService } from './services/local-storage.service';
 
 @Controller('files')
 export class FileUploadController {
@@ -33,12 +34,6 @@ export class FileUploadController {
     private uploadService: FileUploadService,
     private localStorageService: LocalStorageService,
   ) {}
-
-  @Get('health')
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
-  async getStorageHealth() {
-    return await this.localStorageService.getStorageHealth();
-  }
 
   @Get('')
   async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {
