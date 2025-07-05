@@ -17,8 +17,10 @@ import { OptionalJwtAuthGuard } from '../../auth/guards/optional-jwt.guard';
 import { FileAccessService } from '../services/file-access.service';
 import { User } from 'src/user/models/user.schema';
 import { Admin } from 'src/admin/models/admin.schema';
+import { Public } from '../../auth/decorator/public.decorator';
 
-@UseGuards(OptionalJwtAuthGuard)
+@Public() // Bypass global JWT guard
+@UseGuards(OptionalJwtAuthGuard) // Use our optional guard instead
 @Controller('uploads')
 export class StaticFilesController {
   private readonly logger = new Logger(StaticFilesController.name);
