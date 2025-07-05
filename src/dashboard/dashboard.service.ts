@@ -161,10 +161,17 @@ export class DashboardService {
       this.logger.log(
         `Successfully assigned course ${level_name} to user ${userId}. Order ID: ${order._id}`,
       );
+      
+      // // Send course assignment email
+      // try{
+      //   await this.sendCourseAssignmentEmail(user, level_name, reason);
 
-      // Send course assignment email
-      await this.sendCourseAssignmentEmail(user, level_name, reason);
-
+      // }catch(err){
+      //   this.logger.warn(
+      //     `Failed to send course assignment email to ${user.email}. Continuing without email.`,
+      //   );
+      // }
+      
       return {
         message: `Course ${level_name} successfully assigned to user`,
         order: {
