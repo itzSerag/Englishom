@@ -23,17 +23,12 @@ import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin/decorators';
-import { Admin } from '../admin/models/admin.schema';
-import { LocalStorageService } from './services/local-storage.service';
 
 @Controller('files')
 export class FileUploadController {
   private readonly logger = new Logger(FileUploadController.name);
 
-  constructor(
-    private uploadService: FileUploadService,
-    private localStorageService: LocalStorageService,
-  ) {}
+  constructor(private uploadService: FileUploadService) {}
 
   @Get('')
   async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {
@@ -118,11 +113,13 @@ export class FileUploadController {
       throw new BadRequestException('audioKey is required');
     }
 
-    const keyParts = audioKey.split('/');
+    const decodedKey = decodeURIComponent(audioKey);
+    const keyParts = decodedKey.split('/');
 
     if (keyParts.length < 2) {
       this.logger.warn('Invalid audio key format', {
-        audioKey,
+        decodedKey,
+        originalKey: audioKey,
         keyPartsLength: keyParts.length,
       });
       throw new BadRequestException('Invalid audio key format');
@@ -141,7 +138,7 @@ export class FileUploadController {
   }
 
   @Post('')
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER,AdminRole.OPERATOR)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   async upload(@Body() dataUploadDTO: UploadDTO) {
     dataUploadDTO.data = this.parseData(dataUploadDTO.data);
     await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
@@ -166,18 +163,23 @@ export class FileUploadController {
     return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER,AdminRole.OPERATOR)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Delete('delete-obj')
   async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
     await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
     return { message: 'Object deleted successfully' };
   }
 
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER,AdminRole.OPERATOR)
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Delete()
   async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
     try {
-      await this.uploadService.deleteFile(uploadFileDTO);
+      const res = await this.uploadService.deleteFile(uploadFileDTO);
+      if (!res) {
+        throw new NotFoundException(
+          `Can't find any file by this name: ${uploadFileDTO.lesson_name}`,
+        );
+      }
       return { message: 'File deleted successfully' };
     } catch (error) {
       if (error.name === 'NoSuchKey' || error.name === 'NotFound') {

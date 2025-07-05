@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // Return cleaned user object (password will be removed by cleanSensitiveFields)
       return cleanResponse(user);
     } catch (error) {
-      throw new UnauthorizedException('Invalid token, ' + error.message);
+      throw new UnauthorizedException(error.message);
     }
   }
 }
