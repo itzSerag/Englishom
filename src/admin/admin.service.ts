@@ -95,7 +95,17 @@ export class AdminService {
       searchFilter.$or = [
         { email: searchRegex },
         { firstName: searchRegex },
-        { lastName: searchRegex } ,
+        { lastName: searchRegex },
+        // Full name search - concatenate firstName and lastName
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $concat: ['$firstName', ' ', '$lastName'] },
+              regex: query.trim(),
+              options: 'i'
+            }
+          }
+        }
       ];
     }
 

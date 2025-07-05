@@ -190,17 +190,53 @@ export class DashboardService {
       }
 
       // Get user's completed orders
-      const completedOrders = await this.orderRepo.find({
-        userId: userId,
-        paymentStatus: PaymentStatus.COMPLETED,
-      });
+      const completedOrders = await this.orderRepo.findUserCompletedOrders(userId);
 
+      // Get all available courses/levels
+      const allCourses = await this.courseRepo.find({});
+
+      // Build detailed level information
+      const levelsDetails = await Promise.all(
+        allCourses.map(async (course) => {
+          const levelName = course.level_name;
+                    
+          let currentDay = 0;
+          let isCompleted = false;
+
+      
+          // Get user's current progress (highest completed day + 1)
+          try {
+            const completedDays = await this.userRepo.userProgress(userId, levelName);
+            currentDay = completedDays !== null ? completedDays + 1 : 1; // Next day to work on
+          } catch (error) {
+            this.logger.warn(`Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`);
+            currentDay = 1; // Default to day 1 if there's an error
+          }
+
+          // Check if user has completed this level (has certificate)
+          try {
+            const certificate = await this.certificateRepo.findOne({
+              userId: user._id,
+              level_name: levelName,
+            });
+            isCompleted = !!certificate;
+          } catch (error) {
+            this.logger.warn(`Failed to check certificate for user ${userId} in level ${levelName}: ${error.message}`);
+            isCompleted = false;
+          }
+          
+
+          return {
+            levelName,
+            currentDay,
+            isCompleted,
+          };
+        })
+      );
+       
       return {
         user: cleanResponse(user),
-        completedCourses: (completedOrders || []).map((order) => ({
-          levelName: order.levelName,
-          purchaseDate: order.createdAt || order.paymentDate,
-        })),
+        levelsDetails, // New detailed level information
       };
     } catch (error) {
       this.logger.error(
@@ -255,12 +291,22 @@ export class DashboardService {
       // Create regex for case-insensitive search
       const searchRegex = new RegExp(query.trim(), 'i');
 
-      // Build search filter using OR logic across email, firstName, and lastName
+      // Build search filter using OR logic across email, firstName, lastName, and full name
       const finalFilter = {
         $or: [
           { email: searchRegex },
           { firstName: searchRegex },
-          { lastName: searchRegex }
+          { lastName: searchRegex },
+          // Full name search - concatenate firstName and lastName
+          {
+            $expr: {
+              $regexMatch: {
+                input: { $concat: ['$firstName', ' ', '$lastName'] },
+                regex: query.trim(),
+                options: 'i'
+              }
+            }
+          }
         ]
       };
 

@@ -35,7 +35,7 @@ import { SeederModule } from './common/seeds/seeder.module';
       throttlers: [
         {
           ttl: 60,
-          limit: 100,
+          limit: 40,
         },
       ],
     }),
