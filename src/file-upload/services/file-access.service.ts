@@ -44,6 +44,11 @@ export class FileAccessService {
    * Determine file type and access rules
    */
   getFileAccessType(filePath: string): 'public' | 'course' | 'user' {
+    // Validate input
+    if (!filePath || typeof filePath !== 'string') {
+      return 'public'; // Default to public for invalid paths
+    }
+
     if (filePath.startsWith('Public/')) {
       return 'public';
     }

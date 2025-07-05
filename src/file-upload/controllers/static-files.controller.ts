@@ -3,13 +3,14 @@ import {
   Get,
   Param,
   Res,
+  Req,
   NotFoundException,
   Logger,
   ForbiddenException,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { OptionalUser } from '../../auth/decorator/optional-user.decorator';
@@ -21,7 +22,7 @@ import { Public } from '../../auth/decorator/public.decorator';
 
 @Public() // Bypass global JWT guard
 @UseGuards(OptionalJwtAuthGuard) // Use our optional guard instead
-@Controller() // Empty path to exclude from global prefix
+@Controller('uploads') // Change from empty path to 'uploads'
 export class StaticFilesController {
   private readonly logger = new Logger(StaticFilesController.name);
   private readonly storagePath: string;
@@ -39,15 +40,43 @@ export class StaticFilesController {
   }
 
   @Public() // Also apply to method level to ensure it works
-  @Get('uploads/*')
+  @Get('*path')
   async serveFile(
-    @Param('*') filePath: string,
+    @Param('path') filePath: string,
+    @Req() req: Request,
     @Res() res: Response,
     @OptionalUser() user: User | Admin | null,
   ) {
     try {
+      // Extract the file path from the request URL
+      // Handle wildcard path parameter which might come as comma-separated string
+      let extractedFilePath = '';
+      
+      if (filePath) {
+        // If filePath has commas, it means the wildcard captured multiple path segments
+        // Convert comma-separated segments back to path with forward slashes
+        extractedFilePath = filePath.includes(',') 
+          ? filePath.split(',').join('/') 
+          : filePath;
+      } else {
+        // Fallback to extracting from request path
+        extractedFilePath = req.path.replace(/^\/api\/uploads\//, '') || '';
+      }
+      
+      this.logger.log(`Request path: ${req.path}`);
+      this.logger.log(`Request URL: ${req.url}`);
+      this.logger.log(`Named path parameter: ${filePath}`);
+      this.logger.log(`Extracted filePath: ${extractedFilePath}`);
+      this.logger.log(`Type of filePath: ${typeof extractedFilePath}`);
+      
+      // Validate that filePath is not undefined or empty
+      if (!extractedFilePath || extractedFilePath.trim() === '') {
+        this.logger.error('File path is undefined or empty');
+        throw new NotFoundException('File path is required');
+      }
+
       // Use file path directly since we're not encoding URLs anymore
-      const decodedPath = filePath;
+      const decodedPath = extractedFilePath;
       
       this.logger.log(`File access request: ${decodedPath}`);
       
@@ -155,7 +184,7 @@ export class StaticFilesController {
         throw error;
       }
       
-      this.logger.error(`Failed to serve file: ${filePath}`, error.stack);
+      this.logger.error(`Failed to serve file from request: ${req?.path || 'unknown'}`, error.stack);
       throw new NotFoundException('File not found');
     }
   }
