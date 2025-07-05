@@ -49,9 +49,12 @@ export class StaticFilesController {
       // Decode the file path to handle encoded characters
       const decodedPath = decodeURIComponent(filePath);
       
-      // Debug logging for admin file access
-      this.logger.debug(`File access request: ${decodedPath}`);
-      this.logger.debug(`User info: ${JSON.stringify({ 
+      // Enhanced production debugging
+      this.logger.log(`[PRODUCTION DEBUG] File access request: ${decodedPath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Raw file path: ${filePath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Environment: ${process.env.NODE_ENV}`);
+      this.logger.log(`[PRODUCTION DEBUG] Storage path: ${this.storagePath}`);
+      this.logger.log(`[PRODUCTION DEBUG] User info: ${JSON.stringify({ 
         userId: user?._id, 
         role: user?.role, 
         adminRole: user?.role === 'admin' ? (user as Admin).adminRole : 'N/A' 
@@ -110,9 +113,16 @@ export class StaticFilesController {
       const sanitizedPath = this.sanitizePath(decodedPath);
       const fullPath = path.join(this.storagePath, sanitizedPath);
       
+      // Enhanced production debugging for path resolution
+      this.logger.log(`[PRODUCTION DEBUG] Sanitized path: ${sanitizedPath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Full path: ${fullPath}`);
+      
       // Ensure the file is within the storage directory
       const resolvedPath = path.resolve(fullPath);
       const resolvedStoragePath = path.resolve(this.storagePath);
+      
+      this.logger.log(`[PRODUCTION DEBUG] Resolved path: ${resolvedPath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Resolved storage path: ${resolvedStoragePath}`);
       
       if (!resolvedPath.startsWith(resolvedStoragePath)) {
         this.logger.warn(`Attempted path traversal: ${decodedPath}`);
@@ -123,12 +133,46 @@ export class StaticFilesController {
       try {
         const stats = await fs.stat(resolvedPath);
         if (!stats.isFile()) {
+          this.logger.error(`[PRODUCTION DEBUG] Path exists but is not a file: ${resolvedPath}`);
           throw new NotFoundException('File not found');
         }
+        this.logger.log(`[PRODUCTION DEBUG] File found successfully: ${resolvedPath}, size: ${stats.size} bytes`);
       } catch (error) {
         if (error.code === 'ENOENT') {
+          this.logger.error(`[PRODUCTION DEBUG] File not found at path: ${resolvedPath}`);
+          this.logger.error(`[PRODUCTION DEBUG] Original request path: ${decodedPath}`);
+          this.logger.error(`[PRODUCTION DEBUG] Sanitized path: ${sanitizedPath}`);
+          this.logger.error(`[PRODUCTION DEBUG] Storage path: ${this.storagePath}`);
+          this.logger.error(`[PRODUCTION DEBUG] Current working directory: ${process.cwd()}`);
+          
+          // List what files actually exist in the directory
+          try {
+            const dirPath = path.dirname(resolvedPath);
+            this.logger.error(`[PRODUCTION DEBUG] Checking directory: ${dirPath}`);
+            const files = await fs.readdir(dirPath).catch(() => []);
+            this.logger.error(`[PRODUCTION DEBUG] Files in directory ${dirPath}: ${JSON.stringify(files)}`);
+            
+            // Also check parent directories
+            const parentDir = path.dirname(dirPath);
+            this.logger.error(`[PRODUCTION DEBUG] Checking parent directory: ${parentDir}`);
+            const parentFiles = await fs.readdir(parentDir).catch(() => []);
+            this.logger.error(`[PRODUCTION DEBUG] Files in parent directory ${parentDir}: ${JSON.stringify(parentFiles)}`);
+            
+            // Check if storage path exists
+            const storageExists = await fs.access(this.storagePath).then(() => true).catch(() => false);
+            this.logger.error(`[PRODUCTION DEBUG] Storage path exists: ${storageExists}`);
+            
+            if (storageExists) {
+              const storageContents = await fs.readdir(this.storagePath).catch(() => []);
+              this.logger.error(`[PRODUCTION DEBUG] Storage path contents: ${JSON.stringify(storageContents)}`);
+            }
+          } catch (dirError) {
+            this.logger.error(`[PRODUCTION DEBUG] Could not list directory contents:`, dirError);
+          }
+          
           throw new NotFoundException('File not found');
         }
+        this.logger.error(`[PRODUCTION DEBUG] File stat error:`, error);
         throw error;
       }
 

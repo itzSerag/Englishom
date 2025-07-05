@@ -22,22 +22,52 @@ export class LocalStorageService implements FileStorageInterface {
       ? configuredPath 
       : path.resolve(process.cwd(), configuredPath);
     this.storageUrl = this.configService.get<string>('LOCAL_STORAGE_URL') || 'http://localhost:3000/uploads';
-    this.logger.log(`Storage path resolved to: ${this.storagePath}`);
+    
+    // Enhanced production debugging
+    this.logger.log(`[PRODUCTION DEBUG] LocalStorageService initialized`);
+    this.logger.log(`[PRODUCTION DEBUG] Raw LOCAL_STORAGE_PATH: ${this.configService.get<string>('LOCAL_STORAGE_PATH')}`);
+    this.logger.log(`[PRODUCTION DEBUG] Configured path: ${configuredPath}`);
+    this.logger.log(`[PRODUCTION DEBUG] Storage path resolved to: ${this.storagePath}`);
+    this.logger.log(`[PRODUCTION DEBUG] Raw LOCAL_STORAGE_URL: ${this.configService.get<string>('LOCAL_STORAGE_URL')}`);
+    this.logger.log(`[PRODUCTION DEBUG] Storage URL: ${this.storageUrl}`);
+    this.logger.log(`[PRODUCTION DEBUG] Current working directory: ${process.cwd()}`);
+    this.logger.log(`[PRODUCTION DEBUG] Node environment: ${process.env.NODE_ENV}`);
+    
     this.ensureStorageDirectories();
   }
 
   private async ensureStorageDirectories(): Promise<void> {
     try {
-      this.logger.debug(`Creating storage directories at: ${this.storagePath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Creating storage directories at: ${this.storagePath}`);
+      
       await fs.mkdir(this.storagePath, { recursive: true });
-      await fs.mkdir(path.join(this.storagePath, 'Images'), { recursive: true });
-      await fs.mkdir(path.join(this.storagePath, 'Audio'), { recursive: true });
-      await fs.mkdir(path.join(this.storagePath, 'UserAudios'), { recursive: true });
-      await fs.mkdir(path.join(this.storagePath, 'json'), { recursive: true });
-      this.logger.log(`Storage directories ensured at: ${this.storagePath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Created base directory: ${this.storagePath}`);
+      
+      const imagePath = path.join(this.storagePath, 'Images');
+      await fs.mkdir(imagePath, { recursive: true });
+      this.logger.log(`[PRODUCTION DEBUG] Created Images directory: ${imagePath}`);
+      
+      const audioPath = path.join(this.storagePath, 'Audio');
+      await fs.mkdir(audioPath, { recursive: true });
+      this.logger.log(`[PRODUCTION DEBUG] Created Audio directory: ${audioPath}`);
+      
+      const userAudioPath = path.join(this.storagePath, 'UserAudios');
+      await fs.mkdir(userAudioPath, { recursive: true });
+      this.logger.log(`[PRODUCTION DEBUG] Created UserAudios directory: ${userAudioPath}`);
+      
+      const jsonPath = path.join(this.storagePath, 'json');
+      await fs.mkdir(jsonPath, { recursive: true });
+      this.logger.log(`[PRODUCTION DEBUG] Created json directory: ${jsonPath}`);
+      
+      this.logger.log(`[PRODUCTION DEBUG] All storage directories ensured successfully`);
+      
+      // Verify directories exist and are writable
+      const stats = await fs.stat(this.storagePath);
+      this.logger.log(`[PRODUCTION DEBUG] Storage path stats - isDirectory: ${stats.isDirectory()}, mode: ${stats.mode.toString(8)}`);
+      
     } catch (error) {
-      this.logger.error(`Failed to create storage directories at ${this.storagePath}: ${error.message}`);
-      this.logger.error(`Error details:`, error);
+      this.logger.error(`[PRODUCTION DEBUG] Failed to create storage directories at ${this.storagePath}: ${error.message}`);
+      this.logger.error(`[PRODUCTION DEBUG] Error details:`, error);
       throw new InternalServerErrorException(`Storage initialization failed: ${error.message}`);
     }
   }
@@ -51,16 +81,37 @@ export class LocalStorageService implements FileStorageInterface {
       const filePath = this.getLocalPath(key, bucket);
       const dirPath = path.dirname(filePath);
 
+      // Enhanced production debugging
+      this.logger.log(`[PRODUCTION DEBUG] Upload request - key: ${key}, bucket: ${bucket}`);
+      this.logger.log(`[PRODUCTION DEBUG] File original name: ${file.originalname}`);
+      this.logger.log(`[PRODUCTION DEBUG] Storage path: ${this.storagePath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Local file path: ${filePath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Directory path: ${dirPath}`);
+      this.logger.log(`[PRODUCTION DEBUG] Current working directory: ${process.cwd()}`);
+
       // Ensure directory exists
       await fs.mkdir(dirPath, { recursive: true });
+      this.logger.log(`[PRODUCTION DEBUG] Directory created/verified: ${dirPath}`);
 
       // Write file to local storage
       await fs.writeFile(filePath, file.buffer);
+      this.logger.log(`[PRODUCTION DEBUG] File written successfully: ${filePath}, size: ${file.buffer.length} bytes`);
 
-      this.logger.debug(`File uploaded successfully: ${key}`);
-      return this.getFileUrl(key, bucket);
+      // Verify file was actually written
+      const fileExists = await this.fileExists(key, bucket);
+      this.logger.log(`[PRODUCTION DEBUG] File exists after upload: ${fileExists}`);
+
+      if (fileExists) {
+        const fileStats = await fs.stat(filePath);
+        this.logger.log(`[PRODUCTION DEBUG] File stats: size=${fileStats.size}, created=${fileStats.birthtime}`);
+      }
+
+      const result = this.getFileUrl(key, bucket);
+      this.logger.log(`[PRODUCTION DEBUG] Generated URL: ${result.url}`);
+      
+      return result;
     } catch (error) {
-      this.logger.error(`Failed to upload file: ${error.message}`, error.stack);
+      this.logger.error(`[PRODUCTION DEBUG] Upload failed: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
         `Failed to upload file: ${error.message}`,
       );
@@ -92,9 +143,10 @@ export class LocalStorageService implements FileStorageInterface {
   getFileUrl(key: string, bucket?: string): { url: string } {
     // Create URL-safe path by encoding the key
     const encodedKey = encodeURIComponent(key);
-    return {
-      url: `${this.storageUrl}/${encodedKey}`,
-    };
+    const url = `${this.storageUrl}/${encodedKey}`;
+    
+    this.logger.debug(`[PRODUCTION DEBUG] getFileUrl - key: ${key}, encoded: ${encodedKey}, url: ${url}`);
+    return { url };
   }
 
   async fileExists(key: string, bucket?: string): Promise<boolean> {
@@ -148,10 +200,15 @@ export class LocalStorageService implements FileStorageInterface {
   }
 
   private getLocalPath(key: string, bucket?: string): string {
+    let localPath: string;
     if (bucket === 'json') {
-      return path.join(this.storagePath, 'json', key);
+      localPath = path.join(this.storagePath, 'json', key);
+    } else {
+      localPath = path.join(this.storagePath, key);
     }
-    return path.join(this.storagePath, key);
+    
+    this.logger.debug(`[PRODUCTION DEBUG] getLocalPath - key: ${key}, bucket: ${bucket}, path: ${localPath}`);
+    return localPath;
   }
 
   private async getFilesRecursively(dir: string, prefix?: string): Promise<string[]> {
@@ -176,5 +233,67 @@ export class LocalStorageService implements FileStorageInterface {
     }
     
     return files;
+  }
+
+  // Health check method for production debugging
+  async getStorageHealth(): Promise<any> {
+    try {
+      const stats = await fs.stat(this.storagePath);
+      const imageDirExists = await this.directoryExists(path.join(this.storagePath, 'Images'));
+      const audioDirExists = await this.directoryExists(path.join(this.storagePath, 'Audio'));
+      const userAudioDirExists = await this.directoryExists(path.join(this.storagePath, 'UserAudios'));
+      const jsonDirExists = await this.directoryExists(path.join(this.storagePath, 'json'));
+
+      // Get directory contents
+      const contents = await fs.readdir(this.storagePath).catch(() => []);
+
+      return {
+        storagePath: this.storagePath,
+        storageUrl: this.storageUrl,
+        workingDirectory: process.cwd(),
+        storageExists: true,
+        storageStats: {
+          isDirectory: stats.isDirectory(),
+          size: stats.size,
+          mode: stats.mode.toString(8),
+          created: stats.birthtime,
+          modified: stats.mtime,
+        },
+        directories: {
+          Images: imageDirExists,
+          Audio: audioDirExists,
+          UserAudios: userAudioDirExists,
+          json: jsonDirExists,
+        },
+        contents,
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          LOCAL_STORAGE_PATH: this.configService.get<string>('LOCAL_STORAGE_PATH'),
+          LOCAL_STORAGE_URL: this.configService.get<string>('LOCAL_STORAGE_URL'),
+        }
+      };
+    } catch (error) {
+      return {
+        storagePath: this.storagePath,
+        storageUrl: this.storageUrl,
+        workingDirectory: process.cwd(),
+        storageExists: false,
+        error: error.message,
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          LOCAL_STORAGE_PATH: this.configService.get<string>('LOCAL_STORAGE_PATH'),
+          LOCAL_STORAGE_URL: this.configService.get<string>('LOCAL_STORAGE_URL'),
+        }
+      };
+    }
+  }
+
+  private async directoryExists(dirPath: string): Promise<boolean> {
+    try {
+      const stats = await fs.stat(dirPath);
+      return stats.isDirectory();
+    } catch {
+      return false;
+    }
   }
 }

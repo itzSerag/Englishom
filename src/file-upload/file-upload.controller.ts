@@ -29,7 +29,16 @@ import { Admin } from '../admin/models/admin.schema';
 export class FileUploadController {
   private readonly logger = new Logger(FileUploadController.name);
 
-  constructor(private uploadService: FileUploadService) {}
+  constructor(
+    private uploadService: FileUploadService,
+    private localStorageService: LocalStorageService,
+  ) {}
+
+  @Get('health')
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
+  async getStorageHealth() {
+    return await this.localStorageService.getStorageHealth();
+  }
 
   @Get('')
   async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {
