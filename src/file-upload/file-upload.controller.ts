@@ -118,13 +118,11 @@ export class FileUploadController {
       throw new BadRequestException('audioKey is required');
     }
 
-    const decodedKey = decodeURIComponent(audioKey);
-    const keyParts = decodedKey.split('/');
+    const keyParts = audioKey.split('/');
 
     if (keyParts.length < 2) {
       this.logger.warn('Invalid audio key format', {
-        decodedKey,
-        originalKey: audioKey,
+        audioKey,
         keyPartsLength: keyParts.length,
       });
       throw new BadRequestException('Invalid audio key format');

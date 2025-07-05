@@ -23,51 +23,29 @@ export class LocalStorageService implements FileStorageInterface {
       : path.resolve(process.cwd(), configuredPath);
     this.storageUrl = this.configService.get<string>('LOCAL_STORAGE_URL') || 'http://localhost:3000/uploads';
     
-    // Enhanced production debugging
-    this.logger.log(`[PRODUCTION DEBUG] LocalStorageService initialized`);
-    this.logger.log(`[PRODUCTION DEBUG] Raw LOCAL_STORAGE_PATH: ${this.configService.get<string>('LOCAL_STORAGE_PATH')}`);
-    this.logger.log(`[PRODUCTION DEBUG] Configured path: ${configuredPath}`);
-    this.logger.log(`[PRODUCTION DEBUG] Storage path resolved to: ${this.storagePath}`);
-    this.logger.log(`[PRODUCTION DEBUG] Raw LOCAL_STORAGE_URL: ${this.configService.get<string>('LOCAL_STORAGE_URL')}`);
-    this.logger.log(`[PRODUCTION DEBUG] Storage URL: ${this.storageUrl}`);
-    this.logger.log(`[PRODUCTION DEBUG] Current working directory: ${process.cwd()}`);
-    this.logger.log(`[PRODUCTION DEBUG] Node environment: ${process.env.NODE_ENV}`);
+    this.logger.log(`LocalStorageService initialized - Storage path: ${this.storagePath}, URL: ${this.storageUrl}`);
     
     this.ensureStorageDirectories();
   }
 
   private async ensureStorageDirectories(): Promise<void> {
     try {
-      this.logger.log(`[PRODUCTION DEBUG] Creating storage directories at: ${this.storagePath}`);
+      this.logger.log(`Creating storage directories at: ${this.storagePath}`);
       
       await fs.mkdir(this.storagePath, { recursive: true });
-      this.logger.log(`[PRODUCTION DEBUG] Created base directory: ${this.storagePath}`);
-      
       const imagePath = path.join(this.storagePath, 'Images');
       await fs.mkdir(imagePath, { recursive: true });
-      this.logger.log(`[PRODUCTION DEBUG] Created Images directory: ${imagePath}`);
-      
       const audioPath = path.join(this.storagePath, 'Audio');
       await fs.mkdir(audioPath, { recursive: true });
-      this.logger.log(`[PRODUCTION DEBUG] Created Audio directory: ${audioPath}`);
-      
       const userAudioPath = path.join(this.storagePath, 'UserAudios');
       await fs.mkdir(userAudioPath, { recursive: true });
-      this.logger.log(`[PRODUCTION DEBUG] Created UserAudios directory: ${userAudioPath}`);
-      
       const jsonPath = path.join(this.storagePath, 'json');
       await fs.mkdir(jsonPath, { recursive: true });
-      this.logger.log(`[PRODUCTION DEBUG] Created json directory: ${jsonPath}`);
       
-      this.logger.log(`[PRODUCTION DEBUG] All storage directories ensured successfully`);
-      
-      // Verify directories exist and are writable
-      const stats = await fs.stat(this.storagePath);
-      this.logger.log(`[PRODUCTION DEBUG] Storage path stats - isDirectory: ${stats.isDirectory()}, mode: ${stats.mode.toString(8)}`);
+      this.logger.log(`All storage directories created successfully`);
       
     } catch (error) {
-      this.logger.error(`[PRODUCTION DEBUG] Failed to create storage directories at ${this.storagePath}: ${error.message}`);
-      this.logger.error(`[PRODUCTION DEBUG] Error details:`, error);
+      this.logger.error(`Failed to create storage directories at ${this.storagePath}: ${error.message}`);
       throw new InternalServerErrorException(`Storage initialization failed: ${error.message}`);
     }
   }
@@ -81,37 +59,19 @@ export class LocalStorageService implements FileStorageInterface {
       const filePath = this.getLocalPath(key, bucket);
       const dirPath = path.dirname(filePath);
 
-      // Enhanced production debugging
-      this.logger.log(`[PRODUCTION DEBUG] Upload request - key: ${key}, bucket: ${bucket}`);
-      this.logger.log(`[PRODUCTION DEBUG] File original name: ${file.originalname}`);
-      this.logger.log(`[PRODUCTION DEBUG] Storage path: ${this.storagePath}`);
-      this.logger.log(`[PRODUCTION DEBUG] Local file path: ${filePath}`);
-      this.logger.log(`[PRODUCTION DEBUG] Directory path: ${dirPath}`);
-      this.logger.log(`[PRODUCTION DEBUG] Current working directory: ${process.cwd()}`);
+      this.logger.log(`Uploading file: ${key}`);
 
       // Ensure directory exists
       await fs.mkdir(dirPath, { recursive: true });
-      this.logger.log(`[PRODUCTION DEBUG] Directory created/verified: ${dirPath}`);
 
       // Write file to local storage
       await fs.writeFile(filePath, file.buffer);
-      this.logger.log(`[PRODUCTION DEBUG] File written successfully: ${filePath}, size: ${file.buffer.length} bytes`);
-
-      // Verify file was actually written
-      const fileExists = await this.fileExists(key, bucket);
-      this.logger.log(`[PRODUCTION DEBUG] File exists after upload: ${fileExists}`);
-
-      if (fileExists) {
-        const fileStats = await fs.stat(filePath);
-        this.logger.log(`[PRODUCTION DEBUG] File stats: size=${fileStats.size}, created=${fileStats.birthtime}`);
-      }
+      this.logger.log(`File uploaded successfully: ${filePath}, size: ${file.buffer.length} bytes`);
 
       const result = this.getFileUrl(key, bucket);
-      this.logger.log(`[PRODUCTION DEBUG] Generated URL: ${result.url}`);
-      
       return result;
     } catch (error) {
-      this.logger.error(`[PRODUCTION DEBUG] Upload failed: ${error.message}`, error.stack);
+      this.logger.error(`Upload failed: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
         `Failed to upload file: ${error.message}`,
       );
@@ -141,11 +101,10 @@ export class LocalStorageService implements FileStorageInterface {
   }
 
   getFileUrl(key: string, bucket?: string): { url: string } {
-    // Create URL-safe path by encoding the key
-    const encodedKey = encodeURIComponent(key);
-    const url = `${this.storageUrl}/${encodedKey}`;
+    // Simple URL generation without encoding to avoid mismatches
+    const url = `${this.storageUrl}/${key}`;
     
-    this.logger.debug(`[PRODUCTION DEBUG] getFileUrl - key: ${key}, encoded: ${encodedKey}, url: ${url}`);
+    this.logger.debug(`getFileUrl - key: ${key}, url: ${url}`);
     return { url };
   }
 
@@ -207,7 +166,6 @@ export class LocalStorageService implements FileStorageInterface {
       localPath = path.join(this.storagePath, key);
     }
     
-    this.logger.debug(`[PRODUCTION DEBUG] getLocalPath - key: ${key}, bucket: ${bucket}, path: ${localPath}`);
     return localPath;
   }
 
@@ -233,59 +191,6 @@ export class LocalStorageService implements FileStorageInterface {
     }
     
     return files;
-  }
-
-  // Health check method for production debugging
-  async getStorageHealth(): Promise<any> {
-    try {
-      const stats = await fs.stat(this.storagePath);
-      const imageDirExists = await this.directoryExists(path.join(this.storagePath, 'Images'));
-      const audioDirExists = await this.directoryExists(path.join(this.storagePath, 'Audio'));
-      const userAudioDirExists = await this.directoryExists(path.join(this.storagePath, 'UserAudios'));
-      const jsonDirExists = await this.directoryExists(path.join(this.storagePath, 'json'));
-
-      // Get directory contents
-      const contents = await fs.readdir(this.storagePath).catch(() => []);
-
-      return {
-        storagePath: this.storagePath,
-        storageUrl: this.storageUrl,
-        workingDirectory: process.cwd(),
-        storageExists: true,
-        storageStats: {
-          isDirectory: stats.isDirectory(),
-          size: stats.size,
-          mode: stats.mode.toString(8),
-          created: stats.birthtime,
-          modified: stats.mtime,
-        },
-        directories: {
-          Images: imageDirExists,
-          Audio: audioDirExists,
-          UserAudios: userAudioDirExists,
-          json: jsonDirExists,
-        },
-        contents,
-        environment: {
-          NODE_ENV: process.env.NODE_ENV,
-          LOCAL_STORAGE_PATH: this.configService.get<string>('LOCAL_STORAGE_PATH'),
-          LOCAL_STORAGE_URL: this.configService.get<string>('LOCAL_STORAGE_URL'),
-        }
-      };
-    } catch (error) {
-      return {
-        storagePath: this.storagePath,
-        storageUrl: this.storageUrl,
-        workingDirectory: process.cwd(),
-        storageExists: false,
-        error: error.message,
-        environment: {
-          NODE_ENV: process.env.NODE_ENV,
-          LOCAL_STORAGE_PATH: this.configService.get<string>('LOCAL_STORAGE_PATH'),
-          LOCAL_STORAGE_URL: this.configService.get<string>('LOCAL_STORAGE_URL'),
-        }
-      };
-    }
   }
 
   private async directoryExists(dirPath: string): Promise<boolean> {

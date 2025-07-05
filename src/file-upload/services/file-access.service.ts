@@ -16,8 +16,8 @@ export class FileAccessService {
     userRole?: string,
     adminRole?: AdminRole
   ): Promise<boolean> {
-    // Allow all admins to access any file
-    if (userRole === 'admin' || adminRole) {
+    // Allow all admins to access any file - simplified logic
+    if (userRole === 'admin') {
       return true;
     }
 
