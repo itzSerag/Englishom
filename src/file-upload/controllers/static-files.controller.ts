@@ -38,6 +38,7 @@ export class StaticFilesController {
     this.logger.log(`Static files storage path resolved to: ${this.storagePath}`);
   }
 
+  @Public() // Also apply to method level to ensure it works
   @Get('*')
   async serveFile(
     @Param('0') filePath: string,
