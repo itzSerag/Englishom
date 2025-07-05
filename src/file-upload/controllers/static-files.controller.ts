@@ -6,20 +6,28 @@ import {
   NotFoundException,
   Logger,
   ForbiddenException,
+  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { CurrentUser } from '../../auth/decorator/get-curr-user.decorator';
+import { OptionalUser } from '../../auth/decorator/optional-user.decorator';
+import { OptionalJwtAuthGuard } from '../../auth/guards/optional-jwt.guard';
+import { FileAccessService } from '../services/file-access.service';
 import { User } from 'src/user/models/user.schema';
+import { Admin } from 'src/admin/models/admin.schema';
 
+@UseGuards(OptionalJwtAuthGuard)
 @Controller('uploads')
 export class StaticFilesController {
   private readonly logger = new Logger(StaticFilesController.name);
   private readonly storagePath: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly fileAccessService: FileAccessService,
+  ) {
     const configuredPath = this.configService.get('LOCAL_STORAGE_PATH') || './uploads';
     // Convert relative path to absolute path to avoid working directory issues
     this.storagePath = path.isAbsolute(configuredPath) 
@@ -32,22 +40,55 @@ export class StaticFilesController {
   async serveFile(
     @Param('0') filePath: string,
     @Res() res: Response,
-    @CurrentUser() user: User,
+    @OptionalUser() user: User | Admin | null,
   ) {
     try {
       // Decode the file path to handle encoded characters
       const decodedPath = decodeURIComponent(filePath);
       
-      // Check for user-specific audio files and enforce ownership
-      if (decodedPath.startsWith('UserAudios/')) {
+      // Determine file access type
+      const accessType = this.fileAccessService.getFileAccessType(decodedPath);
+      
+      // Handle access control based on file type
+      if (accessType === 'user') {
+        // User-specific files: require authentication and ownership
+        if (!user) {
+          throw new ForbiddenException('Authentication required to access this file.');
+        }
+        
         const pathParts = decodedPath.split('/');
         const userIdFromPath = pathParts[1];
-        if (userIdFromPath !== user._id.toString()) {
+        
+        // Check if user owns the file or is admin
+        const isAdmin = user.role === 'admin' || (user as Admin).adminRole;
+        if (!isAdmin && userIdFromPath !== user._id.toString()) {
+          throw new ForbiddenException('You do not have permission to access this file.');
+        }
+      } else if (accessType === 'course') {
+        // Course content: require course ownership or admin
+        if (!user) {
+          throw new ForbiddenException('Authentication required to access course content.');
+        }
+        
+        const levelName = this.fileAccessService.extractLevelFromPath(decodedPath);
+        if (!levelName) {
+          throw new ForbiddenException('Invalid course content path.');
+        }
+        
+        const hasAccess = await this.fileAccessService.hasAccessToCourse(
+          user._id.toString(),
+          levelName,
+          user.role,
+          (user as Admin).adminRole
+        );
+        
+        if (!hasAccess) {
           throw new ForbiddenException(
-            'You do not have permission to access this file.',
+            `You need to purchase the ${levelName.replace('LEVEL_', '')} course to access this content.`
           );
         }
       }
+      // Public files: no authentication required
 
       // Sanitize the path to prevent directory traversal attacks
       const sanitizedPath = this.sanitizePath(decodedPath);
