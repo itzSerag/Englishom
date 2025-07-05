@@ -49,8 +49,17 @@ export class StaticFilesController {
       // Decode the file path to handle encoded characters
       const decodedPath = decodeURIComponent(filePath);
       
+      // Debug logging for admin file access
+      this.logger.debug(`File access request: ${decodedPath}`);
+      this.logger.debug(`User info: ${JSON.stringify({ 
+        userId: user?._id, 
+        role: user?.role, 
+        adminRole: user?.role === 'admin' ? (user as Admin).adminRole : 'N/A' 
+      })}`);
+      
       // Determine file access type
       const accessType = this.fileAccessService.getFileAccessType(decodedPath);
+      this.logger.debug(`File access type determined: ${accessType}`);
       
       // Handle access control based on file type
       if (accessType === 'user') {
@@ -63,7 +72,9 @@ export class StaticFilesController {
         const userIdFromPath = pathParts[1];
         
         // Check if user owns the file or is admin
-        const isAdmin = user.role === 'admin' || (user as Admin).adminRole;
+        const isAdmin = user.role === 'admin' && (user as Admin).adminRole;
+        this.logger.debug(`Admin check - role: ${user.role}, adminRole: ${isAdmin ? (user as Admin).adminRole : 'none'}, userIdFromPath: ${userIdFromPath}, userId: ${user._id}`);
+        
         if (!isAdmin && userIdFromPath !== user._id.toString()) {
           throw new ForbiddenException('You do not have permission to access this file.');
         }
@@ -78,11 +89,13 @@ export class StaticFilesController {
           throw new ForbiddenException('Invalid course content path.');
         }
         
+        this.logger.debug(`Course access check - level: ${levelName}, user role: ${user.role}, admin role: ${user.role === 'admin' ? (user as Admin).adminRole : 'none'}`);
+        
         const hasAccess = await this.fileAccessService.hasAccessToCourse(
           user._id.toString(),
           levelName,
           user.role,
-          (user as Admin).adminRole
+          user.role === 'admin' ? (user as Admin).adminRole : undefined
         );
         
         if (!hasAccess) {
