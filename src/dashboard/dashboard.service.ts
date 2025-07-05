@@ -163,14 +163,10 @@ export class DashboardService {
       );
       
       // // Send course assignment email
-      // try{
-      //   await this.sendCourseAssignmentEmail(user, level_name, reason);
-
-      // }catch(err){
-      //   this.logger.warn(
-      //     `Failed to send course assignment email to ${user.email}. Continuing without email.`,
-      //   );
-      // }
+      this.sendCourseAssignmentEmail(user, level_name, reason)
+      .catch((err) => {
+      this.logger.warn(`Async email failed silently: ${err.message}`);
+      });
       
       return {
         message: `Course ${level_name} successfully assigned to user`,

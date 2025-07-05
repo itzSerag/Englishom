@@ -40,13 +40,15 @@ export class SeederService implements OnModuleInit {
     if (this.isDevelopment) {
       this.logger.log('🌱 Checking if development seeding is needed...');
       const needsSeeding = await this.checkIfSeedingNeeded();
-      
+
       if (needsSeeding) {
         this.logger.log('🌱 Running development seeders...');
         await this.runAllSeeders();
         this.logger.log('✅ Development seeding completed!');
       } else {
-        this.logger.log('ℹ️ Database already has sufficient data, skipping seeding');
+        this.logger.log(
+          'ℹ️ Database already has sufficient data, skipping seeding',
+        );
       }
     }
   }
@@ -55,16 +57,23 @@ export class SeederService implements OnModuleInit {
     try {
       // Define minimum counts for each entity type
       const minCounts = {
-        admins: 3,       // At least 3 admins (super, manager, operator)
-        courses: 6,      // All 6 levels
-        users: 10,       // At least 10 users
-        orders: 5,       // At least 5 orders
-        levels: 6,       // All 6 levels
-        days: 30,        // At least 30 days across all levels (6 levels × 5 days minimum)
+        admins: 3, // At least 3 admins (super, manager, operator)
+        courses: 6, // All 6 levels
+        users: 10, // At least 10 users
+        orders: 5, // At least 5 orders
+        levels: 6, // All 6 levels
+        days: 30, // At least 30 days across all levels (6 levels × 5 days minimum)
       };
 
       // Check each entity count
-      const [adminCount, courseCount, userCount, orderCount, levelCount, dayCount] = await Promise.all([
+      const [
+        adminCount,
+        courseCount,
+        userCount,
+        orderCount,
+        levelCount,
+        dayCount,
+      ] = await Promise.all([
         this.adminRepo.count(),
         this.courseRepo.count(),
         this.userRepo.count(),
@@ -82,7 +91,7 @@ export class SeederService implements OnModuleInit {
         📅 Days: ${dayCount}/${minCounts.days}`);
 
       // Return true if any count is below minimum
-      const needsSeeding = 
+      const needsSeeding =
         adminCount < minCounts.admins ||
         courseCount < minCounts.courses ||
         userCount < minCounts.users ||
@@ -119,12 +128,20 @@ export class SeederService implements OnModuleInit {
     }
   }
 
-  private async checkEntityNeedsSeeding(entityName: string, currentCount: number, minCount: number): Promise<boolean> {
+  private async checkEntityNeedsSeeding(
+    entityName: string,
+    currentCount: number,
+    minCount: number,
+  ): Promise<boolean> {
     if (currentCount >= minCount) {
-      this.logger.log(`✅ ${entityName}: ${currentCount}/${minCount} - sufficient data exists, skipping`);
+      this.logger.log(
+        `✅ ${entityName}: ${currentCount}/${minCount} - sufficient data exists, skipping`,
+      );
       return false;
     }
-    this.logger.log(`🔄 ${entityName}: ${currentCount}/${minCount} - needs seeding`);
+    this.logger.log(
+      `🔄 ${entityName}: ${currentCount}/${minCount} - needs seeding`,
+    );
     return true;
   }
 
@@ -132,19 +149,22 @@ export class SeederService implements OnModuleInit {
     try {
       // Only clear OTPs for test users to avoid affecting real users
       const testEmails = [
-        'alice@example.com', 'bob@example.com', 'carol@example.com',
-        'david@example.com', 'eve@example.com'
+        'alice@example.com',
+        'bob@example.com',
+        'carol@example.com',
+        'david@example.com',
+        'eve@example.com',
       ];
-      
+
       for (const email of testEmails) {
         await this.otpRepo.deleteMany({ email });
       }
-      
+
       // Also clear OTPs for generated test users
       for (let i = 1; i <= 15; i++) {
         await this.otpRepo.deleteMany({ email: `user${i}@example.com` });
       }
-      
+
       this.logger.log('Cleared existing test OTPs');
     } catch (error) {
       this.logger.warn('Error clearing existing OTPs:', error.message);
@@ -156,8 +176,12 @@ export class SeederService implements OnModuleInit {
 
     // Check if we need to seed admins
     const currentCount = await this.adminRepo.count();
-    const needsSeeding = await this.checkEntityNeedsSeeding('Admins', currentCount, 3);
-    
+    const needsSeeding = await this.checkEntityNeedsSeeding(
+      'Admins',
+      currentCount,
+      3,
+    );
+
     if (!needsSeeding) return;
 
     const admins = [
@@ -208,19 +232,21 @@ export class SeederService implements OnModuleInit {
       const existing = await this.adminRepo.findOne({ email: adminData.email });
       if (!existing) {
         const admin = await this.adminRepo.create(adminData);
-        
+
         // Set createdBy for non-super admins
         if (adminData.adminRole !== AdminRole.SUPER && admins[0]) {
-          const superAdmin = await this.adminRepo.findOne({ email: 'superadmin@englishom.com' });
+          const superAdmin = await this.adminRepo.findOne({
+            email: 'superadmin@englishom.com',
+          });
           if (superAdmin) {
             adminData.createdBy = superAdmin._id;
             await this.adminRepo.findOneAndUpdate(
               { _id: admin._id },
-              { createdBy: superAdmin._id }
+              { createdBy: superAdmin._id },
             );
           }
         }
-        
+
         this.logger.log(`Created admin: ${adminData.email}`);
       }
     }
@@ -231,8 +257,12 @@ export class SeederService implements OnModuleInit {
 
     // Check if we need to seed courses
     const currentCount = await this.courseRepo.count();
-    const needsSeeding = await this.checkEntityNeedsSeeding('Courses', currentCount, 6);
-    
+    const needsSeeding = await this.checkEntityNeedsSeeding(
+      'Courses',
+      currentCount,
+      6,
+    );
+
     if (!needsSeeding) return;
 
     const courses = [
@@ -287,7 +317,9 @@ export class SeederService implements OnModuleInit {
     ];
 
     for (const courseData of courses) {
-      const existing = await this.courseRepo.findOne({ level_name: courseData.level_name });
+      const existing = await this.courseRepo.findOne({
+        level_name: courseData.level_name,
+      });
       if (!existing) {
         await this.courseRepo.create(courseData);
         this.logger.log(`Created course: ${courseData.level_name}`);
@@ -301,8 +333,12 @@ export class SeederService implements OnModuleInit {
     try {
       // Check if we need to seed levels
       const currentCount = await this.userRepo['levelModel'].countDocuments();
-      const needsSeeding = await this.checkEntityNeedsSeeding('Levels', currentCount, 6);
-      
+      const needsSeeding = await this.checkEntityNeedsSeeding(
+        'Levels',
+        currentCount,
+        6,
+      );
+
       if (!needsSeeding) return;
 
       const levelNames = Object.values(Level_Name);
@@ -311,20 +347,21 @@ export class SeederService implements OnModuleInit {
         // Check if level exists using UserRepo's levelModel
         const existingLevel = await this.userRepo['levelModel'].findOne({
           id_name: levelName,
-        });          if (!existingLevel) {
-            // Create level using the levelModel with proper _id generation
-            const levelData = {
-              _id: new Types.ObjectId(),
-              id_name: levelName,
-            };
-            
-            const level = new this.userRepo['levelModel'](levelData);
-            await level.save();
-            
-            this.logger.log(`Created level: ${levelName}`);
-          }
+        });
+        if (!existingLevel) {
+          // Create level using the levelModel with proper _id generation
+          const levelData = {
+            _id: new Types.ObjectId(),
+            id_name: levelName,
+          };
+
+          const level = new this.userRepo['levelModel'](levelData);
+          await level.save();
+
+          this.logger.log(`Created level: ${levelName}`);
+        }
       }
-      
+
       this.logger.log('✅ Level seeding completed successfully');
     } catch (error) {
       this.logger.error('Error seeding levels:', error.message);
@@ -337,8 +374,12 @@ export class SeederService implements OnModuleInit {
 
     // Check if we need to seed users
     const currentCount = await this.userRepo.count();
-    const needsSeeding = await this.checkEntityNeedsSeeding('Users', currentCount, 10);
-    
+    const needsSeeding = await this.checkEntityNeedsSeeding(
+      'Users',
+      currentCount,
+      10,
+    );
+
     if (!needsSeeding) return;
 
     const users = [
@@ -408,9 +449,32 @@ export class SeederService implements OnModuleInit {
 
     // Add fewer but higher quality diverse users (reduced from 50 to 15)
     const additionalUsers = [];
-    const countries = ['Egypt', 'Jordan', 'UAE', 'Saudi Arabia', 'Morocco', 'Lebanon'];
-    const firstNames = ['Ahmed', 'Fatima', 'Omar', 'Layla', 'Hassan', 'Aisha', 'Youssef', 'Zeinab'];
-    const lastNames = ['Al-Masri', 'Al-Jordani', 'Al-Emirati', 'Al-Saudi', 'Al-Maghribi', 'Al-Lubnani'];
+    const countries = [
+      'Egypt',
+      'Jordan',
+      'UAE',
+      'Saudi Arabia',
+      'Morocco',
+      'Lebanon',
+    ];
+    const firstNames = [
+      'Ahmed',
+      'Fatima',
+      'Omar',
+      'Layla',
+      'Hassan',
+      'Aisha',
+      'Youssef',
+      'Zeinab',
+    ];
+    const lastNames = [
+      'Al-Masri',
+      'Al-Jordani',
+      'Al-Emirati',
+      'Al-Saudi',
+      'Al-Maghribi',
+      'Al-Lubnani',
+    ];
 
     for (let i = 0; i < 15; i++) {
       const firstName = firstNames[i % firstNames.length];
@@ -418,22 +482,28 @@ export class SeederService implements OnModuleInit {
       const email = `user${i + 1}@example.com`;
       const isActive = Math.random() > 0.1; // 90% active
       const daysAgo = Math.floor(Math.random() * 100);
-      
+
       additionalUsers.push({
         email,
         firstName,
         lastName,
         password: await bcrypt.hash('Password123!', 10),
-        strategy: [Strategy.LOCAL, Strategy.GOOGLE, Strategy.FACEBOOK][Math.floor(Math.random() * 3)],
+        strategy: [Strategy.LOCAL, Strategy.GOOGLE, Strategy.FACEBOOK][
+          Math.floor(Math.random() * 3)
+        ],
         isVerified: Math.random() > 0.2, // 80% verified
         role: Role.USER,
-        status: isActive ? UserStatus.ACTIVE : (daysAgo > 65 ? UserStatus.SUSPENDED : UserStatus.ACTIVE),
+        status: isActive
+          ? UserStatus.ACTIVE
+          : daysAgo > 65
+            ? UserStatus.SUSPENDED
+            : UserStatus.ACTIVE,
         country: countries[i % countries.length],
         lastActivity: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
         ...(daysAgo > 65 && {
           suspendedAt: new Date(),
-          suspensionReason: 'Automatically suspended due to inactivity'
-        })
+          suspensionReason: 'Automatically suspended due to inactivity',
+        }),
       });
     }
 
@@ -453,8 +523,12 @@ export class SeederService implements OnModuleInit {
 
     // Check if we need to seed days
     const currentCount = await this.userRepo['dayModel'].countDocuments();
-    const needsSeeding = await this.checkEntityNeedsSeeding('Days', currentCount, 30);
-    
+    const needsSeeding = await this.checkEntityNeedsSeeding(
+      'Days',
+      currentCount,
+      30,
+    );
+
     if (!needsSeeding) return;
 
     // Access day and task models through UserRepo
@@ -478,14 +552,14 @@ export class SeederService implements OnModuleInit {
               dayNumber,
               levelName,
             };
-            
+
             const day = new this.userRepo['dayModel'](dayData);
             await day.save();
 
             // Create 5-6 quality tasks for this day (reduced but more consistent)
             const numberOfTasks = 5 + (dayNumber % 2); // Alternates between 5 and 6 tasks
             const selectedLessons = lessons.slice(0, numberOfTasks);
-            
+
             for (const lesson of selectedLessons) {
               const taskExists = await this.userRepo['taskModel'].findOne({
                 dayId: day._id,
@@ -498,17 +572,19 @@ export class SeederService implements OnModuleInit {
                   description: `Complete ${lesson.toLowerCase().replace('_', ' ')} activity for day ${dayNumber} - ${levelName}`,
                   dayId: day._id,
                 };
-                
+
                 const task = new this.userRepo['taskModel'](taskData);
                 await task.save();
               }
             }
 
-            this.logger.log(`Created day ${dayNumber} for ${levelName} with ${selectedLessons.length} tasks`);
+            this.logger.log(
+              `Created day ${dayNumber} for ${levelName} with ${selectedLessons.length} tasks`,
+            );
           }
         }
       }
-      
+
       this.logger.log('✅ Days and Tasks seeding completed successfully');
     } catch (error) {
       this.logger.error('Error seeding days and tasks:', error.message);
@@ -521,8 +597,12 @@ export class SeederService implements OnModuleInit {
 
     // Check if we need to seed orders
     const currentCount = await this.orderRepo.count();
-    const needsSeeding = await this.checkEntityNeedsSeeding('Orders', currentCount, 5);
-    
+    const needsSeeding = await this.checkEntityNeedsSeeding(
+      'Orders',
+      currentCount,
+      5,
+    );
+
     if (!needsSeeding) return;
 
     // Get some users and courses to create realistic orders
@@ -534,7 +614,11 @@ export class SeederService implements OnModuleInit {
       return;
     }
 
-    const orderStatuses = [PaymentStatus.COMPLETED, PaymentStatus.PENDING, PaymentStatus.FAILED];
+    const orderStatuses = [
+      PaymentStatus.COMPLETED,
+      PaymentStatus.PENDING,
+      PaymentStatus.FAILED,
+    ];
     const levelNames = Object.values(Level_Name);
 
     // Create orders for first 20 users
@@ -544,16 +628,18 @@ export class SeederService implements OnModuleInit {
 
       for (let j = 0; j < numOrders; j++) {
         const course = courses[Math.floor(Math.random() * courses.length)];
-        const status = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
-        const daysAgo = Math.floor(Math.random() * 90);        const orderData = {
+        const status =
+          orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
+        const daysAgo = Math.floor(Math.random() * 90);
+        const orderData = {
           userId: user._id as any, // Type assertion for ObjectId compatibility
           levelName: course.level_name,
           amount: course.price, // Use whole currency amount directly
           paymentStatus: status,
           paymentDate: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
           ...(status === PaymentStatus.COMPLETED && {
-            paymentId: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          })
+            paymentId: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          }),
         };
 
         const existing = await this.orderRepo.findOne({
@@ -563,7 +649,9 @@ export class SeederService implements OnModuleInit {
 
         if (!existing) {
           await this.orderRepo.create(orderData);
-          this.logger.log(`Created order for user ${user.email} - ${course.level_name}`);
+          this.logger.log(
+            `Created order for user ${user.email} - ${course.level_name}`,
+          );
         }
       }
     }
@@ -574,9 +662,14 @@ export class SeederService implements OnModuleInit {
 
     try {
       // Check if we need to seed user progress
-      const currentCount = await this.userRepo['userProgressModel'].countDocuments();
-      const needsSeeding = await this.checkEntityNeedsSeeding('User Progress', currentCount, 20);
-      
+      const currentCount =
+        await this.userRepo['userProgressModel'].countDocuments();
+      const needsSeeding = await this.checkEntityNeedsSeeding(
+        'User Progress',
+        currentCount,
+        20,
+      );
+
       if (!needsSeeding) return;
 
       // Get users and their completed orders to generate realistic progress
@@ -586,12 +679,16 @@ export class SeederService implements OnModuleInit {
       });
 
       if (!users || !completedOrders) {
-        this.logger.warn('No users or completed orders found for progress seeding');
+        this.logger.warn(
+          'No users or completed orders found for progress seeding',
+        );
         return;
       }
 
       for (const order of completedOrders) {
-        const user = users.find(u => u._id.toString() === order.userId.toString());
+        const user = users.find(
+          (u) => u._id.toString() === order.userId.toString(),
+        );
         if (!user) continue;
 
         // Get days for this level
@@ -607,7 +704,9 @@ export class SeederService implements OnModuleInit {
 
         for (let i = 0; i < daysToComplete; i++) {
           const day = days[i];
-          const existingProgress = await this.userRepo['userProgressModel'].findOne({
+          const existingProgress = await this.userRepo[
+            'userProgressModel'
+          ].findOne({
             userId: user._id,
             dayId: day._id,
           });
@@ -617,12 +716,16 @@ export class SeederService implements OnModuleInit {
               userId: user._id,
               dayId: day._id,
               completed: true,
-              completedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
+              completedAt: new Date(
+                Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
+              ), // Random date within last 30 days
             });
           }
         }
 
-        this.logger.log(`Created progress for user ${user.email} - ${order.levelName}: ${daysToComplete}/${days.length} days`);
+        this.logger.log(
+          `Created progress for user ${user.email} - ${order.levelName}: ${daysToComplete}/${days.length} days`,
+        );
       }
     } catch (error) {
       this.logger.error('Error seeding user progress:', error.message);
@@ -634,15 +737,22 @@ export class SeederService implements OnModuleInit {
 
     try {
       // Check if we need to seed user tasks
-      const currentCount = await this.userRepo['userTaskModel'].countDocuments();
-      const needsSeeding = await this.checkEntityNeedsSeeding('User Tasks', currentCount, 50);
-      
+      const currentCount =
+        await this.userRepo['userTaskModel'].countDocuments();
+      const needsSeeding = await this.checkEntityNeedsSeeding(
+        'User Tasks',
+        currentCount,
+        50,
+      );
+
       if (!needsSeeding) return;
 
       // Get user progress to generate task completions
-      const userProgress = await this.userRepo['userProgressModel'].find({
-        completed: true,
-      }).populate('dayId');
+      const userProgress = await this.userRepo['userProgressModel']
+        .find({
+          completed: true,
+        })
+        .populate('dayId');
 
       if (!userProgress || userProgress.length === 0) {
         this.logger.warn('No user progress found for task seeding');
@@ -665,22 +775,29 @@ export class SeederService implements OnModuleInit {
 
         for (let i = 0; i < tasksToComplete; i++) {
           const task = tasks[i];
-          const existingUserTask = await this.userRepo['userTaskModel'].findOne({
-            userId: progress.userId,
-            taskId: task._id,
-          });
+          const existingUserTask = await this.userRepo['userTaskModel'].findOne(
+            {
+              userId: progress.userId,
+              taskId: task._id,
+            },
+          );
 
           if (!existingUserTask) {
             await this.userRepo['userTaskModel'].create({
               userId: progress.userId,
               taskId: task._id,
               completed: true,
-              completedAt: new Date(progress.completedAt.getTime() + Math.random() * 24 * 60 * 60 * 1000), // Same day as progress completion
+              completedAt: new Date(
+                progress.completedAt.getTime() +
+                  Math.random() * 24 * 60 * 60 * 1000,
+              ), // Same day as progress completion
             });
           }
         }
 
-        this.logger.log(`Created task completions: ${tasksToComplete}/${tasks.length} tasks for day ${progress.dayId.dayNumber}`);
+        this.logger.log(
+          `Created task completions: ${tasksToComplete}/${tasks.length} tasks for day ${progress.dayId.dayNumber}`,
+        );
       }
     } catch (error) {
       this.logger.error('Error seeding user tasks:', error.message);
@@ -689,13 +806,17 @@ export class SeederService implements OnModuleInit {
 
   private async seedCertifications() {
     this.logger.log('🏅 Seeding Certifications...');
-    
+
     // Check if we need to seed certifications
     const currentCount = await this.certificateRepo.count();
-    const needsSeeding = await this.checkEntityNeedsSeeding('Certifications', currentCount, 3);
-    
+    const needsSeeding = await this.checkEntityNeedsSeeding(
+      'Certifications',
+      currentCount,
+      3,
+    );
+
     if (!needsSeeding) return;
-    
+
     // Get users who have completed courses
     const completedOrders = await this.orderRepo.find({
       paymentStatus: PaymentStatus.COMPLETED,
@@ -708,7 +829,8 @@ export class SeederService implements OnModuleInit {
 
     // Create certifications for 30% of completed orders
     for (const order of completedOrders) {
-      if (Math.random() < 0.3) { // 30% chance
+      if (Math.random() < 0.3) {
+        // 30% chance
         const certificationData = {
           userId: order.userId as any, // Type assertion for ObjectId compatibility
           certificateId: `CERT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -722,7 +844,9 @@ export class SeederService implements OnModuleInit {
 
         if (!existing) {
           await this.certificateRepo.create(certificationData);
-          this.logger.log(`Created certification for level: ${order.levelName}`);
+          this.logger.log(
+            `Created certification for level: ${order.levelName}`,
+          );
         }
       }
     }
@@ -734,8 +858,12 @@ export class SeederService implements OnModuleInit {
     try {
       // Check if we need to seed OTPs (using model directly since OtpRepo doesn't extend AbstractRepo)
       const currentCount = await this.otpRepo['otpModel'].countDocuments();
-      const needsSeeding = await this.checkEntityNeedsSeeding('OTPs', currentCount, 5);
-      
+      const needsSeeding = await this.checkEntityNeedsSeeding(
+        'OTPs',
+        currentCount,
+        5,
+      );
+
       if (!needsSeeding) return;
 
       // Get some unverified users
@@ -746,7 +874,8 @@ export class SeederService implements OnModuleInit {
         return;
       }
 
-      for (const user of unverifiedUsers.slice(0, 5)) { // First 5 unverified users
+      for (const user of unverifiedUsers.slice(0, 5)) {
+        // First 5 unverified users
         const existing = await this.otpRepo.findOne({
           email: user.email,
           cause: OtpCause.EMAIL_VERIFICATION,
@@ -774,7 +903,8 @@ export class SeederService implements OnModuleInit {
 
       // Create some password reset OTPs
       const users = await this.userRepo.find({});
-      for (const user of users.slice(0, 3)) { // First 3 users
+      for (const user of users.slice(0, 3)) {
+        // First 3 users
         const existing = await this.otpRepo.findOne({
           email: user.email,
           cause: OtpCause.FORGET_PASSWORD,
@@ -789,10 +919,14 @@ export class SeederService implements OnModuleInit {
 
           try {
             await this.otpRepo.create(otpData);
-            this.logger.log(`Created password reset OTP for user: ${user.email}`);
+            this.logger.log(
+              `Created password reset OTP for user: ${user.email}`,
+            );
           } catch (error) {
             if (error.code === 11000) {
-              this.logger.warn(`Password reset OTP already exists for user: ${user.email}`);
+              this.logger.warn(
+                `Password reset OTP already exists for user: ${user.email}`,
+              );
             } else {
               throw error;
             }
@@ -813,15 +947,19 @@ export class SeederService implements OnModuleInit {
 
   async clearAllData() {
     if (!this.isDevelopment) {
-      throw new Error('Data clearing is only allowed in development environment');
+      throw new Error(
+        'Data clearing is only allowed in development environment',
+      );
     }
 
     this.logger.warn('🗑️ Clearing all seeded data...');
-    
+
     // Clear in reverse order to handle dependencies
     await this.otpRepo.deleteMany({});
     // For AbstractRepo-based repos, we need to use different approach
     // Note: These would need custom delete methods in each repo
-    this.logger.log('✅ Data clearing would need custom implementation for each repo');
+    this.logger.log(
+      '✅ Data clearing would need custom implementation for each repo',
+    );
   }
 }

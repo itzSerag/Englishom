@@ -13,7 +13,10 @@ export class CurrencyResponseDto {
   /**
    * Create a currency response object from cents
    */
-  static fromCents(amountCents: number, currency: string = 'EGP'): CurrencyAmount {
+  static fromCents(
+    amountCents: number,
+    currency: string = 'EGP',
+  ): CurrencyAmount {
     const amount = CurrencyUtils.fromCents(amountCents);
     return {
       amount,

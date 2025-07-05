@@ -35,7 +35,9 @@ import { ConfigService } from './config.service';
 
         // Local Storage
         LOCAL_STORAGE_PATH: Joi.string().default('./uploads'),
-        LOCAL_STORAGE_URL: Joi.string().uri().default('http://localhost:3000/uploads'),
+        LOCAL_STORAGE_URL: Joi.string()
+          .uri()
+          .default('http://localhost:3000/uploads'),
 
         // Email
         SMTP_HOST: Joi.string().required(),

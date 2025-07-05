@@ -10,7 +10,7 @@ describe('CurrencyUtils', () => {
   describe('toCents', () => {
     it('should convert whole currency to cents correctly', () => {
       expect(CurrencyUtils.toCents(199)).toBe(19900);
-      expect(CurrencyUtils.toCents(249.50)).toBe(24950);
+      expect(CurrencyUtils.toCents(249.5)).toBe(24950);
       expect(CurrencyUtils.toCents(0)).toBe(0);
       expect(CurrencyUtils.toCents(1)).toBe(100);
     });
@@ -50,7 +50,9 @@ describe('CurrencyUtils', () => {
   describe('formatCurrencyFromCents', () => {
     it('should format currency from cents', () => {
       expect(CurrencyUtils.formatCurrencyFromCents(19900)).toBe('199 EGP');
-      expect(CurrencyUtils.formatCurrencyFromCents(24950, 'USD')).toBe('250 USD');
+      expect(CurrencyUtils.formatCurrencyFromCents(24950, 'USD')).toBe(
+        '250 USD',
+      );
     });
   });
 
@@ -94,12 +96,12 @@ describe('Currency Consistency Integration Tests', () => {
 
   it('should handle typical course prices correctly', () => {
     const coursePrices = [199, 249, 299, 349, 399, 449];
-    
-    coursePrices.forEach(price => {
+
+    coursePrices.forEach((price) => {
       const cents = CurrencyUtils.toCents(price);
       const backToPrice = CurrencyUtils.fromCents(cents);
       const formatted = CurrencyUtils.formatCurrency(price);
-      
+
       expect(backToPrice).toBe(price);
       expect(formatted).toBe(`${price} EGP`);
       expect(cents).toBe(price * 100);

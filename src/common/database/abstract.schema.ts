@@ -1,14 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 
-@Schema({ 
+@Schema({
   timestamps: true,
   toJSON: {
-    transform: function(doc, ret) {
+    transform: function (doc, ret) {
       ret._id = ret._id.toString();
       return ret;
-    }
-  }
+    },
+  },
 })
 export class AbstractDocument {
   @Prop({ type: SchemaTypes.ObjectId, required: true })

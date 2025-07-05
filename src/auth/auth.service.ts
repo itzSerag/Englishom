@@ -54,8 +54,8 @@ export class AuthService {
       throw new ConflictException('User already exists with this email');
     }
 
-    const access_token = await this.generateToken(user)
-    return {user , access_token};
+    const access_token = await this.generateToken(user);
+    return { user, access_token };
   }
 
   async login(loginDto: LoginDto) {
@@ -90,7 +90,7 @@ export class AuthService {
       },
     );
 
-    return {access_token, user};
+    return { access_token, user };
   }
 
   async logout(user: User | Admin) {

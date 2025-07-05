@@ -3,13 +3,13 @@ import { UserRepo } from '../../user/repo/user.repo';
 import { AdminRepo } from '../../admin/repo/admin.repo';
 import { User } from '../../user/models/user.schema';
 import { Admin } from '../../admin/models/admin.schema';
-import {  UserStatus } from '../shared';
+import { UserStatus } from '../shared';
 
 @Injectable()
 export class AuthenticationService {
   constructor(
     private readonly userRepo: UserRepo,
-    private readonly adminRepo: AdminRepo
+    private readonly adminRepo: AdminRepo,
   ) {}
 
   /**
@@ -128,8 +128,6 @@ export class AuthenticationService {
       throw new UnauthorizedException('Admin account is deactivated');
     }
 
-    
-
     // Update activity if stale
     if (this.isActivityStale(user.lastActivity)) {
       await this.updateLastActivity(user);
@@ -138,12 +136,9 @@ export class AuthenticationService {
     return user;
   }
 
-
-  private  isActivityStale(lastActivityTime: Date, staleMinutes = 1): boolean {
+  private isActivityStale(lastActivityTime: Date, staleMinutes = 1): boolean {
     const currentTime = Date.now();
-    const staleThreshold = new Date(
-      currentTime - staleMinutes * 60000,
-    );
+    const staleThreshold = new Date(currentTime - staleMinutes * 60000);
     return lastActivityTime < staleThreshold;
   }
 }

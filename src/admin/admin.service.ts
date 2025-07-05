@@ -74,7 +74,7 @@ export class AdminService {
 
   // Search admins with pagination and filtering
   async searchAdmins(searchDto: AdminSearchDto) {
-    const { query, isActive, page = 1, limit = 10 , adminRole } = searchDto;
+    const { query, isActive, page = 1, limit = 10, adminRole } = searchDto;
 
     // Build search filter
     const searchFilter: any = {};
@@ -102,10 +102,10 @@ export class AdminService {
             $regexMatch: {
               input: { $concat: ['$firstName', ' ', '$lastName'] },
               regex: query.trim(),
-              options: 'i'
-            }
-          }
-        }
+              options: 'i',
+            },
+          },
+        },
       ];
     }
 
@@ -214,10 +214,8 @@ export class AdminService {
       }
     }
 
-    // Soft delete by deactivating or By Deleting the admin 
-    await this.adminRepo.findOneAndDelete(
-      { _id: new Types.ObjectId(id) },
-    );
+    // Soft delete by deactivating or By Deleting the admin
+    await this.adminRepo.findOneAndDelete({ _id: new Types.ObjectId(id) });
   }
 
   // Update admin activity

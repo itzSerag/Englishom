@@ -55,10 +55,8 @@ async function bootstrap() {
     app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
     const port = process.env.PORT ?? 3000;
-    await app.listen(port , '0.0.0.0');
-    logger.log(
-      `Server successfully started on port ${port} ${Date.now()}`,
-    );
+    await app.listen(port, '0.0.0.0');
+    logger.log(`Server successfully started on port ${port} ${Date.now()}`);
   } catch (error) {
     logger.error(
       `Error during application bootstrap: ${error.message}`,

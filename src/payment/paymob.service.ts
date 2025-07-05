@@ -44,7 +44,7 @@ export class PaymobService {
       this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
     this.PAYMOB_SECRET_KEY =
       this.configService.getOrThrow<string>('PAYMOB_SECRET_KEY');
-    
+
     // Load email template
     this.loadPaymentSuccessEmailTemplate();
   }
@@ -54,12 +54,19 @@ export class PaymobService {
    */
   private loadPaymentSuccessEmailTemplate(): void {
     try {
-      const templatePath = path.join(__dirname, 'templates', 'payment-success-email-template.html');
+      const templatePath = path.join(
+        __dirname,
+        'templates',
+        'payment-success-email-template.html',
+      );
       this.paymentSuccessEmailTemplate = fs.readFileSync(templatePath, 'utf-8');
       this.logger.log('Payment success email template loaded successfully');
     } catch (error) {
-      this.logger.warn('Failed to load payment success email template, using fallback template');
-      this.paymentSuccessEmailTemplate = this.getFallbackPaymentSuccessTemplate();
+      this.logger.warn(
+        'Failed to load payment success email template, using fallback template',
+      );
+      this.paymentSuccessEmailTemplate =
+        this.getFallbackPaymentSuccessTemplate();
     }
   }
 
@@ -116,10 +123,10 @@ export class PaymobService {
       const paymentProviderRequest = {
         ...paymentRequest,
         amount: paymentRequest.amount * 100, // Convert to cents for payment provider
-        items: paymentRequest.items.map(item => ({
+        items: paymentRequest.items.map((item) => ({
           ...item,
-          amount: item.amount * 100 // Convert to cents for payment provider
-        }))
+          amount: item.amount * 100, // Convert to cents for payment provider
+        })),
       };
 
       const res = await fetch('https://accept.paymob.com/v1/intention/', {
@@ -520,7 +527,9 @@ export class PaymobService {
       };
 
       await this.emailService.sendCustomEmail(mailOptions);
-      this.logger.log(`Payment success email sent to ${user.email} for level ${levelName}`);
+      this.logger.log(
+        `Payment success email sent to ${user.email} for level ${levelName}`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to send payment success email to ${user.email}: ${error.message}`,

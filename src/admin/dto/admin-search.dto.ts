@@ -26,7 +26,7 @@ export class AdminSearchDto {
 
   @IsOptional()
   @IsEnum(AdminRole)
-  adminRole : AdminRole; // Filter by admin role
+  adminRole: AdminRole; // Filter by admin role
 
   @IsOptional()
   @Type(() => Number)

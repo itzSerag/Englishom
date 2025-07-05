@@ -10,15 +10,7 @@ import { PaymentModule } from '../../payment/paymob.module';
 import { SeederService } from './seeder.service';
 
 @Module({
-  imports: [
-    ConfigModule,
-    AdminModule,
-    UserModule,
-    AuthModule,
-    PaymentModule,
-    
-    
-  ],
+  imports: [ConfigModule, AdminModule, UserModule, AuthModule, PaymentModule],
   controllers: [SeederController],
   providers: [SeederService],
   exports: [SeederService],

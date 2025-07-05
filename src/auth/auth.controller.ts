@@ -35,8 +35,11 @@ export class AuthController {
   @Public()
   @Post('signup')
   async register(@Body() createAuthDto: CreateUserDto, @Req() req: Request) {
-    const {user , access_token} = await this.authService.register(createAuthDto, req);
-  
+    const { user, access_token } = await this.authService.register(
+      createAuthDto,
+      req,
+    );
+
     return {
       access_token,
       user: cleanResponse(user),
@@ -48,7 +51,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
-    const {user ,  access_token }  = await this.authService.login(loginDto);
+    const { user, access_token } = await this.authService.login(loginDto);
     if (user instanceof Admin) {
       // If the user is an admin, we can return the admin-specific fields
       return {
@@ -94,7 +97,6 @@ export class AuthController {
     }
   }
 
-  
   @Public()
   @Post('resend-otp')
   async resendOtp(@Body() resendOtpDto: ResendOtpDto) {

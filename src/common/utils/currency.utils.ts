@@ -38,7 +38,10 @@ export class CurrencyUtils {
    * @param currency Currency code (default: 'EGP')
    * @returns Formatted currency string
    */
-  static formatCurrencyFromCents(amountCents: number, currency: string = 'EGP'): string {
+  static formatCurrencyFromCents(
+    amountCents: number,
+    currency: string = 'EGP',
+  ): string {
     const wholeAmount = this.fromCents(amountCents);
     return this.formatCurrency(wholeAmount, currency);
   }

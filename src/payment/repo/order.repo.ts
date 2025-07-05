@@ -16,7 +16,6 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
     super(orderModel);
   }
 
-
   async getNumberOfEachCourse() {
     try {
       const orders = await this.orderModel.aggregate([
@@ -45,7 +44,6 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       throw new Error(`Failed to get number of each course: ${error.message}`);
     }
   }
-   
 
   async findPendingOrder(
     userId: string,
