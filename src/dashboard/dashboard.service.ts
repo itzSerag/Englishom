@@ -182,7 +182,8 @@ export class DashboardService {
   }
 
   /**
-   * Get user details for course assignment
+   * Get user details with purchased courses only
+   * Returns user information and details for levels they have bought
    */
   async getUserDetails(userId: string) {
     try {
@@ -195,12 +196,25 @@ export class DashboardService {
       // Get user's completed orders
       const completedOrders = await this.orderRepo.findUserCompletedOrders(userId);
 
-      // Get all available courses/levels
-      const allCourses = await this.courseRepo.find({});
+      // If user has no completed orders, return empty levels details
+      if (!completedOrders || completedOrders.length === 0) {
+        return {
+          user: cleanResponse(user),
+          levelsDetails: [],
+        };
+      }
 
-      // Build detailed level information
+      // Get unique level names from completed orders
+      const purchasedLevelNames = [...new Set(completedOrders.map(order => order.levelName))];
+
+      // Get course details for only purchased levels
+      const purchasedCourses = await this.courseRepo.find({
+        level_name: { $in: purchasedLevelNames }
+      });
+
+      // Build detailed level information for purchased courses only
       const levelsDetails = await Promise.all(
-        allCourses.map(async (course) => {
+        purchasedCourses.map(async (course) => {
           const levelName = course.level_name;
                     
           let currentDay = 0;
@@ -239,7 +253,7 @@ export class DashboardService {
        
       return {
         user: cleanResponse(user),
-        levelsDetails, // New detailed level information
+        levelsDetails, // Purchased courses details only
       };
     } catch (error) {
       this.logger.error(
