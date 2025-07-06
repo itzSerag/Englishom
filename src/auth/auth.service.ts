@@ -310,35 +310,16 @@ export class AuthService {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     try {
-      // First, create the OTP record
       await this.otpRepo.delete({ email, cause });
+
       await this.otpRepo.create({ email, otp, cause });
 
-      // Then try to send the email
-      try {
-        await this.emailService.sendEmail(email, otp, cause);
-      } catch (emailError) {
-        // If email sending fails, we should still clean up the OTP
-        await this.otpRepo.delete({ email, cause });
-        
-        // Provide a more specific error message
-        if (emailError.message.includes('Invalid email address')) {
-          throw new BadRequestException('The provided email address is invalid or from an unsupported domain.');
-        } else if (emailError.message.includes('timed out')) {
-          throw new BadRequestException('Unable to send email to this address. Please verify the email domain is valid.');
-        } else {
-          throw new InternalServerErrorException('Failed to send verification email. Please try again or contact support.');
-        }
-      }
+      // Send email only after successful OTP creation
+      await this.emailService.sendEmail(email, otp, cause);
     } catch (err) {
-      // If this is already a NestJS exception, re-throw it
-      if (err instanceof BadRequestException || err instanceof InternalServerErrorException) {
-        throw err;
-      }
-      
-      // For other errors (like database errors)
+      // If OTP creation fails, don't send email
       throw new InternalServerErrorException(
-        'Something happened while generating the OTP. Please try again.'
+        'Something happened while generating the OTP, Please try again, ' + err,
       );
     }
 
