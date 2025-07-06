@@ -50,12 +50,20 @@ export class AdminController {
     return cleanResponse(admin);
   }
 
-  // Search/filter admins with pagination
+  // Search/filter admins with pagination - SUPER and MANAGER can view admins
   @Get('search')
   async searchAdmins(@Query() searchDto: AdminSearchDto) {
     return await this.adminService.searchAdmins(searchDto);
   }
 
+  // Get all admins - SUPER and MANAGER can view all admins
+  @Get('all')
+  async getAllAdmins() {
+    const admins = await this.adminService.getAllAdmins();
+    return cleanResponseArray(admins);
+  }
+
+  // Get admin by ID - SUPER and MANAGER can view admin details
   @Get(':id')
   async getAdminById(@Param('id') id: string) {
     const admin = await this.adminService.getAdminById(id);

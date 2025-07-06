@@ -23,6 +23,9 @@ import { Admin } from 'src/admin/models/admin.schema';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserStatus } from '../common/shared';
+import { OrderRepo } from '../payment/repo/order.repo';
+import { CourseRepo } from '../auth/repo/course.repo';
+import { cleanResponse } from '../common/utils/response.utils';
 
 @Injectable()
 export class UserService {
@@ -31,6 +34,8 @@ export class UserService {
     private readonly orderService: OrderService,
     private readonly certificateRepo: CertificateRepo,
     private readonly ipService: IpService,
+    private readonly orderRepo: OrderRepo,
+    private readonly courseRepo: CourseRepo, 
   ) {}
   private logger = new Logger(UserService.name);
 
@@ -337,5 +342,71 @@ export class UserService {
       paginationDto.page,
       paginationDto.limit,
     );
+  }
+
+  async getUserDetails(userId : string ){
+     try {
+        const user = await this.userRepo.findOne({ _id: userId });
+  
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+  
+        // Get user's completed orders
+        const completedOrders = await this.orderRepo.findUserCompletedOrders(userId);
+  
+        // Get all available courses/levels
+        const allCourses = await this.courseRepo.find({});
+  
+        // Build detailed level information
+        const levelsDetails = await Promise.all(
+          allCourses.map(async (course) => {
+            const levelName = course.level_name;
+                      
+            let currentDay = 0;
+            let isCompleted = false;
+    
+          
+            // Get user's current progress (highest completed day + 1)
+            try {
+              const completedDays = await this.userRepo.userProgress(userId, levelName);
+              currentDay = completedDays !== null ? completedDays + 1 : 1; // Next day to work on
+            } catch (error) {
+              this.logger.warn(`Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`);
+              currentDay = 1; // Default to day 1 if there's an error
+            }
+  
+            // Check if user has completed this level (has certificate)
+            try {
+              const certificate = await this.certificateRepo.findOne({
+                userId: user._id,
+                level_name: levelName,
+              });
+              isCompleted = !!certificate;
+            } catch (error) {
+              this.logger.warn(`Failed to check certificate for user ${userId} in level ${levelName}: ${error.message}`);
+              isCompleted = false;
+            }
+              
+    
+            return {
+              levelName,
+              currentDay,
+              isCompleted,
+            };
+          })
+        );
+           
+          return {
+            user: cleanResponse(user),
+            levelsDetails, // New detailed level information
+          };
+        } catch (error) {
+          this.logger.error(
+            `Error fetching user details: ${error.message}`,
+            error.stack,
+          );
+          throw error;
+        }
   }
 }

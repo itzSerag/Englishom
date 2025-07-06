@@ -69,7 +69,7 @@ export class AdminService {
   }
   async getAllAdmins(): Promise<Admin[]> {
     // no need for pagination there wont be many admins
-    return this.adminRepo.finaAllAdmins();
+    return this.adminRepo.findAllAdmins();
   }
 
   // Search admins with pagination and filtering
@@ -187,7 +187,7 @@ export class AdminService {
   }
 
   // Delete admin (only SUPER can delete, and cannot delete themselves or last SUPER)
-  async deleteAdmin(id: string, currentAdmin: Admin): Promise<void> {
+  async deleteAdmin(id: string, currentAdmin: Admin): Promise<Admin> {
     if (currentAdmin.adminRole !== AdminRole.SUPER) {
       throw new ForbiddenException('Only Super Admin can delete admins');
     }
@@ -213,9 +213,8 @@ export class AdminService {
         throw new BadRequestException('Cannot delete the last Super Admin');
       }
     }
-
-    // Soft delete by deactivating or By Deleting the admin
-    await this.adminRepo.findOneAndDelete({ _id: new Types.ObjectId(id) });
+    const deletedAdmin = await this.adminRepo.findOneAndDelete({ _id: new Types.ObjectId(id) });
+    return deletedAdmin;
   }
 
   // Update admin activity

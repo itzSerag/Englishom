@@ -29,7 +29,6 @@ import { CertificateRepo } from './repo/certificate.repo';
       { name: User.name, schema: UserSchema },
       { name: UserProgress.name, schema: UserProgressSchema },
       { name: Day.name, schema: DaySchema },
-      { name: Task.name, schema: TaskSchema },
       { name: UserTask.name, schema: UserTaskSchema },
       { name: Task.name, schema: TaskSchema },
       { name: Level.name, schema: LevelSchema },

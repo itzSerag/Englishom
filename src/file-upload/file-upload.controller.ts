@@ -13,6 +13,7 @@ import {
   ForbiddenException,
   ValidationPipe,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
 import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -23,6 +24,7 @@ import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin/decorators';
+import { IsAdminGuard, AdminRoleGuard } from '../admin/guards';
 
 @Controller('files')
 export class FileUploadController {
@@ -137,8 +139,10 @@ export class FileUploadController {
     return { message: 'Audio file deleted successfully' };
   }
 
+  // Content upload - OPERATOR+ can upload content
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
+  @UseGuards(IsAdminGuard, AdminRoleGuard)
   @Post('')
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   async upload(@Body() dataUploadDTO: UploadDTO) {
     dataUploadDTO.data = this.parseData(dataUploadDTO.data);
     await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
@@ -146,8 +150,10 @@ export class FileUploadController {
     return { message: 'Data uploaded successfully' };
   }
 
+  // Single file upload - OPERATOR+ can upload content
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
+  @UseGuards(IsAdminGuard, AdminRoleGuard)
   @Post('single-file')
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
@@ -163,14 +169,18 @@ export class FileUploadController {
     return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
+  // Delete from JSON data array - MANAGER+ can delete content
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @UseGuards(IsAdminGuard, AdminRoleGuard)
   @Delete('delete-obj')
   async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
     await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
     return { message: 'Object deleted successfully' };
   }
 
+  // Delete file - MANAGER+ can delete content
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @UseGuards(IsAdminGuard, AdminRoleGuard)
   @Delete()
   async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
     try {

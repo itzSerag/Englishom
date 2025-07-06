@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import { UpdateCourseDto } from '../dto/update-course.dto';
 import { AdminRole, Level_Name } from 'src/common/shared/enums';
 import { Public } from '../decorator/public.decorator';
 import { AdminRoles } from 'src/admin/decorators';
+import { IsAdminGuard, AdminRoleGuard } from '../../admin/guards';
 
 @Controller('courses')
 export class CourseController {

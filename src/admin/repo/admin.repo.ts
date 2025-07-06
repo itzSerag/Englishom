@@ -31,7 +31,7 @@ export class AdminRepo extends AbstractRepo<Admin> {
     return await this.adminModel.countDocuments();
   }
 
-  async finaAllAdmins(): Promise<Admin[]> {
+  async findAllAdmins(): Promise<Admin[]> {
     return await this.find({});
   }
 }
