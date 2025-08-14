@@ -45,11 +45,17 @@ export class UserController {
   @SkipVerifiedGuard()
   @Get('me')
   async getMe(@CurrentUser() user: User | Admin) {
-    // no need to get the levels for admin
+    // Check if user is an admin
+    if (user instanceof Admin || (user as any).adminRole) {
+      // For admins, return just the admin data without user-specific details
+      return {
+        user: cleanResponse(user),
+        levelsDetails: [], // Admins don't have level progress
+      };
+    }
 
-   return await this.userService.getUserDetails(user._id.toString());
-
-    
+    // For regular users, get their details including level progress
+    return await this.userService.getUserDetails(user._id.toString());
   }
 
   @Post()
