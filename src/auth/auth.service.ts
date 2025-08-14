@@ -325,4 +325,10 @@ export class AuthService {
 
     return otp;
   }
+
+  // Test email configuration method
+  async testEmailConfiguration(email: string): Promise<void> {
+    const testOtp = '123456';
+    await this.emailService.sendEmail(email, testOtp, OtpCause.EMAIL_VERIFICATION);
+  }
 }

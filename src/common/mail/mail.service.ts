@@ -10,16 +10,38 @@ export class EmailService {
   constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST'),
-      port: this.configService.get('SMTP_PORT'),
-      secure: this.configService.get('SMTP_PORT') === 465,
+      port: parseInt(this.configService.get('SMTP_PORT')),
+      secure: this.configService.get('SMTP_PORT') ,
       auth: {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
-      }
-    })
+      },
+      connectionTimeout: 30000,
+      greetingTimeout: 15000, 
+      socketTimeout: 30000,
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    this.verifyConnection();
   }
 
-  // ✅ Fire-and-forget wrapper
+  private async verifyConnection() {
+    try {
+      await this.transporter.verify();
+      console.log('✅ SMTP connection verified successfully');
+    } catch (error) {
+      console.error('❌ SMTP connection failed:', error.message);
+      console.error('SMTP Config:', {
+        host: this.configService.get('SMTP_HOST'),
+        port: this.configService.get('SMTP_PORT'),
+        user: this.configService.get('SMTP_USER'),
+        secure: this.configService.get('SMTP_PORT') === '465',
+      });
+    }
+  }
+
   sendEmail(to: string, otp: string, cause?: OtpCause): void {
     if (!this.isValidEmail(to)) {
       console.warn(`Invalid email format: ${to}`);
@@ -50,23 +72,31 @@ export class EmailService {
           <p>${message}</p>
           <p style="font-weight: bold; font-size: 18px;">${otp}</p>
           ${additionalInfo}
-          <p>Thanks</p>
+          <p>Thanks,<br>The Englishom Team</p>
         </div>
       `,
     };
 
-    // Fire and forget 🚀
+    console.log(`🚀 Attempting to send email to ${to} with subject: ${subject}`);
+
     this.sendMailWithTimeout(mailOptions)
-      .then(() => console.log(`Email sent to ${to}`))
-      .catch((err) => console.error(`Email sending failed to ${to}:`, err.message));
+      .then(() => console.log(`✅ Email sent successfully to ${to}`))
+      .catch((err) => {
+        console.error(`❌ Email sending failed to ${to}:`, err.message);
+        if (err.code) {
+          console.error(`Error code: ${err.code}`);
+        }
+        if (err.response) {
+          console.error(`SMTP response: ${err.response}`);
+        }
+      });
   }
 
-  // ✅ Manual timeout fallback
   private async sendMailWithTimeout(mailOptions: any): Promise<any> {
     return Promise.race([
       this.transporter.sendMail(mailOptions),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Email timeout')), 5000),
+        setTimeout(() => reject(new Error('Email timeout after 30 seconds')), 30000),
       ),
     ]);
   }
@@ -76,7 +106,6 @@ export class EmailService {
     return emailRegex.test(email);
   }
 
-  // optional: still keep this if you want to manually call it elsewhere
   async sendCustomEmail(mailOptions: any): Promise<any> {
     return this.transporter.sendMail(mailOptions);
   }

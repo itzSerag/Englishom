@@ -202,4 +202,23 @@ export class AuthController {
       message: 'Logout successful',
     };
   }
+
+  // Test endpoint for email configuration
+  @Public()
+  @Post('test-email')
+  async testEmail(@Body() body: { email: string }) {
+    try {
+      await this.authService.testEmailConfiguration(body.email);
+      return {
+        success: true,
+        message: 'Test email sent successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to send test email',
+        error: error.message,
+      };
+    }
+  }
 }
