@@ -16,12 +16,6 @@ export class EmailService {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
       },
-      connectionTimeout: 30000,
-      greetingTimeout: 15000, 
-      socketTimeout: 30000,
-      tls: {
-        rejectUnauthorized: false,
-      },
     });
 
     this.verifyConnection();
