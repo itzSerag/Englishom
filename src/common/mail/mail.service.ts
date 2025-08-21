@@ -11,7 +11,8 @@ export class EmailService {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST'),
       port: 587, // Default to 587 for STARTTLS
-      secure: this.configService.get('SMTP_PORT') === '465', // true for 465, false for other ports
+      secure: false,
+      requireTLS: true, // force TLS
       auth: {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
