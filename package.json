@@ -21,7 +21,8 @@
     "seed:users": "ts-node src/scripts/seeder.ts users",
     "seed:courses": "ts-node src/scripts/seeder.ts courses",
     "seed:orders": "ts-node src/scripts/seeder.ts orders",
-    "seed:help": "ts-node src/scripts/seeder.ts help"
+    "seed:help": "ts-node src/scripts/seeder.ts help",
+    "test:mail": "ts-node src/scripts/test-mail-service.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.782.0",
