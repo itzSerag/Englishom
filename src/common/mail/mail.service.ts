@@ -11,11 +11,15 @@ export class EmailService {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST'),
       port: parseInt(this.configService.get('SMTP_PORT')),
-      secure: this.configService.get('SMTP_PORT') ,
+      secure: true,
       auth: {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
       },
+      // Add connection and socket timeout configurations
+      connectionTimeout: 60000, // 60 seconds connection timeout
+      greetingTimeout: 30000,   // 30 seconds greeting timeout
+      socketTimeout: 60000,     // 60 seconds socket timeout
     });
 
     this.verifyConnection();
@@ -87,10 +91,13 @@ export class EmailService {
   }
 
   private async sendMailWithTimeout(mailOptions: any): Promise<any> {
+    // Get timeout from environment variable or use default of 120 seconds (2 minutes)
+    const timeoutMs = parseInt(this.configService.get('EMAIL_TIMEOUT_MS', '120000'));
+    
     return Promise.race([
       this.transporter.sendMail(mailOptions),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Email timeout after 30 seconds')), 30000),
+        setTimeout(() => reject(new Error(`Email timeout after ${timeoutMs / 1000} seconds`)), timeoutMs),
       ),
     ]);
   }
