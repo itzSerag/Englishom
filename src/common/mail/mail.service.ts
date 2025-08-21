@@ -10,8 +10,8 @@ export class EmailService {
   constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST'),
-      port: parseInt(this.configService.get('SMTP_PORT')),
-      secure: this.configService.get('SMTP_PORT') === 465, // true for 465, false for other ports
+      port: 587, // Default to 587 for STARTTLS
+      secure: this.configService.get('SMTP_PORT') === '465', // true for 465, false for other ports
       auth: {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
@@ -61,7 +61,7 @@ export class EmailService {
     }
 
     const mailOptions = {
-      from: `"Englishom" <${this.configService.get('SMTP_USER')}>`,
+      from: `"Englishom" <no-reply@englishom.com>`, // ✅ Verified domain sender
       to,
       subject,
       html: `
