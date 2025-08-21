@@ -39,11 +39,6 @@ import { ConfigService } from './config.service';
           .uri()
           .default('http://localhost:3000/uploads'),
 
-        // Email
-        SMTP_HOST: Joi.string().required(),
-        SMTP_PORT: Joi.number().required(),
-        SMTP_USER: Joi.string().required(),
-        SMTP_PASS: Joi.string().required(),
 
         // Paymob
         PAYMOB_API_KEY: Joi.string().required(),
@@ -51,6 +46,8 @@ import { ConfigService } from './config.service';
         PAYMOB_PUBLIC_KEY: Joi.string().required(),
         PAYMOB_SECRET_KEY: Joi.string().required(),
         PAYMOB_HMAC_SECRET: Joi.string().required(),
+
+        // Brevo (formerly SendinBlue)
         BREVO_API_KEY: Joi.string().required(),
       }),
       validationOptions: {
