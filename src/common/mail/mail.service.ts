@@ -9,31 +9,22 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get('SMTP_HOST'),
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get('SMTP_USER'),
-        pass: this.configService.get('SMTP_PASS'),
-      },
-      // Enhanced timeout and connection configurations for VPS environments
-      connectionTimeout: 120000, // 2 minutes connection timeout
-      greetingTimeout: 60000,    // 1 minute greeting timeout  
-      socketTimeout: 120000,     // 2 minutes socket timeout
-      // Additional VPS-friendly options
-      pool: true,                // Use connection pooling
-      maxConnections: 5,         // Limit concurrent connections
-      maxMessages: 100,          // Messages per connection
-      // TLS options for better compatibility
-      tls: {
-        // Don't fail on invalid certs in development
-        rejectUnauthorized: this.configService.get('NODE_ENV') === 'production',
-      },
-      // Debug logging
-      debug: this.configService.get('NODE_ENV') !== 'production',
-      logger: this.configService.get('NODE_ENV') !== 'production',
-    } as any);
+   this.transporter = nodemailer.createTransport({
+  host: this.configService.get('SMTP_HOST'),
+  port: 465,
+  secure: true, // ✅ must be true for SSL
+  auth: {
+    user: this.configService.get('SMTP_USER'),
+    pass: this.configService.get('SMTP_PASS'),
+  },
+  tls: {
+    rejectUnauthorized: this.configService.get('NODE_ENV') === 'production'
+  },
+  connectionTimeout: 120000,
+  greetingTimeout: 60000,
+  socketTimeout: 120000,
+});
+
 
     this.verifyConnection();
   }
