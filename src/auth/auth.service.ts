@@ -14,7 +14,7 @@ import { UserRepo } from '../user/repo/user.repo';
 import { UserService } from '../user/user.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
-import { EmailService } from '../common/mail/mail.service';
+import { MailService } from '../common/mail/mail.service';
 import { OtpRepo } from './repo/repo.otp';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AuthenticationService } from 'src/common/services/authentication.service';
@@ -32,7 +32,7 @@ export class AuthService {
     private readonly userRepo: UserRepo,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
-    private readonly emailService: EmailService,
+    private readonly mailService: MailService,
     private readonly otpRepo: OtpRepo,
     private readonly globalAuthService: AuthenticationService,
     private readonly ipService: IpService,
@@ -315,7 +315,7 @@ export class AuthService {
       await this.otpRepo.create({ email, otp, cause });
 
       // Send email only after successful OTP creation
-      await this.emailService.sendEmail(email, otp, cause);
+      await this.mailService.sendEmail(email, otp, cause);
     } catch (err) {
       // If OTP creation fails, don't send email
       throw new InternalServerErrorException(
@@ -329,6 +329,6 @@ export class AuthService {
   // Test email configuration method
   async testEmailConfiguration(email: string): Promise<void> {
     const testOtp = '123456';
-    await this.emailService.sendEmail(email, testOtp, OtpCause.EMAIL_VERIFICATION);
+    await this.mailService.sendEmail(email, testOtp, OtpCause.EMAIL_VERIFICATION);
   }
 }

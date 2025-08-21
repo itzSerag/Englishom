@@ -13,8 +13,7 @@ import { Level_Name } from '../common/shared/enums';
 import { OrderRepo } from './repo/order.repo';
 import { TransactionService } from '../common/database/transaction.service';
 import { UserRepo } from '../user/repo/user.repo';
-import { EmailService } from '../common/mail/mail.service';
-import { CurrencyUtils } from '../common/utils/currency.utils';
+import { MailService } from '../common/mail/mail.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -32,7 +31,7 @@ export class PaymobService {
     public readonly orderRepo: OrderRepo,
     private readonly transactionService: TransactionService,
     private readonly userRepo: UserRepo,
-    private readonly emailService: EmailService,
+    private readonly emailService: MailService,
   ) {
     // Integration ID can be either string or number from config
     const integrationIdValue = this.configService.getOrThrow<string | number>(

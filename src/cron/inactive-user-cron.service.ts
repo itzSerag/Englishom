@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { UserRepo } from '../user/repo/user.repo';
-import { EmailService } from '../common/mail/mail.service';
+import { MailService } from '../common/mail/mail.service';
 import { Role, UserStatus } from '../common/shared';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -14,7 +14,7 @@ export class InactiveUserCronService {
 
   constructor(
     private readonly userRepo: UserRepo,
-    private readonly emailService: EmailService,
+    private readonly emailService: MailService,
   ) {
     try {
       const templatePath = path.join(__dirname, 'email-template.html');

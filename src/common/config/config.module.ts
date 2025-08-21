@@ -51,6 +51,7 @@ import { ConfigService } from './config.service';
         PAYMOB_PUBLIC_KEY: Joi.string().required(),
         PAYMOB_SECRET_KEY: Joi.string().required(),
         PAYMOB_HMAC_SECRET: Joi.string().required(),
+        BREVO_API_KEY: Joi.string().required(),
       }),
       validationOptions: {
         allowUnknown: true, // Allows env vars not specified in the schema

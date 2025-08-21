@@ -26,6 +26,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.782.0",
     "@aws-sdk/s3-request-presigner": "^3.782.0",
+    "@getbrevo/brevo": "^3.0.1",
     "@nestjs/axios": "^4.0.0",
     "@nestjs/common": "^11.0.13",
     "@nestjs/config": "^4.0.2",
@@ -58,6 +59,7 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "sib-api-v3-sdk": "^8.5.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

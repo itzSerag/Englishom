@@ -21,8 +21,7 @@ import {
   cleanResponseArray,
 } from '../common/utils/response.utils';
 import { User } from '../user/models/user.schema';
-import { EmailService } from '../common/mail/mail.service';
-import { CurrencyUtils } from '../common/utils/currency.utils';
+import { MailService } from '../common/mail/mail.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -37,7 +36,7 @@ export class DashboardService {
     private readonly courseRepo: CourseRepo,
     private readonly certificateRepo: CertificateRepo,
     private readonly transactionService: TransactionService,
-    private readonly emailService: EmailService,
+    private readonly emailService: MailService,
   ) {
     this.loadCourseAssignmentEmailTemplate();
   }
