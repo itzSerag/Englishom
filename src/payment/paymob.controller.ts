@@ -23,7 +23,6 @@ import { CourseService } from '../auth/services/course.service';
 import { Course } from '../auth/models/admin-course';
 import { PaymentStatus } from './types';
 import { Admin } from '../admin/models/admin.schema';
-import { CurrencyUtils } from '../common/utils/currency.utils';
 
 @Controller('payment')
 export class PaymobController {

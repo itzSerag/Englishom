@@ -128,7 +128,9 @@ export class DashboardService {
       // Check if course exists
       const course = await this.courseRepo.findByLevelName(level_name);
       if (!course) {
-        throw new NotFoundException(`Course with level ${level_name} not found`);
+        throw new NotFoundException(
+          `Course with level ${level_name} not found`,
+        );
       }
 
       // Check if user already has this course completed
@@ -160,13 +162,12 @@ export class DashboardService {
       this.logger.log(
         `Successfully assigned course ${level_name} to user ${userId}. Order ID: ${order._id}`,
       );
-      
+
       // // Send course assignment email
-      this.sendCourseAssignmentEmail(user, level_name, reason)
-      .catch((err) => {
-      this.logger.warn(`Async email failed silently: ${err.message}`);
+      this.sendCourseAssignmentEmail(user, level_name, reason).catch((err) => {
+        this.logger.warn(`Async email failed silently: ${err.message}`);
       });
-      
+
       return {
         message: `Course ${level_name} successfully assigned to user`,
         order: {
@@ -193,7 +194,8 @@ export class DashboardService {
       }
 
       // Get user's completed orders
-      const completedOrders = await this.orderRepo.findUserCompletedOrders(userId);
+      const completedOrders =
+        await this.orderRepo.findUserCompletedOrders(userId);
 
       // If user has no completed orders, return empty levels details
       if (!completedOrders || completedOrders.length === 0) {
@@ -204,28 +206,34 @@ export class DashboardService {
       }
 
       // Get unique level names from completed orders
-      const purchasedLevelNames = [...new Set(completedOrders.map(order => order.levelName))];
+      const purchasedLevelNames = [
+        ...new Set(completedOrders.map((order) => order.levelName)),
+      ];
 
       // Get course details for only purchased levels
       const purchasedCourses = await this.courseRepo.find({
-        level_name: { $in: purchasedLevelNames }
+        level_name: { $in: purchasedLevelNames },
       });
 
       // Build detailed level information for purchased courses only
       const levelsDetails = await Promise.all(
         purchasedCourses.map(async (course) => {
           const levelName = course.level_name;
-                    
+
           let currentDay = 0;
           let isCompleted = false;
 
-      
           // Get user's current progress (highest completed day + 1)
           try {
-            const completedDays = await this.userRepo.userProgress(userId, levelName);
+            const completedDays = await this.userRepo.userProgress(
+              userId,
+              levelName,
+            );
             currentDay = completedDays !== null ? completedDays + 1 : 1; // Next day to work on
           } catch (error) {
-            this.logger.warn(`Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`);
+            this.logger.warn(
+              `Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`,
+            );
             currentDay = 1; // Default to day 1 if there's an error
           }
 
@@ -237,19 +245,20 @@ export class DashboardService {
             });
             isCompleted = !!certificate;
           } catch (error) {
-            this.logger.warn(`Failed to check certificate for user ${userId} in level ${levelName}: ${error.message}`);
+            this.logger.warn(
+              `Failed to check certificate for user ${userId} in level ${levelName}: ${error.message}`,
+            );
             isCompleted = false;
           }
-          
 
           return {
             levelName,
             currentDay,
             isCompleted,
           };
-        })
+        }),
       );
-       
+
       return {
         user: cleanResponse(user),
         levelsDetails, // Purchased courses details only
@@ -319,11 +328,11 @@ export class DashboardService {
               $regexMatch: {
                 input: { $concat: ['$firstName', ' ', '$lastName'] },
                 regex: query.trim(),
-                options: 'i'
-              }
-            }
-          }
-        ]
+                options: 'i',
+              },
+            },
+          },
+        ],
       };
 
       // Use the repository's pagination method
@@ -396,15 +405,14 @@ export class DashboardService {
     const courses = await this.courseRepo.find({});
     return courses ? courses.length : 0;
   }
- 
 
   private async getRecentOrders(limit: number = 10) {
     const orders = await this.orderRepo.getRecentOrdersWithUsers(limit);
     if (!orders) return [];
 
     return orders
-      .filter(order => order.userId) // Filter out orders with null/undefined user data
-      .map(order => ({
+      .filter((order) => order.userId) // Filter out orders with null/undefined user data
+      .map((order) => ({
         _id: order._id,
         userId: order.userId._id,
         levelName: order.levelName,
@@ -412,7 +420,9 @@ export class DashboardService {
         paymentStatus: order.paymentStatus,
         paymentDate: order.paymentDate,
         createdAt: order.createdAt,
-        username: order.userId ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim() : 'Unknown User',
+        username: order.userId
+          ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim()
+          : 'Unknown User',
       }));
   }
 
@@ -429,12 +439,16 @@ export class DashboardService {
         'templates',
         'payment-success-email-template.html',
       );
-      this.courseAssignmentEmailTemplate = fs.readFileSync(templatePath, 'utf-8');
+      this.courseAssignmentEmailTemplate = fs.readFileSync(
+        templatePath,
+        'utf-8',
+      );
     } catch (error) {
       this.logger.warn(
         'Failed to load course assignment email template, using fallback template',
       );
-      this.courseAssignmentEmailTemplate = this.getFallbackCourseAssignmentTemplate();
+      this.courseAssignmentEmailTemplate =
+        this.getFallbackCourseAssignmentTemplate();
     }
   }
 
@@ -490,13 +504,15 @@ export class DashboardService {
         .replace(/{{levelName}}/g, levelName)
         .replace(/{{reason}}/g, reason || 'Admin assignment')
         .replace(/{{amount}}/g, 'Complimentary') // Since this is admin assignment
-        .replace(/{{paymentDate}}/g, new Date().toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        }))
-        .replace(/{{orderId}}/g, `ADMIN_${Date.now()}`)
-
+        .replace(
+          /{{paymentDate}}/g,
+          new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }),
+        )
+        .replace(/{{orderId}}/g, `ADMIN_${Date.now()}`);
 
       // Prepare email data
       const mailOptions = {
@@ -544,14 +560,16 @@ export class DashboardService {
           const completedCertificates = await this.certificateRepo.find({
             level_name: course.level_name,
           });
-          const totalCompletions = completedCertificates ? completedCertificates.length : 0;
+          const totalCompletions = completedCertificates
+            ? completedCertificates.length
+            : 0;
 
           return {
             level: course.level_name,
             all: totalPurchases,
             completed: totalCompletions,
           };
-        })
+        }),
       );
 
       return levelStats;
@@ -563,6 +581,4 @@ export class DashboardService {
       return [];
     }
   }
-
- 
 }

@@ -35,7 +35,7 @@ export class UserService {
     private readonly certificateRepo: CertificateRepo,
     private readonly ipService: IpService,
     private readonly orderRepo: OrderRepo,
-    private readonly courseRepo: CourseRepo, 
+    private readonly courseRepo: CourseRepo,
   ) {}
   private logger = new Logger(UserService.name);
 
@@ -344,8 +344,8 @@ export class UserService {
     );
   }
 
-  async getUserDetails(userId : string ){
-     try {
+  async getUserDetails(userId: string) {
+    try {
       const user = await this.userRepo.findOne({ _id: userId });
 
       if (!user) {
@@ -353,7 +353,8 @@ export class UserService {
       }
 
       // Get user's completed orders
-      const completedOrders = await this.orderRepo.findUserCompletedOrders(userId);
+      const completedOrders =
+        await this.orderRepo.findUserCompletedOrders(userId);
 
       // If user has no completed orders, return empty levels details
       if (!completedOrders || completedOrders.length === 0) {
@@ -364,28 +365,34 @@ export class UserService {
       }
 
       // Get unique level names from completed orders
-      const purchasedLevelNames = [...new Set(completedOrders.map(order => order.levelName))];
+      const purchasedLevelNames = [
+        ...new Set(completedOrders.map((order) => order.levelName)),
+      ];
 
       // Get course details for only purchased levels
       const purchasedCourses = await this.courseRepo.find({
-        level_name: { $in: purchasedLevelNames }
+        level_name: { $in: purchasedLevelNames },
       });
 
       // Build detailed level information for purchased courses only
       const levelsDetails = await Promise.all(
         purchasedCourses.map(async (course) => {
           const levelName = course.level_name;
-                    
+
           let currentDay = 0;
           let isCompleted = false;
 
-      
           // Get user's current progress (highest completed day + 1)
           try {
-            const completedDays = await this.userRepo.userProgress(userId, levelName);
+            const completedDays = await this.userRepo.userProgress(
+              userId,
+              levelName,
+            );
             currentDay = completedDays !== null ? completedDays + 1 : 1; // Next day to work on
           } catch (error) {
-            this.logger.warn(`Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`);
+            this.logger.warn(
+              `Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`,
+            );
             currentDay = 1; // Default to day 1 if there's an error
           }
 
@@ -397,19 +404,20 @@ export class UserService {
             });
             isCompleted = !!certificate;
           } catch (error) {
-            this.logger.warn(`Failed to check certificate for user ${userId} in level ${levelName}: ${error.message}`);
+            this.logger.warn(
+              `Failed to check certificate for user ${userId} in level ${levelName}: ${error.message}`,
+            );
             isCompleted = false;
           }
-          
 
           return {
             levelName,
             currentDay,
             isCompleted,
           };
-        })
+        }),
       );
-       
+
       return {
         user: cleanResponse(user),
         levelsDetails, // Purchased courses details only

@@ -213,7 +213,9 @@ export class AdminService {
         throw new BadRequestException('Cannot delete the last Super Admin');
       }
     }
-    const deletedAdmin = await this.adminRepo.findOneAndDelete({ _id: new Types.ObjectId(id) });
+    const deletedAdmin = await this.adminRepo.findOneAndDelete({
+      _id: new Types.ObjectId(id),
+    });
     return deletedAdmin;
   }
 

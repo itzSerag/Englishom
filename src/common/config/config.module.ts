@@ -39,7 +39,6 @@ import { ConfigService } from './config.service';
           .uri()
           .default('http://localhost:3000/uploads'),
 
-
         // Paymob
         PAYMOB_API_KEY: Joi.string().required(),
         PAYMOB_INTEGRATION_ID: Joi.number().required(),

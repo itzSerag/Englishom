@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Body,
-  ConflictException,
   Get,
   UseGuards,
   HttpStatus,
@@ -30,7 +29,7 @@ import { cleanResponse } from '../common/utils/response.utils';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-  private logger = new Logger(AuthController.name);
+  private readonly logger = new Logger(AuthController.name);
 
   @Public()
   @Post('signup')
