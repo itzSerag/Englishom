@@ -1,5 +1,6 @@
 import {
   IsEmail,
+  IsIP,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -28,4 +29,8 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   country?: string;
+
+  @IsIP()
+  @IsOptional()
+  ipAddress?: string;
 }

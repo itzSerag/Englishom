@@ -6,7 +6,7 @@ import { Admin } from '../../admin/models/admin.schema';
 import { UserStatus } from '../shared';
 
 @Injectable()
-export class AuthenticationService {
+export class GlobalAuthenticationService {
   constructor(
     private readonly userRepo: UserRepo,
     private readonly adminRepo: AdminRepo,
@@ -15,17 +15,17 @@ export class AuthenticationService {
   /**
    * Find user by email in both User and Admin collections
    */
-  async findUserByEmail(email: string): Promise<User | Admin | null> {
+  async findUserByEmail(email: string): Promise<User | Admin> {
     // First try to find in User collection
     const user = await this.userRepo.findOne({ email });
     if (user) {
-      return user as User;
+      return user;
     }
 
     // Then try to find in Admin collection
     const admin = await this.adminRepo.findByEmail(email);
-    if (admin && admin.isActive) {
-      return admin as Admin;
+    if (admin?.isActive) {
+      return admin;
     }
 
     return null;
@@ -44,7 +44,7 @@ export class AuthenticationService {
 
     // Then try to find in Admin collection
     const admin = await this.adminRepo.findOne({ _id: id });
-    if (admin && admin.isActive) {
+    if (admin?.isActive) {
       return admin;
     }
 
@@ -101,7 +101,7 @@ export class AuthenticationService {
 
     // For regular users, check account status
     if (user instanceof User) {
-      const userEntity = user as User;
+      const userEntity = user;
       if (userEntity.status === UserStatus.SUSPENDED) {
         throw new UnauthorizedException({
           message:
@@ -124,7 +124,7 @@ export class AuthenticationService {
     }
 
     // For admins, check if account is still active
-    if (user instanceof Admin && !(user as Admin).isActive) {
+    if (user instanceof Admin && !user.isActive) {
       throw new UnauthorizedException('Admin account is deactivated');
     }
 

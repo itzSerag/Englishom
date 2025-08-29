@@ -6,16 +6,16 @@ import { Types } from 'mongoose';
 // Repositories
 import { AdminRepo } from '../../admin/repo/admin.repo';
 import { UserRepo } from '../../user/repo/user.repo';
-import { CourseRepo } from '../../auth/repo/course.repo';
+import { CourseRepo } from '../../course/repo/course.repo';
 import { OrderRepo } from '../../payment/repo/order.repo';
-import { OtpRepo } from '../../auth/repo/repo.otp';
+import { OtpRepo } from '../../user-auth/repo/repo.otp';
 import { CertificateRepo } from '../../user/repo/certificate.repo';
 
 // Enums
 import { AdminRole, Role, UserStatus } from '../shared';
 import { Level_Name } from '../shared/enums';
 import { Strategy } from '../shared/enums';
-import { OtpCause } from '../../auth/enum/otp-cause.enum';
+import { OtpCause } from '../../user-auth/enum/otp-cause.enum';
 import { PaymentStatus } from '../../payment/types';
 import { LESSONS } from '../shared/enums';
 
@@ -189,7 +189,7 @@ export class SeederService implements OnModuleInit {
         email: 'superadmin@englishom.com',
         firstName: 'Super',
         lastName: 'Admin',
-        password: await bcrypt.hash('SuperAdmin123!', 10),
+        password: await bcrypt.hash('SuperAdmin123!', 12),
         adminRole: AdminRole.SUPER,
         country: 'Egypt',
         isActive: true,
@@ -200,7 +200,7 @@ export class SeederService implements OnModuleInit {
         email: 'manager@englishom.com',
         firstName: 'John',
         lastName: 'Manager',
-        password: await bcrypt.hash('Manager123!', 10),
+        password: await bcrypt.hash('Manager123!', 12),
         adminRole: AdminRole.MANAGER,
         country: 'Egypt',
         isActive: true,
@@ -210,7 +210,7 @@ export class SeederService implements OnModuleInit {
         email: 'operator@englishom.com',
         firstName: 'Sarah',
         lastName: 'Operator',
-        password: await bcrypt.hash('Operator123!', 10),
+        password: await bcrypt.hash('Operator123!', 12),
         adminRole: AdminRole.OPERATOR,
         country: 'Jordan',
         isActive: true,
@@ -220,7 +220,7 @@ export class SeederService implements OnModuleInit {
         email: 'viewer@englishom.com',
         firstName: 'Mike',
         lastName: 'Viewer',
-        password: await bcrypt.hash('Viewer123!', 10),
+        password: await bcrypt.hash('Viewer123!', 12),
         adminRole: AdminRole.VIEW,
         country: 'UAE',
         isActive: true,

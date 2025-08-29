@@ -15,12 +15,12 @@ import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
 import { Level_Name } from '../common/shared/enums';
 import { UserService } from '../user/user.service';
-import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
+import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { ConfigService } from '@nestjs/config';
-import { Public } from '../auth/decorator/public.decorator';
-import { CourseService } from '../auth/services/course.service';
-import { Course } from '../auth/models/admin-course';
+import { Public } from '../user-auth/decorator/public.decorator';
+import { CourseService } from '../course/course.service';
+import { Course } from '../course/models/course.schema';
 import { PaymentStatus } from './types';
 import { Admin } from '../admin/models/admin.schema';
 

@@ -6,7 +6,8 @@ import { UserRepo } from './repo/user.repo';
 import { DatabaseModule } from '../common/database/database.module';
 import { User, UserSchema } from './models/user.schema';
 import { PaymentModule } from '../payment/paymob.module';
-import { AuthModule } from '../auth/auth.module';
+import { UserAuthModule } from '../user-auth/user-auth.module';
+import { CourseModule } from '../course/course.module';
 import { Day, DaySchema } from './models/day.schema';
 import { Task, TaskSchema } from './models/task.schema';
 import {
@@ -35,7 +36,8 @@ import { CertificateRepo } from './repo/certificate.repo';
       { name: Certification.name, schema: CertificationSchema },
     ]),
     forwardRef(() => PaymentModule), // Use forwardRef here
-    forwardRef(() => AuthModule), // Use forwardRef here
+    forwardRef(() => UserAuthModule), // Use forwardRef here
+    CourseModule, // Add CourseModule to access CourseRepo
   ],
   controllers: [UserController],
   providers: [UserService, UserRepo, CertificateRepo],

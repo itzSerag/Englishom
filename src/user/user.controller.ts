@@ -16,18 +16,19 @@ import {
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
+import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from './models/user.schema';
 import { GetCompletedDaysDto } from './dto/get-completed-days.dto';
 import { GetCompletedTasksDto } from './dto/get-completed-tasks.dto';
 import { UserFinishDayDto } from './dto/user-finish-day.dto';
 import { UserTaskDto } from './dto/user-task.dto';
-import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
+import { SkipVerifiedGuard } from '../user-auth/guards/skip-verified.guard';
 import { CompleteLevelDto } from './dto/complete-level.dto';
 import { GetCertificateDto } from './dto/get-certificate';
 import { Admin } from '../admin/models/admin.schema';
-import { AdminRole, Role } from 'src/common/shared';
-import { IsAdminGuard } from '../admin/guards/is-admin.guard';
+import { AdminRole } from 'src/common/shared';
+import { UserJwtGuard } from '../user-auth/guards/user-jwt.guard';
+import { AdminJwtGuard } from '../admin-auth/guards/admin-jwt.guard';
 import { AdminRoles } from '../admin/decorators';
 import { PaginationDto } from './dto/pagination.dto';
 import { IpService } from '../common/services/ip.service';
@@ -35,6 +36,7 @@ import { Request } from 'express';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { cleanResponse } from '../common/utils/response.utils';
 
+@UseGuards(UserJwtGuard)
 @Controller('users')
 export class UserController {
   constructor(
@@ -60,8 +62,8 @@ export class UserController {
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto, @Req() req: Request) {
-    const ip = this.ipService.getRealIp(req);
-    const user = await this.userService.create(createUserDto, ip);
+    this.ipService.getRealIp(req);
+    const user = await this.userService.create(createUserDto);
     if (!user) {
       throw new ConflictException('User already exists');
     }
@@ -69,7 +71,7 @@ export class UserController {
   }
 
   // Admin endpoint with pagination support
-  @UseGuards(IsAdminGuard)
+  @UseGuards(AdminJwtGuard)
   @Get('all')
   async findAll(@Query() paginationDto: PaginationDto) {
     const result = await this.userService.findAllWithPagination(paginationDto);
@@ -194,7 +196,7 @@ export class UserController {
   }
 
   /// MUST BE AT THE END AND ADMIN ONLY
-  @UseGuards(IsAdminGuard)
+  @UseGuards(AdminJwtGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.userService.findById(id);

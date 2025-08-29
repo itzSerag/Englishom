@@ -1,7 +1,7 @@
 // filepath: /mnt/DATA/Englishom/src/payment/paymob.module.ts
 import { Module, forwardRef } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
-import { AuthModule } from '../auth/auth.module';
+import { CourseModule } from '../course/course.module';
 import { DatabaseModule } from '../common/database/database.module';
 import { OrderRepo } from './repo/order.repo';
 import { Order, OrderSchema } from './models/order.schema';
@@ -23,7 +23,7 @@ import { MailModule } from '../common/mail/mail.module';
   controllers: [PaymobController],
   imports: [
     forwardRef(() => UserModule),
-    forwardRef(() => AuthModule),
+    forwardRef(() => CourseModule),
     DatabaseModule,
     DatabaseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     MailModule,

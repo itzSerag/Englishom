@@ -19,7 +19,7 @@ import {
   DashboardPaginationDto,
   AssignCourseDto,
 } from './dto';
-import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
+import { SkipVerifiedGuard } from '../user-auth/guards/skip-verified.guard';
 
 @UseGuards(IsAdminGuard, AdminRoleGuard)
 @SkipVerifiedGuard()

@@ -15,16 +15,16 @@ import { CreateAdminDto, UpdateAdminDto, AdminSearchDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { AdminRoles } from './decorators/admin-roles.decorator';
-import { IsAdminGuard, AdminRoleGuard } from './guards';
+import { AdminJwtGuard, AdminRoleGuard } from './guards';
 import { AdminRole } from '../common/shared';
 import { IpService } from 'src/common/services/ip.service';
-import { SkipVerifiedGuard } from '../auth/guards/skip-verified.guard';
+import { SkipVerifiedGuard } from '../user-auth/guards/skip-verified.guard';
 import {
   cleanResponse,
   cleanResponseArray,
 } from '../common/utils/response.utils';
 
-@UseGuards(IsAdminGuard)
+@UseGuards(AdminJwtGuard, AdminRoleGuard)
 @SkipVerifiedGuard()
 @Controller('admin')
 export class AdminController {

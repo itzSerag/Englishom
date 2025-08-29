@@ -20,7 +20,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 import { FileUploadService } from './file-upload.service';
-import { CurrentUser } from '../auth/decorator/get-curr-user.decorator';
+import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin/decorators';

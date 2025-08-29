@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { UserRepo } from '../user/repo/user.repo';
 import { OrderRepo } from '../payment/repo/order.repo';
-import { CourseRepo } from '../auth/repo/course.repo';
+import { CourseRepo } from '../course/repo/course.repo';
 import { CertificateRepo } from '../user/repo/certificate.repo';
 import { PaymentStatus } from '../payment/types';
 import { UserStatus, Level_Name } from '../common/shared/enums';

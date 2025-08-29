@@ -5,7 +5,7 @@ import {
   TransactionalEmailsApi,
   TransactionalEmailsApiApiKeys,
 } from '@getbrevo/brevo';
-import { OtpCause } from '../../auth/enum/otp-cause.enum';
+import { OtpCause } from '../../user-auth/enum/otp-cause.enum';
 
 export interface CustomEmailOptions {
   to: string | string[];

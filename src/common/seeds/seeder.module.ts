@@ -5,12 +5,20 @@ import { SeederController } from './seeder.controller';
 // Import all required modules
 import { AdminModule } from '../../admin/admin.module';
 import { UserModule } from '../../user/user.module';
-import { AuthModule } from '../../auth/auth.module';
+import { CourseModule } from '../../course/course.module';
+import { UserAuthModule } from '../../user-auth/user-auth.module';
 import { PaymentModule } from '../../payment/paymob.module';
 import { SeederService } from './seeder.service';
 
 @Module({
-  imports: [ConfigModule, AdminModule, UserModule, AuthModule, PaymentModule],
+  imports: [
+    ConfigModule,
+    AdminModule,
+    UserModule,
+    CourseModule,
+    UserAuthModule,
+    PaymentModule,
+  ],
   controllers: [SeederController],
   providers: [SeederService],
   exports: [SeederService],

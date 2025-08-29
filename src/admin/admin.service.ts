@@ -239,7 +239,7 @@ export class AdminService {
   // Validate admin token payload
   async validateAdminPayload(payload: any): Promise<Admin> {
     const admin = await this.adminRepo.findOne({ _id: payload.sub });
-    if (!admin || !admin.isActive) {
+    if (!admin?.isActive) {
       throw new UnauthorizedException('Admin not found or inactive');
     }
 

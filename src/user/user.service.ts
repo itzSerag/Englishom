@@ -24,7 +24,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserStatus } from '../common/shared';
 import { OrderRepo } from '../payment/repo/order.repo';
-import { CourseRepo } from '../auth/repo/course.repo';
+import { CourseRepo } from '../course/repo/course.repo';
 import { cleanResponse } from '../common/utils/response.utils';
 
 @Injectable()
@@ -37,9 +37,10 @@ export class UserService {
     private readonly orderRepo: OrderRepo,
     private readonly courseRepo: CourseRepo,
   ) {}
-  private logger = new Logger(UserService.name);
 
-  async create(createUserDto: CreateUserDto, ipAddress?: string) {
+  private readonly logger = new Logger(UserService.name);
+
+  async create(createUserDto: CreateUserDto) {
     const user = await this.userRepo.findOne({ email: createUserDto.email });
     if (user) {
       return null;
@@ -50,11 +51,13 @@ export class UserService {
     createUserDto.password = hashedPassword;
 
     // Set country based on IP address during signup
-    if (ipAddress) {
-      const country = await this.ipService.getCountryFromIp(ipAddress);
+    if (createUserDto.ipAddress) {
+      const country = await this.ipService.getCountryFromIp(
+        createUserDto.ipAddress,
+      );
       createUserDto.country = country;
     }
-    log('ipAddress', ipAddress);
+    log('ipAddress', createUserDto.ipAddress);
     log('createUserDto country', createUserDto.country);
 
     return await this.userRepo.create({ ...createUserDto });
