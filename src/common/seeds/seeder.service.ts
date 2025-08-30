@@ -13,11 +13,9 @@ import { CertificateRepo } from '../../user/repo/certificate.repo';
 
 // Enums
 import { AdminRole, Role, UserStatus } from '../shared';
-import { Level_Name } from '../shared/enums';
-import { Strategy } from '../shared/enums';
 import { OtpCause } from '../../user-auth/enum/otp-cause.enum';
 import { PaymentStatus } from '../../payment/types';
-import { LESSONS } from '../shared/enums';
+import { LESSONS, Level_Name, Strategy } from '../shared/enums';
 
 @Injectable()
 export class SeederService implements OnModuleInit {

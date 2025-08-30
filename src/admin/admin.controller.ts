@@ -11,7 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { CreateAdminDto, UpdateAdminDto, AdminSearchDto } from './dto';
+import { CreateAdminDto, UpdateAdminDto, AdminSearchDto, GetAdminDto } from './dto';
 import { Admin } from './models/admin.schema';
 import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { AdminRoles } from './decorators/admin-roles.decorator';
@@ -65,8 +65,8 @@ export class AdminController {
 
   // Get admin by ID - SUPER and MANAGER can view admin details
   @Get(':id')
-  async getAdminById(@Param('id') id: string) {
-    const admin = await this.adminService.getAdminById(id);
+  async getAdminById(@Param() mongoID: GetAdminDto) {
+    const admin = await this.adminService.getAdminById(mongoID.id);
     return cleanResponse(admin);
   }
 
@@ -74,12 +74,12 @@ export class AdminController {
   @AdminRoles(AdminRole.SUPER)
   @Patch(':id')
   async updateAdmin(
-    @Param('id') id: string,
+    @Param() mongoID: GetAdminDto,
     @Body() updateAdminDto: UpdateAdminDto,
     @CurrentAdmin() currentAdmin: Admin,
   ) {
     const admin = await this.adminService.updateAdmin(
-      id,
+      mongoID.id,
       updateAdminDto,
       currentAdmin,
     );
@@ -90,10 +90,10 @@ export class AdminController {
   @AdminRoles(AdminRole.SUPER)
   @Delete(':id')
   async deleteAdmin(
-    @Param('id') id: string,
+    @Param() mongoID: GetAdminDto,
     @CurrentAdmin() currentAdmin: Admin,
   ) {
-    return await this.adminService.deleteAdmin(id, currentAdmin);
+    return await this.adminService.deleteAdmin(mongoID.id, currentAdmin);
   }
 
   @AdminRoles(AdminRole.SUPER)
