@@ -516,10 +516,9 @@ export class DashboardService {
 
       // Prepare email data
       const mailOptions = {
-        from: `"Englishom Team" <${process.env.SMTP_USER}>`,
         to: user.email,
         subject: `🎉 Course Access Granted - Welcome to ${levelName} Level!`,
-        html: personalizedEmail,
+        htmlContent: personalizedEmail,
       };
 
       await this.emailService.sendCustomEmail(mailOptions);

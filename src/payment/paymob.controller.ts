@@ -15,7 +15,6 @@ import {
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
 import { Level_Name } from '../common/shared/enums';
-import { Role } from '../common/shared/enums/role.enum';
 import { UserService } from '../user/user.service';
 import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';

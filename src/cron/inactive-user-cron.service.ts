@@ -165,14 +165,12 @@ export class InactiveUserCronService {
 
     // Prepare email data
     const mailOptions = {
-      from: `"Englishom Team" <${process.env.SMTP_USER}>`,
       to: user.email,
       subject: 'We miss you! Come back and continue your English journey 🌟',
-      html: personalizedEmail,
+      htmlContent: personalizedEmail,
     };
 
     // Send email using the existing email service
-    // We need to modify the existing sendEmail method or create a new one
     await this.sendCustomEmail(mailOptions);
   }
 
@@ -187,10 +185,9 @@ export class InactiveUserCronService {
 
     // Prepare email data
     const mailOptions = {
-      from: `"Englishom Team" <${process.env.SMTP_USER}>`,
       to: user.email,
       subject: '⚠️ Your Englishom Account Has Been Suspended - Contact Support',
-      html: suspensionEmail,
+      htmlContent: suspensionEmail,
     };
 
     await this.sendCustomEmail(mailOptions);

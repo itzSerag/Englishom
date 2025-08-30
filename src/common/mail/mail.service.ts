@@ -26,9 +26,9 @@ export interface CustomEmailOptions {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private apiInstance: TransactionalEmailsApi;
+  private readonly apiInstance: TransactionalEmailsApi;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('BREVO_API_KEY');
     if (!apiKey) {
       this.logger.error(
@@ -148,6 +148,14 @@ export class MailService {
 
   async sendCustomEmail(mailOptions: CustomEmailOptions): Promise<boolean> {
     try {
+      // Validate that either htmlContent or textContent is provided
+      if (!mailOptions.htmlContent && !mailOptions.textContent) {
+        this.logger.error(
+          'Either htmlContent or textContent is required for sending email',
+        );
+        return false;
+      }
+
       const recipients = Array.isArray(mailOptions.to)
         ? mailOptions.to.map((email) => ({ email }))
         : [{ email: mailOptions.to }];
