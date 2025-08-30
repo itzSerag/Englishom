@@ -10,10 +10,12 @@ import {
   Get,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
 import { Level_Name } from '../common/shared/enums';
+import { Role } from '../common/shared/enums/role.enum';
 import { UserService } from '../user/user.service';
 import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
@@ -22,7 +24,7 @@ import { Public } from '../user-auth/decorator/public.decorator';
 import { CourseService } from '../course/course.service';
 import { Course } from '../course/models/course.schema';
 import { PaymentStatus } from './types';
-import { Admin } from '../admin/models/admin.schema';
+import { UserJwtGuard } from '../user-auth/guards/user-jwt.guard';
 
 @Controller('payment')
 export class PaymobController {
@@ -30,9 +32,9 @@ export class PaymobController {
 
   constructor(
     private readonly configService: ConfigService,
-    private paymobService: PaymobService,
-    private userService: UserService,
-    private courseService: CourseService,
+    private readonly paymobService: PaymobService,
+    private readonly userService: UserService,
+    private readonly courseService: CourseService,
   ) {}
 
   // Web hook
@@ -91,11 +93,29 @@ export class PaymobController {
     }
   }
 
+  @UseGuards(UserJwtGuard)
   @Post('process-payment')
   async processPayment(
     @Body() paymentIntention: PaymentRequestDTO,
-    @CurrentUser() user: User | Admin,
+    @CurrentUser() user: User,
   ) {
+    // Debug log to check if user is properly passed
+    this.logger.log(`Processing payment - User object:`, user);
+    this.logger.log(`User role: ${user.role}, User ID: ${user._id}`);
+    
+    if (!user) {
+      throw new BadRequestException('User authentication required');
+    }
+
+    // Check if the authenticated user is an admin
+    if ('adminRole' in user ) {
+      throw new BadRequestException('Admins cannot purchase courses. All courses are already available to admin accounts.');
+    }
+
+    if (!user.firstName || !user.lastName || !user.email) {
+      throw new BadRequestException('User profile incomplete - missing required fields');
+    }
+
     const integration_id = this.configService.get<number>(
       'PAYMOB_INTEGRATION_ID',
     );
