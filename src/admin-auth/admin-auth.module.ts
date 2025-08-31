@@ -19,8 +19,8 @@ import { IsAdminGuard } from './guards/is-admin.guard';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService) => ({
-        secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: configService.get('JWT_EXPIRATION_TIME') },
+        secret: configService.get('JWT_ADMIN_SECRET'),
+        signOptions: { expiresIn: configService.get('JWT_ADMIN_EXPIRATION_TIME') },
       }),
       inject: [ConfigService],
     }),

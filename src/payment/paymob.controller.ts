@@ -11,9 +11,10 @@ import {
   Param,
   Query,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
-import { PaymentRequestDTO } from './dto/orderData';
+import { PaymentRequestDto } from './dto/orderData';
 import { Level_Name } from '../common/shared/enums';
 import { UserService } from '../user/user.service';
 import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
@@ -24,6 +25,8 @@ import { CourseService } from '../course/course.service';
 import { Course } from '../course/models/course.schema';
 import { PaymentStatus } from './types';
 import { UserJwtGuard } from '../user-auth/guards/user-jwt.guard';
+import { PaymobCallbackData } from './types/callback';
+import * as crypto from 'crypto';
 
 @Controller('payment')
 export class PaymobController {
@@ -36,11 +39,79 @@ export class PaymobController {
     private readonly courseService: CourseService,
   ) {}
 
+  private validateHMAC(data: PaymobCallbackData, providedHMAC: string): boolean {
+    const hmacSecret = this.configService.get<string>('PAYMOB_HMAC_SECRET');
+    
+
+    try {
+      // Extract the required fields for HMAC calculation
+      const obj = data.obj;
+      const order = obj.order;
+      const sourceData = obj.source_data;
+
+      // Concatenate the fields in the exact order specified by Paymob
+      const concatenatedString = [
+        obj.amount_cents,
+        obj.created_at,
+        obj.currency,
+        obj.error_occured,
+        obj.has_parent_transaction,
+        obj.id,
+        obj.integration_id,
+        obj.is_3d_secure,
+        obj.is_auth,
+        obj.is_capture,
+        obj.is_refunded,
+        obj.is_standalone_payment,
+        obj.is_voided,
+        order.id,
+        obj.owner,
+        obj.pending,
+        sourceData.pan,
+        sourceData.sub_type,
+        sourceData.type,
+        obj.success,
+      ].join('');
+
+      // Generate HMAC using SHA-512
+      const calculatedHMAC = crypto
+        .createHmac('sha512', hmacSecret)
+        .update(concatenatedString)
+        .digest('hex');
+
+      this.logger.log(`Calculated HMAC: ${calculatedHMAC}`);
+      this.logger.log(`Provided HMAC: ${providedHMAC}`);
+      
+      // Compare the HMACs (case-insensitive)
+      const isValid = calculatedHMAC.toLowerCase() === providedHMAC.toLowerCase();
+      
+      if (!isValid) {
+        this.logger.error('HMAC validation failed - signatures do not match');
+      } else {
+        this.logger.log('HMAC validation successful');
+      }
+      
+      return isValid;
+    } catch (error) {
+      this.logger.error(`HMAC validation error: ${error.message}`);
+      return false;
+    }
+  }
+
   // Web hook
   @Public()
   @Post('callback')
-  async callbackPost(@Body() data: any) {
-    this.logger.log('Paymob callback received:', JSON.stringify(data, null, 2));
+  async callbackPost(
+    @Body() data: PaymobCallbackData,
+    @Query('hmac') hmac: string,
+  ) {
+    this.logger.log('Received callback data:', JSON.stringify(data, null, 2));
+
+    // Validate HMAC
+    if (!this.validateHMAC(data, hmac)) {
+      this.logger.error('HMAC validation failed');
+      throw new UnauthorizedException('Invalid HMAC signature');
+    }
 
     const success = data.obj?.success;
     const orderId = data.obj?.id;
@@ -48,13 +119,7 @@ export class PaymobController {
     // Try multiple ways to extract email in case structure is different
     let userEmail = data.obj?.order?.shipping_data?.email;
     if (!userEmail) {
-      userEmail = data.obj?.order?.billing_data?.email;
-    }
-    if (!userEmail) {
-      userEmail = data.obj?.billing_data?.email;
-    }
-    if (!userEmail) {
-      userEmail = data.obj?.shipping_data?.email;
+      userEmail = data.obj?.payment_key_claims?.billing_data?.email;
     }
 
     const isPending = data.obj?.pending;
@@ -95,12 +160,9 @@ export class PaymobController {
   @UseGuards(UserJwtGuard)
   @Post('process-payment')
   async processPayment(
-    @Body() paymentIntention: PaymentRequestDTO,
+    @Body() paymentIntentionDto: PaymentRequestDto,
     @CurrentUser() user: User,
   ) {
-    // Debug log to check if user is properly passed
-    this.logger.log(`Processing payment - User object:`, user);
-    this.logger.log(`User role: ${user.role}, User ID: ${user._id}`);
     
     if (!user) {
       throw new BadRequestException('User authentication required');
@@ -124,11 +186,13 @@ export class PaymobController {
     }
 
     try {
-      // Get course data from the database instead of hard-coded values
+
       let course: Course;
       try {
+
+        // Name of the course already uniquely identifies the course
         course = await this.courseService.findByLevelName(
-          paymentIntention.level_name,
+          paymentIntentionDto.level_name,
         );
       } catch (error) {
         if (error instanceof NotFoundException) {
@@ -143,7 +207,7 @@ export class PaymobController {
         payment_methods: [integration_id],
         items: [
           {
-            name: paymentIntention.level_name,
+            name: paymentIntentionDto.level_name,
             amount: course.price, // Use whole currency amount for our internal processing
             description: course.descriptionEn || `${course.titleEn} course`,
             quantity: 1,
@@ -155,9 +219,9 @@ export class PaymobController {
           last_name: user.lastName,
           street: 'dummy',
           building: 'dummy',
-          phone_number: paymentIntention.phone_number,
-          city: paymentIntention.city,
-          country: paymentIntention.country,
+          phone_number: "000000000000",
+          city: paymentIntentionDto.city,
+          country: paymentIntentionDto.country,
           email: user.email,
           floor: 'dummy',
           state: 'dummy',
@@ -165,7 +229,7 @@ export class PaymobController {
       };
 
       this.logger.log(
-        `Processing payment for user ${user._id}, level: ${paymentIntention.level_name}`,
+        `Processing payment for user ${user._id}, level: ${paymentIntentionDto.level_name}`,
       );
 
       // Process payment and pass userId to the service method
@@ -185,6 +249,12 @@ export class PaymobController {
       );
     }
   }
+
+
+
+
+  
+
 
   @Get('debug/order/:userId')
   async debugUserOrders(

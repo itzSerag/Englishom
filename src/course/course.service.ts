@@ -7,7 +7,9 @@ import { Course } from './models/course.schema';
 
 @Injectable()
 export class CourseService {
-  constructor(private readonly courseRepo: CourseRepo) {}
+  constructor(
+    private readonly courseRepo: CourseRepo
+  ) {}
 
   async findAll(): Promise<Course[]> {
     return await this.courseRepo.find({});

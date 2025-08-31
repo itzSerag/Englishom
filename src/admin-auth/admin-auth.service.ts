@@ -6,7 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AdminRepo } from '../admin/repo/admin.repo';
-import { IPayload } from '../common/shared/interfaces/payload.interface';
+import { IAdminPayload } from '../common/shared/interfaces/payload.interface';
 import { Admin } from '../admin/models/admin.schema';
 import { log } from 'console';
 
@@ -54,12 +54,13 @@ export class AdminAuthService {
    * Generate JWT token for admin
    */
   generateToken(admin: Admin): string {
-    const payload: IPayload = {
+    const payload: IAdminPayload = {
       sub: admin._id.toString(),
       email: admin.email,
+      role: 'admin',
     };
 
-    return this.jwtService.sign(payload);
+    return  this.jwtService.sign(payload);
   }
 
   /**
@@ -68,6 +69,7 @@ export class AdminAuthService {
   async validateAdmin(adminId: string): Promise<Admin | null> {
     const admin = await this.adminRepo.findOne({ _id: adminId });
 
+    // if admin is inactive ir blocked by super admin return null
     if (!admin?.isActive) {
       return null;
     }

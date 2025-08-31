@@ -1,7 +1,7 @@
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { Level_Name } from '../../common/shared/enums';
 
-export class PaymentRequestDTO {
+export class PaymentRequestDto {
   @IsString()
   @IsNotEmpty()
   @IsEnum(Level_Name)
@@ -9,7 +9,7 @@ export class PaymentRequestDTO {
 
   @IsString()
   @IsNotEmpty()
-  phone_number: string;
+  phone_number: "00000000000";
 
   @IsString()
   @IsNotEmpty()
