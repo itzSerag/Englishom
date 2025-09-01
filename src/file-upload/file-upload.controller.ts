@@ -24,7 +24,7 @@ import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin-auth/decorators';
-import { AdminRoleGuard } from '../admin-auth/guards';
+import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
 
 @Controller('files')
 export class FileUploadController {
@@ -141,7 +141,7 @@ export class FileUploadController {
 
   // Content upload - OPERATOR+ can upload content
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
-  @UseGuards(AdminRoleGuard)
+  @UseGuards(AdminJwtGuard, AdminRoleGuard)
   @Post('')
   async upload(@Body() dataUploadDTO: UploadDTO) {
     dataUploadDTO.data = this.parseData(dataUploadDTO.data);
@@ -152,7 +152,7 @@ export class FileUploadController {
 
   // Single file upload - OPERATOR+ can upload content
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
-  @UseGuards(AdminRoleGuard)
+  @UseGuards(AdminJwtGuard, AdminRoleGuard)
   @Post('single-file')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -171,7 +171,7 @@ export class FileUploadController {
 
   // Delete from JSON data array - MANAGER+ can delete content
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @UseGuards(AdminRoleGuard)
+  @UseGuards(AdminJwtGuard, AdminRoleGuard)
   @Delete('delete-obj')
   async deleteFromJsonDataArray(@Query() deleteObjDTO: DeleteObjDTO) {
     await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
@@ -180,7 +180,7 @@ export class FileUploadController {
 
   // Delete file - MANAGER+ can delete content
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @UseGuards(AdminRoleGuard)
+  @UseGuards(AdminJwtGuard, AdminRoleGuard)
   @Delete()
   async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
     try {

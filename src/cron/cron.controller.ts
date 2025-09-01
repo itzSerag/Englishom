@@ -1,10 +1,10 @@
 import { Controller, Post, UseGuards } from '@nestjs/common';
 import { InactiveUserCronService } from './inactive-user-cron.service';
-import { AdminRoleGuard } from '../admin-auth/guards';
+import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
 import { AdminRoles } from '../admin-auth/decorators/admin-roles.decorator';
 import { AdminRole } from '../common/shared';
 
-@UseGuards(AdminRoleGuard)
+@UseGuards(AdminJwtGuard, AdminRoleGuard)
 @Controller('cron')
 export class CronController {
   constructor(private readonly cronService: InactiveUserCronService) {}
