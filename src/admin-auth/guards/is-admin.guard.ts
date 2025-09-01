@@ -10,7 +10,7 @@ import { AdminRole } from '../../common/shared';
 
 @Injectable()
 export class IsAdminGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
@@ -26,7 +26,7 @@ export class IsAdminGuard implements CanActivate {
       return true;
     }
 
-    // If the user is not authenticated, throw UnauthorizedException
+    // If the user/admin is not authenticated, throw UnauthorizedException
     if (!admin) {
       throw new UnauthorizedException('User is not authenticated');
     }

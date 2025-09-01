@@ -69,6 +69,19 @@ export class UserRepo extends AbstractRepo<User> {
     }
   }
 
+  async getTotalDaysInLevel(levelName: Level_Name): Promise<number> {
+    try {
+      const totalDays = await this.dayModel.countDocuments({ levelName });
+      return totalDays;
+    } catch (error) {
+      this.logger.error(
+        `Error getting total days in level: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException('Failed to get total days in level');
+    }
+  }
+
   async markDayAsCompleted(
     userId: string,
     levelName: Level_Name,

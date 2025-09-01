@@ -12,14 +12,14 @@ import {
 import { DashboardService } from './dashboard.service';
 import { AdminRoles } from '../admin-auth/decorators/admin-roles.decorator';
 import { AdminRole } from '../common/shared/enums';
-import { IsAdminGuard, AdminRoleGuard } from '../admin-auth/guards';
+import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
 import {
   DashboardSearchDto,
   AssignCourseDto,
 } from './dto';
 import { SkipVerifiedGuard } from '../user-auth/guards/skip-verified.guard';
 
-@UseGuards(IsAdminGuard, AdminRoleGuard)
+@UseGuards(AdminJwtGuard, AdminRoleGuard)
 @SkipVerifiedGuard()
 @Controller('dashboard')
 export class DashboardController {

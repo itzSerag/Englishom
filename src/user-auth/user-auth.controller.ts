@@ -51,14 +51,14 @@ export class UserAuthController {
   async login(@Body() loginDto: LoginDto) {
     const { user, access_token } = await this.userAuthService.login(loginDto);
 
-    const levels = await this.userAuthService.getUserLevels(
+    // Get detailed user information like in getMe
+    const userDetails = await this.userAuthService.getUserDetailsForLogin(
       user._id.toString(),
     );
 
     return {
       access_token,
-      user: cleanResponse(user),
-      levels: levels,
+      ...userDetails, // This includes user and levelsDetails
     };
   }
 

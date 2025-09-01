@@ -223,13 +223,18 @@ export class DashboardService {
           let currentDay = 0;
           let isCompleted = false;
 
-          // Get user's current progress (highest completed day + 1)
+          // Get user's current progress (highest completed day + 1, max 50)
           try {
             const completedDays = await this.userRepo.userProgress(
               userId,
               levelName,
             );
-            currentDay = completedDays !== null ? completedDays + 1 : 1; // Next day to work on
+            if (completedDays !== null) {
+              // Cap currentDay at 50 (max day available)
+              currentDay = Math.min(completedDays + 1, 50);
+            } else {
+              currentDay = 1; // Start at day 1 if no progress
+            }
           } catch (error) {
             this.logger.warn(
               `Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`,

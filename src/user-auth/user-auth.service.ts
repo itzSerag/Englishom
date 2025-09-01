@@ -265,6 +265,10 @@ export class UserAuthService {
     return await this.userService.getUserCompletedLevelNames(userId);
   }
 
+  async getUserDetailsForLogin(userId: string) {
+    return await this.userService.getUserDetails(userId);
+  }
+
   async resetPasswordWithToken(resetPasswordDto: ResetPasswordWithTokenDto) {
     const { resetToken, newPassword } = resetPasswordDto;
 

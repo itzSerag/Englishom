@@ -151,9 +151,7 @@ export class UserService {
       throw new NotFoundException('User does not have this level');
     }
 
-    // check if the user truly finished the level
-    // by checking if the user finished day 50 in this level
-
+    // Simple rule: User must have completed day 50
     const completedDays = await this.getCompletedDaysInLevel(
       userId.toString(),
       completeLevelDto.level_name,
@@ -161,7 +159,7 @@ export class UserService {
 
     if (completedDays < 50) {
       throw new BadRequestException(
-        'You have to finish all the days in this level',
+        `You have to finish day 50 to complete this level. Currently completed: day ${completedDays}`,
       );
     }
 
@@ -188,6 +186,41 @@ export class UserService {
     return certificate;
   }
 
+  private async checkAndAutoCompleteLevelIfNeeded(
+    userId: string,
+    levelName: Level_Name,
+    dayNumber: number,
+  ) {
+    try {
+      // Simple rule: If user completes day 50, they complete the whole level
+      if (dayNumber === 50) {
+        // Check if certificate already exists
+        const isCertificateExist = await this.certificateRepo.findOne({
+          userId: new Types.ObjectId(userId),
+          level_name: levelName,
+        });
+
+        if (!isCertificateExist) {
+          // Auto-issue certificate
+          await this.certificateRepo.create({
+            userId: new Types.ObjectId(userId),
+            level_name: levelName,
+            certificateId: this.generateCertificateId(),
+          });
+
+          this.logger.log(
+            `Auto-completed level ${levelName} for user ${userId} after completing day 50`,
+          );
+        }
+      }
+    } catch (error) {
+      // Don't throw error to avoid breaking the day completion process
+      this.logger.error(
+        `Error in auto-completion check for user ${userId}, level ${levelName}: ${error.message}`,
+      );
+    }
+  }
+
   async markDayAsCompleted(
     userId: string,
     levelName: Level_Name,
@@ -204,7 +237,14 @@ export class UserService {
     if (dayNumber > completedDays + 1) {
       throw new NotFoundException('You can only complete the next day');
     }
-    return await this.userRepo.markDayAsCompleted(userId, levelName, dayNumber);
+
+    // Mark the day as completed
+    const result = await this.userRepo.markDayAsCompleted(userId, levelName, dayNumber);
+
+    // Check if user has completed day 50 for auto-completion
+    await this.checkAndAutoCompleteLevelIfNeeded(userId, levelName, dayNumber);
+
+    return result;
   }
 
   async markTaskAsCompleted(
@@ -385,13 +425,18 @@ export class UserService {
           let currentDay = 0;
           let isCompleted = false;
 
-          // Get user's current progress (highest completed day + 1)
+          // Get user's current progress (highest completed day + 1, max 50)
           try {
             const completedDays = await this.userRepo.userProgress(
               userId,
               levelName,
             );
-            currentDay = completedDays !== null ? completedDays + 1 : 1; // Next day to work on
+            if (completedDays !== null) {
+              // Cap currentDay at 50 (max day available)
+              currentDay = Math.min(completedDays + 1, 50);
+            } else {
+              currentDay = 1; // Start at day 1 if no progress
+            }
           } catch (error) {
             this.logger.warn(
               `Failed to get progress for user ${userId} in level ${levelName}: ${error.message}`,

@@ -19,7 +19,8 @@ export class AdminAuthController {
 
     return {
       access_token,
-      admin: cleanResponse(admin),
+      user: cleanResponse(admin),
+   
     };
   }
 }

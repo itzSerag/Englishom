@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AdminRole } from '../../common/shared';
+import { Admin } from '../../admin/models/admin.schema';
 
 @Injectable()
 export class AdminRoleGuard implements CanActivate {
@@ -19,7 +20,7 @@ export class AdminRoleGuard implements CanActivate {
     );
 
     const request = context.switchToHttp().getRequest();
-    const admin = request.user;
+    const admin : Admin = request.user;
 
     // Check if the route is public
     if (
@@ -31,7 +32,7 @@ export class AdminRoleGuard implements CanActivate {
       return true;
     }
 
-    // If the user is not authenticated, throw UnauthorizedException
+    // If the user is not authenticated
     if (!admin) {
       throw new UnauthorizedException('Admin is not authenticated');
     }
@@ -57,6 +58,11 @@ export class AdminRoleGuard implements CanActivate {
     // Check if admin has the required role
     if (!requiredRoles.includes(admin.adminRole)) {
       throw new ForbiddenException('Admin does not have the required role');
+    }
+
+    // check if the admin is active
+    if (!admin.isActive) {
+      throw new ForbiddenException('Admin account is deactivated');
     }
 
     return true;
