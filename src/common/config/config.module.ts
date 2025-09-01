@@ -21,7 +21,7 @@ import { ConfigService } from './config.service';
         WEBSITE_URL: Joi.string().uri().required(),
 
         // Database
-        DATABASE_URL: Joi.string().uri().required(),
+        DATABASE_URL: Joi.string().required(),
 
         // JWT
         JWT_SECRET: Joi.string().required(),
