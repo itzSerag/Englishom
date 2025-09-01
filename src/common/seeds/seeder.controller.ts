@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Delete, UseGuards } from '@nestjs/common';
-import { IsAdminGuard } from '../../admin/guards/is-admin.guard';
-import { AdminRoleGuard } from '../../admin/guards/admin-roles.guard';
-import { AdminRoles } from '../../admin/decorators/admin-roles.decorator';
+import { IsAdminGuard } from '../../admin-auth/guards/is-admin.guard';
+import { AdminRoleGuard } from '../../admin-auth/guards/admin-roles.guard';
+import { AdminRoles } from '../../admin-auth/decorators/admin-roles.decorator';
 import { AdminRole } from '../shared';
 import { SeederService } from './seeder.service';
 

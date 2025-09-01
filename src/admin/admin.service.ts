@@ -4,9 +4,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
-  UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AdminRepo } from './repo/admin.repo';
 import { CreateAdminDto, UpdateAdminDto, AdminSearchDto } from './dto';
@@ -20,7 +18,6 @@ import { cleanResponseArray } from '../common/utils/response.utils';
 export class AdminService {
   constructor(
     private readonly adminRepo: AdminRepo,
-    private readonly jwtService: JwtService,
     private readonly ipService: IpService,
   ) {}
 
@@ -225,28 +222,6 @@ export class AdminService {
       { _id: adminId },
       { lastActivity: new Date() },
     );
-  }
-
-  // Generate token for admin
-  async generateToken(admin: Admin): Promise<string> {
-    const payload = {
-      sub: admin._id,
-      email: admin.email,
-    };
-    return this.jwtService.sign(payload);
-  }
-
-  // Validate admin token payload
-  async validateAdminPayload(payload: any): Promise<Admin> {
-    const admin = await this.adminRepo.findOne({ _id: payload.sub });
-    if (!admin?.isActive) {
-      throw new UnauthorizedException('Admin not found or inactive');
-    }
-
-    // Update last activity
-    await this.updateActivity(admin._id);
-
-    return admin;
   }
 
   async deactivateAdmin(id: string): Promise<Admin> {

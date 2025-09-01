@@ -29,7 +29,7 @@ import { Admin } from '../admin/models/admin.schema';
 import { AdminRole } from 'src/common/shared';
 import { UserJwtGuard } from '../user-auth/guards/user-jwt.guard';
 import { AdminJwtGuard } from '../admin-auth/guards/admin-jwt.guard';
-import { AdminRoles } from '../admin/decorators';
+import { AdminRoles } from '../admin-auth/decorators';
 import { PaginationDto } from './dto/pagination.dto';
 import { IpService } from '../common/services/ip.service';
 import { Request } from 'express';

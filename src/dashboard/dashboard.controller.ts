@@ -5,18 +5,16 @@ import {
   Query,
   UseGuards,
   ValidationPipe,
-  BadRequestException,
   Logger,
   Post,
   Body,
 } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
-import { AdminRoles } from '../admin/decorators/admin-roles.decorator';
+import { AdminRoles } from '../admin-auth/decorators/admin-roles.decorator';
 import { AdminRole } from '../common/shared/enums';
-import { IsAdminGuard, AdminRoleGuard } from '../admin/guards';
+import { IsAdminGuard, AdminRoleGuard } from '../admin-auth/guards';
 import {
   DashboardSearchDto,
-  DashboardPaginationDto,
   AssignCourseDto,
 } from './dto';
 import { SkipVerifiedGuard } from '../user-auth/guards/skip-verified.guard';

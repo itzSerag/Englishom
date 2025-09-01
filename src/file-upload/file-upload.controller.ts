@@ -23,14 +23,14 @@ import { FileUploadService } from './file-upload.service';
 import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
-import { AdminRoles } from 'src/admin/decorators';
-import { IsAdminGuard, AdminRoleGuard } from '../admin/guards';
+import { AdminRoles } from 'src/admin-auth/decorators';
+import { IsAdminGuard, AdminRoleGuard } from '../admin-auth/guards';
 
 @Controller('files')
 export class FileUploadController {
   private readonly logger = new Logger(FileUploadController.name);
 
-  constructor(private uploadService: FileUploadService) {}
+  constructor(private readonly uploadService: FileUploadService) {}
 
   @Get('')
   async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {

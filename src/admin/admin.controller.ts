@@ -13,25 +13,33 @@ import {
 import { AdminService } from './admin.service';
 import { CreateAdminDto, UpdateAdminDto, AdminSearchDto, GetAdminDto } from './dto';
 import { Admin } from './models/admin.schema';
-import { CurrentAdmin } from './decorators/current-admin.decorator';
-import { AdminRoles } from './decorators/admin-roles.decorator';
-import { AdminJwtGuard, AdminRoleGuard } from './guards';
+import { CurrentAdmin } from '../admin-auth/decorators/current-admin.decorator';
+import { AdminRoles } from '../admin-auth/decorators/admin-roles.decorator';
+import { AdminJwtGuard, AdminRoleGuard } from '../admin-auth/guards';
 import { AdminRole } from '../common/shared';
 import { IpService } from 'src/common/services/ip.service';
-import { SkipVerifiedGuard } from '../user-auth/guards/skip-verified.guard';
 import {
   cleanResponse,
   cleanResponseArray,
 } from '../common/utils/response.utils';
+import { log } from 'console';
 
 @UseGuards(AdminJwtGuard, AdminRoleGuard)
-@SkipVerifiedGuard()
 @Controller('admin')
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly ipService: IpService,
   ) {}
+  
+
+
+  @Get('me')
+  async getCurrentAdmin(@CurrentAdmin() currentAdmin: Admin) {
+    log(currentAdmin)
+    return cleanResponse(currentAdmin);
+  }
+
 
   // Create new admin - Only SUPER admin
   @AdminRoles(AdminRole.SUPER)
@@ -63,13 +71,7 @@ export class AdminController {
     return cleanResponseArray(admins);
   }
 
-  // Get admin by ID - SUPER and MANAGER can view admin details
-  @Get(':id')
-  async getAdminById(@Param() mongoID: GetAdminDto) {
-    const admin = await this.adminService.getAdminById(mongoID.id);
-    return cleanResponse(admin);
-  }
-
+  
   // Update admin
   @AdminRoles(AdminRole.SUPER)
   @Patch(':id')
@@ -85,7 +87,7 @@ export class AdminController {
     );
     return cleanResponse(admin);
   }
-
+  
   // Delete admin - Only SUPER admin
   @AdminRoles(AdminRole.SUPER)
   @Delete(':id')
@@ -95,16 +97,18 @@ export class AdminController {
   ) {
     return await this.adminService.deleteAdmin(mongoID.id, currentAdmin);
   }
-
+  
   @AdminRoles(AdminRole.SUPER)
   @Post('deactivate-admin/:id')
   async deactivateAdmin(@Param('id') id: string) {
     const admin = await this.adminService.deactivateAdmin(id);
     return cleanResponse(admin);
   }
-
-  @Get('me')
-  async getCurrentAdmin(@CurrentAdmin() currentAdmin: Admin) {
-    return cleanResponse(currentAdmin);
+  
+  // Get admin by ID - SUPER and MANAGER can view admin details
+  @Get(':id')
+  async getAdminById(@Param() mongoID: GetAdminDto) {
+    const admin = await this.adminService.getAdminById(mongoID.id);
+    return cleanResponse(admin);
   }
 }

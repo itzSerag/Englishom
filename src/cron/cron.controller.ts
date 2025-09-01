@@ -1,7 +1,7 @@
 import { Controller, Post, UseGuards } from '@nestjs/common';
 import { InactiveUserCronService } from './inactive-user-cron.service';
-import { IsAdminGuard } from '../admin/guards/is-admin.guard';
-import { AdminRoles } from '../admin/decorators/admin-roles.decorator';
+import { IsAdminGuard } from '../admin-auth/guards/is-admin.guard';
+import { AdminRoles } from '../admin-auth/decorators/admin-roles.decorator';
 import { AdminRole } from '../common/shared';
 
 @UseGuards(IsAdminGuard)
