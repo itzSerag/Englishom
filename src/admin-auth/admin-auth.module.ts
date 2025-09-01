@@ -9,7 +9,6 @@ import { AdminModule } from '../admin/admin.module';
 import { AdminJwtStrategy } from './strategy/admin-jwt.strategy';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminRoleGuard } from './guards/admin-roles.guard';
-import { IsAdminGuard } from './guards/is-admin.guard';
 
 @Module({
   imports: [
@@ -31,8 +30,7 @@ import { IsAdminGuard } from './guards/is-admin.guard';
     AdminJwtStrategy,
     AdminJwtGuard,
     AdminRoleGuard,
-    IsAdminGuard,
   ],
-  exports: [AdminAuthService, AdminJwtGuard, AdminRoleGuard, IsAdminGuard],
+  exports: [AdminAuthService, AdminJwtGuard, AdminRoleGuard],
 })
 export class AdminAuthModule {}
