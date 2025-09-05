@@ -25,6 +25,7 @@ import { User } from '../user/models/user.schema';
 import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin-auth/decorators';
 import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
+import { UserJwtGuard } from '../user-auth/guards';
 
 @Controller('files')
 export class FileUploadController {
@@ -39,15 +40,23 @@ export class FileUploadController {
   }
 
   @Get('user-audio')
+  @UseGuards(UserJwtGuard)
   async getUserAudios(@CurrentUser() user: User) {
+    if (!user?._id) {
+      throw new BadRequestException('User not authenticated or invalid user data');
+    }
     return await this.uploadService.getUserAudios(user._id.toString());
   }
 
   @Get('user-audio/:levelName')
+  @UseGuards(UserJwtGuard)
   async getUserAudiosByLevel(
     @CurrentUser() user: User,
     @Param('levelName') levelName: string,
   ) {
+    if (!user?._id) {
+      throw new BadRequestException('User not authenticated or invalid user data');
+    }
     return await this.uploadService.getUserAudiosByLevel(
       user._id.toString(),
       levelName,
@@ -55,11 +64,15 @@ export class FileUploadController {
   }
 
   @Get('user-audio/:levelName/:day')
+  @UseGuards(UserJwtGuard)
   async getUserDayAudio(
     @CurrentUser() user: User,
     @Param('levelName') levelName: Level_Name,
     @Param('day') day: string,
   ) {
+    if (!user?._id) {
+      throw new BadRequestException('User not authenticated or invalid user data');
+    }
     try {
       const audio = await this.uploadService.getUserDayAudio(
         user._id.toString(),
@@ -85,6 +98,7 @@ export class FileUploadController {
   }
 
   @Post('user-audio')
+  @UseGuards(UserJwtGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
@@ -97,6 +111,9 @@ export class FileUploadController {
     @Body() uploadFileDTO: UploadFileDTO,
     @CurrentUser() user: User,
   ) {
+    if (!user?._id) {
+      throw new BadRequestException('User not authenticated or invalid user data');
+    }
     this.validateAudioFile(file);
 
     return await this.uploadService.uploadUserAudio(
@@ -107,10 +124,14 @@ export class FileUploadController {
   }
 
   @Delete('user-audio')
+  @UseGuards(UserJwtGuard)
   async deleteUserAudio(
     @CurrentUser() user: User,
     @Query('audioKey') audioKey: string,
   ) {
+    if (!user?._id) {
+      throw new BadRequestException('User not authenticated or invalid user data');
+    }
     if (!audioKey) {
       throw new BadRequestException('audioKey is required');
     }
