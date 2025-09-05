@@ -27,6 +27,11 @@ import { AdminRoles } from 'src/admin-auth/decorators';
 import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
 import { UserJwtGuard } from '../user-auth/guards';
 
+
+// The UserJwtGuard ensures that only authenticated users can access certain endpoints.
+// And not applied for all the endpoints in this controller, 
+// only for those that require user authentication.
+
 @Controller('files')
 export class FileUploadController {
   private readonly logger = new Logger(FileUploadController.name);
@@ -245,11 +250,15 @@ export class FileUploadController {
       throw new BadRequestException('File not found in request');
     }
 
-    const allowedMimeTypes = Object.values(AllowedAudioMimeTypes);
+    if (!file.mimetype) {
+      throw new BadRequestException('File MIME type is missing');
+    }
 
-    if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
+    const allowedMimeTypes: string[] = Object.values(AllowedAudioMimeTypes);
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
-        'Only audio files are allowed to be uploaded.',
+        `Only audio files are allowed. Received: ${file.mimetype}. Allowed types: ${allowedMimeTypes.join(', ')}`,
       );
     }
   }
@@ -259,14 +268,18 @@ export class FileUploadController {
       throw new BadRequestException('File not found in request');
     }
 
-    const allowedMimeTypes = [
+    if (!file.mimetype) {
+      throw new BadRequestException('File MIME type is missing');
+    }
+
+    const allowedMimeTypes: string[] = [
       ...Object.values(AllowedAudioMimeTypes),
       ...Object.values(AllowedImageMimeTypes),
     ];
 
-    if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
+    if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
-        'Only audio and image files are allowed to be uploaded.',
+        `Only audio and image files are allowed. Received: ${file.mimetype}`,
       );
     }
   }

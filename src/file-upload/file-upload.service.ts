@@ -343,7 +343,7 @@ export class FileUploadService {
       const data = await response.json();
 
       // Ensure data has the correct structure
-      if (!data || !data.data) {
+      if (!data?.data) {
         return { data: [] };
       }
 
