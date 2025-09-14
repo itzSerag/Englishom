@@ -228,7 +228,7 @@ export class PaymobService {
         throw new InternalServerErrorException('Failed to upsert the order');
       }
 
-      return `${this.PAYMOB_INTENTION_URL}/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${dataUserPaymentIntention.client_secret}`;
+      return `https://ksa.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${dataUserPaymentIntention.client_secret}`;
     });
   }
 
