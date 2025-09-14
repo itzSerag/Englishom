@@ -98,7 +98,7 @@ export class PaymobService {
               <strong>Congratulations!</strong> Your payment has been successfully processed.
             </div>
             <p><strong>Level:</strong> {{levelName}}</p>
-            <p><strong>Amount Paid:</strong> <span class="price">{{amount}} EGP</span></p>
+            <p><strong>Amount Paid:</strong> <span class="price">{{amount}} SAR</span></p>
             <p><strong>Payment Date:</strong> {{paymentDate}}</p>
             <p>You now have access to your new course level!</p>
             <p>Best regards,<br>The Englishom Team</p>

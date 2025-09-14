@@ -222,7 +222,7 @@ export class PaymobController {
         street: 'dummy',
         building: 'dummy',
         phone_number: "+966500000000", // <- KSA phone format
-        city: paymentIntentionDto.city,
+        city: "dummy",
         country: 'SA', // <- Saudi Arabia
         email: user.email,
         floor: 'dummy',

@@ -24,10 +24,10 @@ export class CurrencyUtils {
   /**
    * Format currency amount for display
    * @param amount Amount in whole currency
-   * @param currency Currency code (default: 'EGP')
+   * @param currency Currency code (default: 'SAR')
    * @returns Formatted currency string
    */
-  static formatCurrency(amount: number, currency: string = 'EGP'): string {
+  static formatCurrency(amount: number, currency: string = 'SAR'): string {
     const wholeAmount = Math.round(amount);
     return `${wholeAmount} ${currency}`;
   }
@@ -35,12 +35,12 @@ export class CurrencyUtils {
   /**
    * Format currency amount from cents for display
    * @param amountCents Amount in cents
-   * @param currency Currency code (default: 'EGP')
+   * @param currency Currency code (default: 'SAR')
    * @returns Formatted currency string
    */
   static formatCurrencyFromCents(
     amountCents: number,
-    currency: string = 'EGP',
+    currency: string = 'SAR',
   ): string {
     const wholeAmount = this.fromCents(amountCents);
     return this.formatCurrency(wholeAmount, currency);
@@ -48,7 +48,7 @@ export class CurrencyUtils {
 
   /**
    * Parse currency string to whole amount
-   * @param currencyString String like "199 EGP" or "199"
+   * @param currencyString String like "199 SAR" or "199"
    * @returns Amount in whole currency
    */
   static parseCurrency(currencyString: string): number {
