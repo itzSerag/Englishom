@@ -30,16 +30,15 @@ export class CourseService {
   }
 
   async update(
-    level_name: Level_Name,
     updateCourseDto: UpdateCourseDto,
   ): Promise<Course> {
     const updatedCourse = await this.courseRepo.findOneAndUpdate(
-      { level_name },
+      { level_name: updateCourseDto.level_name },
       updateCourseDto,
     );
     if (!updatedCourse) {
       throw new NotFoundException(
-        `Course with level name ${level_name} not found`,
+        `Course with level name ${updateCourseDto.level_name} not found`,
       );
     }
     return updatedCourse;

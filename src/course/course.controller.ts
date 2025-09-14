@@ -28,12 +28,11 @@ export class CourseController {
   }
 
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
-  @Patch('admin/:level_name')
+  @Patch('admin')
   async update(
-    @Param('level_name') level_name: Level_Name,
     @Body() updateCourseDto: UpdateCourseDto,
   ) {
-    const course = await this.courseService.update(level_name, updateCourseDto);
+    const course = await this.courseService.update(updateCourseDto);
     return course;
   }
 }

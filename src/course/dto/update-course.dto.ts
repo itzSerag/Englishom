@@ -1,13 +1,17 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
+import { Level_Name } from '../../common/shared/enums';
 
 export class UpdateCourseDto {
+
+  @IsEnum(Level_Name)
   @IsNotEmpty()
+  level_name : Level_Name;
+
   @IsString()
   @IsOptional()
   titleAr?: string;
 
   @IsOptional()
-  @IsNotEmpty()
   @IsString()
   titleEn?: string;
 
@@ -18,9 +22,10 @@ export class UpdateCourseDto {
   @IsOptional()
   @IsString()
   descriptionEn?: string;
+  
 
+  // the price but be not minus value
+  @IsPositive()
   @IsOptional()
-  @IsNotEmpty()
-  @IsNumber()
   price?: number;
 }
