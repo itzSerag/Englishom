@@ -22,6 +22,7 @@ export class PaymobService {
   private readonly logger = new Logger(PaymobService.name);
   private readonly PAYMOB_SECRET_KEY: string;
   private readonly integrationId: string;
+  private readonly PAYMOB_INTENTION_URL: string;
   private readonly PAYMOB_PUBLIC_KEY: string;
   private readonly REQUEST_TIMEOUT = 10000; // Reduced to 10 seconds timeout
   private paymentSuccessEmailTemplate: string;
@@ -39,11 +40,13 @@ export class PaymobService {
       'PAYMOB_INTEGRATION_ID',
     );
     this.integrationId = integrationIdValue.toString();
-
     this.PAYMOB_PUBLIC_KEY =
       this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
     this.PAYMOB_SECRET_KEY =
       this.configService.getOrThrow<string>('PAYMOB_SECRET_KEY');
+    
+    this.PAYMOB_INTENTION_URL =
+      this.configService.getOrThrow<string>('PAYMOB_INTENTION_URL');
 
     // Load email template
     this.loadPaymentSuccessEmailTemplate();
@@ -130,7 +133,7 @@ export class PaymobService {
         })),
       };
 
-      const res = await fetch('https://accept.paymob.com/v1/intention/', {
+      const res = await fetch(`${this.PAYMOB_INTENTION_URL}` , {
         method: 'POST',
         headers: {
           Authorization: `Token ${this.PAYMOB_SECRET_KEY}`,
@@ -225,7 +228,7 @@ export class PaymobService {
         throw new InternalServerErrorException('Failed to upsert the order');
       }
 
-      return `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${dataUserPaymentIntention.client_secret}`;
+      return `${this.PAYMOB_INTENTION_URL}/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${dataUserPaymentIntention.client_secret}`;
     });
   }
 
