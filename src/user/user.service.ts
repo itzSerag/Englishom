@@ -80,6 +80,11 @@ export class UserService {
     return await this.userRepo.findWithPagination({}, page, limit);
   }
 
+  async findByStatus(status: UserStatus, paginationDto: PaginationDto) {
+    const { page, limit } = paginationDto;
+    return await this.userRepo.findWithPagination({ status }, page, limit);
+  }
+
   async deleteUser(_id: string) {
     return await this.userRepo.findOneAndDelete({ _id });
   }
