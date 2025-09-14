@@ -9,11 +9,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PaymentRequest, PaymentStatus } from './types';
-import { Level_Name } from '../common/shared/enums';
 import { OrderRepo } from './repo/order.repo';
 import { TransactionService } from '../common/database/transaction.service';
 import { UserRepo } from '../user/repo/user.repo';
 import { MailService } from '../common/mail/mail.service';
+import { FrontendRedirectService } from '../common/services/frontend-redirect.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -32,6 +32,7 @@ export class PaymobService {
     private readonly transactionService: TransactionService,
     private readonly userRepo: UserRepo,
     private readonly emailService: MailService,
+    private readonly frontendRedirectService: FrontendRedirectService,
   ) {
     // Integration ID can be either string or number from config
     const integrationIdValue = this.configService.getOrThrow<string | number>(
@@ -63,6 +64,7 @@ export class PaymobService {
     } catch (error) {
       this.logger.warn(
         'Failed to load payment success email template, using fallback template',
+        error instanceof Error ? error.message : String(error),
       );
       this.paymentSuccessEmailTemplate =
         this.getFallbackPaymentSuccessTemplate();
@@ -179,7 +181,7 @@ export class PaymobService {
         );
       }
 
-      const levelName = paymentRequest.items[0].name as Level_Name;
+      const levelName = paymentRequest.items[0].name;
 
       // Check for existing completed order using transaction session
       const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
@@ -505,6 +507,9 @@ export class PaymobService {
         day: 'numeric',
       });
 
+      // Get course URL for payment success email
+      const courseUrl = this.frontendRedirectService.getPaymentSuccessUrl(levelName);
+
       // Replace template variables
       const personalizedEmail = this.paymentSuccessEmailTemplate
         .replace(/{{userName}}/g, user.firstName || 'there')
@@ -512,10 +517,7 @@ export class PaymobService {
         .replace(/{{amount}}/g, amount.toString()) // Amount is already in whole currency
         .replace(/{{paymentDate}}/g, paymentDate)
         .replace(/{{orderId}}/g, orderId)
-        .replace(
-          /{{courseUrl}}/g,
-          `${process.env.WEBSITE_URL || 'https://englishom.com'}/courses/${levelName.toLowerCase()}`,
-        );
+        .replace(/{{courseUrl}}/g, courseUrl);
 
       // Prepare email data
       const mailOptions = {

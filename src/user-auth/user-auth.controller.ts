@@ -23,11 +23,15 @@ import { User } from '../user/models/user.schema';
 import { Request, Response } from 'express';
 import { ForgetPasswordDto, ResetPasswordWithTokenDto } from './dto';
 import { OtpCause } from './enum/otp-cause.enum';
+import { FrontendRedirectService } from 'src/common/services/frontend-redirect.service';
 import { cleanResponse } from '../common/utils/response.utils';
 
 @Controller('auth')
 export class UserAuthController {
-  constructor(private readonly userAuthService: UserAuthService) {}
+  constructor(
+    private readonly userAuthService: UserAuthService,
+    private readonly frontendRedirectService: FrontendRedirectService,
+  ) {}
   private readonly logger = new Logger(UserAuthController.name);
 
   @Public()
@@ -141,15 +145,23 @@ export class UserAuthController {
         req,
       );
       const jwt = this.userAuthService.generateToken(newUser);
-      res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
+      
+      // Redirect back to wherever the request came from
+      const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl(req.get('Referer'));
+      res.redirect(`${redirectUrl}?token=${jwt}`);
     } catch (err) {
       this.logger.error(
         `Facebook OAuth login failed: ${err.message}`,
         err.stack,
       );
-      return res.redirect(
-        `${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`,
+      
+      // Redirect back with error
+      const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
+        'auth_failed',
+        err.message,
+        req.get('Referer')
       );
+      return res.redirect(errorRedirectUrl);
     }
   }
 
@@ -178,12 +190,20 @@ export class UserAuthController {
         req,
       );
       const jwt = this.userAuthService.generateToken(newUser);
-      res.redirect(`${process.env.WEBSITE_URL}/en/callback?token=${jwt}`);
+      
+      // Redirect back to wherever the request came from
+      const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl(req.get('Referer'));
+      res.redirect(`${redirectUrl}?token=${jwt}`);
     } catch (err) {
       this.logger.error(`Google OAuth login failed: ${err.message}`, err.stack);
-      return res.redirect(
-        `${process.env.WEBSITE_URL}/en/callback?error=auth_failed&message=${encodeURIComponent(err.message)}`,
+      
+      // Redirect back with error
+      const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
+        'auth_failed',
+        err.message,
+        req.get('Referer')
       );
+      return res.redirect(errorRedirectUrl);
     }
   }
 }
