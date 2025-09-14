@@ -201,32 +201,35 @@ export class PaymobController {
         throw error;
       }
 
-      const data = {
-        amount: course.price, // Use whole currency amount for our internal processing
-        currency: 'EGP',
-        payment_methods: [integration_id],
-        items: [
-          {
-            name: paymentIntentionDto.level_name,
-            amount: course.price, // Use whole currency amount for our internal processing
-            description: course.descriptionEn || `${course.titleEn} course`,
-            quantity: 1,
-          },
-        ],
-        billing_data: {
-          apartment: 'dummy',
-          first_name: user.firstName,
-          last_name: user.lastName,
-          street: 'dummy',
-          building: 'dummy',
-          phone_number: "000000000000",
-          city: paymentIntentionDto.city,
-          country: paymentIntentionDto.country,
-          email: user.email,
-          floor: 'dummy',
-          state: 'dummy',
+      // SAUDI ARABIA
+
+     const data = {
+      amount: course.price, // Use whole currency amount for our internal processing
+      currency: 'SAR', // <- Saudi Riyal
+      payment_methods: [integration_id],
+      items: [
+        {
+          name: paymentIntentionDto.level_name,
+          amount: course.price,
+          description: course.descriptionEn || `${course.titleEn} course`,
+          quantity: 1,
         },
-      };
+      ],
+      billing_data: {
+        apartment: 'dummy',
+        first_name: user.firstName,
+        last_name: user.lastName,
+        street: 'dummy',
+        building: 'dummy',
+        phone_number: "+966500000000", // <- KSA phone format
+        city: paymentIntentionDto.city,
+        country: 'SA', // <- Saudi Arabia
+        email: user.email,
+        floor: 'dummy',
+        state: 'dummy',
+      },
+    };
+
 
       this.logger.log(
         `Processing payment for user ${user._id}, level: ${paymentIntentionDto.level_name}`,
