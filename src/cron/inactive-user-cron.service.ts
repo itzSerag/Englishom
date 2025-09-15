@@ -5,6 +5,7 @@ import { MailService } from '../common/mail/mail.service';
 import { Role, UserStatus } from '../common/shared';
 import * as fs from 'fs';
 import * as path from 'path';
+import { TimeService } from '../common/config/time.service';
 
 @Injectable()
 export class InactiveUserCronService {
@@ -15,14 +16,14 @@ export class InactiveUserCronService {
   constructor(
     private readonly userRepo: UserRepo,
     private readonly emailService: MailService,
+    private readonly timeService: TimeService,
   ) {
     try {
       const templatePath = path.join(__dirname, 'email-template.html');
       this.emailTemplate = fs.readFileSync(templatePath, 'utf8');
     } catch (error) {
       // Fallback template if file loading fails
-      this.logger.error(
-        'Failed to load email template file, using fallback template',
+    this.logger.error('Failed to load email template file, using fallback template',
       );
       this.emailTemplate = this.getFallbackTemplate();
     }
@@ -50,16 +51,16 @@ export class InactiveUserCronService {
     timeZone: 'Asia/Riyadh',
   })
   async handleInactiveUsers() {
-    const startTime = new Date();
+    const startTime = this.timeService.createDate();
     this.logger.log('🔄 Starting inactive user management job...');
 
     try {
       // Calculate 7 days ago for motivational emails
-      const sevenDaysAgo = new Date();
+      const sevenDaysAgo = this.timeService.createDate();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       // Calculate 65 days ago for suspension
-      const sixtyFiveDaysAgo = new Date();
+      const sixtyFiveDaysAgo = this.timeService.createDate();
       sixtyFiveDaysAgo.setDate(sixtyFiveDaysAgo.getDate() - 65);
 
       // Find users to suspend (65+ days inactive)
@@ -96,7 +97,7 @@ export class InactiveUserCronService {
             { _id: user._id },
             {
               status: UserStatus.SUSPENDED,
-              suspendedAt: new Date(),
+              suspendedAt: this.timeService.createDate(),
               suspensionReason:
                 'Account suspended due to inactivity (65+ days)',
             },
@@ -134,7 +135,7 @@ export class InactiveUserCronService {
         await this.delay(300);
       }
 
-      const endTime = new Date();
+      const endTime = this.timeService.createDate();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
 
       this.logger.log(

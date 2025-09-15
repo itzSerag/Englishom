@@ -13,6 +13,11 @@ export class TimeService {
     return moment.tz(this.SAUDI_TZ).toDate();
   }
 
+  // Simple method to replace new Date() calls - always returns KSA time
+  createDate(): Date {
+    return this.now();
+  }
+
   // Convert any date to Saudi time
   // handle international users
   toSaudiTime(date: Date = new Date()): Date {

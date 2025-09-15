@@ -23,6 +23,7 @@ import { ResetPasswordWithTokenDto } from './dto/reset-password-with-token.dto';
 import { IResetTokenPayload } from './interfaces/reset-token-payload.interface';
 import { ResendOtpDto } from './dto';
 import { UserStatus } from '../common/shared';
+import { TimeService } from '../common/config/time.service';
 
 @Injectable()
 export class UserAuthService {
@@ -33,6 +34,7 @@ export class UserAuthService {
     private readonly mailService: MailService,
     private readonly otpRepo: OtpRepo,
     private readonly ipService: IpService,
+    private readonly timeService: TimeService,
   ) {}
 
   async signup(createUserDto: CreateUserDto, req?: any) {
@@ -108,7 +110,7 @@ export class UserAuthService {
     // Update last activity
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
-      { lastActivity: new Date() },
+      { lastActivity: this.timeService.createDate() },
     );
 
     return { access_token, user };
@@ -234,7 +236,7 @@ export class UserAuthService {
         password,
         strategy,
         isVerified: true,
-        lastActivity: new Date(),
+        lastActivity: this.timeService.createDate(),
         country,
       });
 
@@ -248,7 +250,7 @@ export class UserAuthService {
     }
 
     const updateData: any = {
-      lastActivity: new Date(),
+      lastActivity: this.timeService.createDate(),
     };
 
     if (user.firstName !== firstName || user.lastName !== lastName) {
@@ -292,7 +294,7 @@ export class UserAuthService {
         { email },
         {
           password: hashedPassword,
-          lastActivity: new Date(),
+          lastActivity: this.timeService.createDate(),
         },
       );
 

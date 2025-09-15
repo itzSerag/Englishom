@@ -1,5 +1,6 @@
 import { Prop } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database/abstract.schema';
+import * as moment from 'moment-timezone';
 
 export abstract class AbstractUser extends AbstractDocument {
   @Prop({ required: true, unique: true })
@@ -17,7 +18,7 @@ export abstract class AbstractUser extends AbstractDocument {
   @Prop({
     required: true,
     type: Date,
-    default: Date.now,
+    default: () => moment.tz('Asia/Riyadh').toDate(),
   })
   lastActivity: Date;
 

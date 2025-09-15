@@ -26,6 +26,7 @@ import { UserStatus } from '../common/shared';
 import { OrderRepo } from '../payment/repo/order.repo';
 import { CourseRepo } from '../course/repo/course.repo';
 import { cleanResponse } from '../common/utils/response.utils';
+import { TimeService } from '../common/config/time.service';
 
 @Injectable()
 export class UserService {
@@ -36,6 +37,7 @@ export class UserService {
     private readonly ipService: IpService,
     private readonly orderRepo: OrderRepo,
     private readonly courseRepo: CourseRepo,
+    private readonly timeService: TimeService,
   ) {}
 
   private readonly logger = new Logger(UserService.name);
@@ -327,11 +329,11 @@ export class UserService {
 
     // with defualt messages
     if (updateStatusDto.status === UserStatus.BLOCKED) {
-      updateData.suspendedAt = new Date();
+      updateData.suspendedAt = this.timeService.createDate();
       updateData.suspensionReason =
         updateStatusDto.reason || 'Account blocked by admin';
     } else if (updateStatusDto.status === UserStatus.SUSPENDED) {
-      updateData.suspendedAt = new Date();
+      updateData.suspendedAt = this.timeService.createDate();
       updateData.suspensionReason =
         updateStatusDto.reason || 'Account suspended by admin';
     } else if (updateStatusDto.status === UserStatus.ACTIVE) {

@@ -11,6 +11,9 @@ import { AllExceptionsFilter } from './common/filters/all-exception';
 
 dotenv.config();
 
+// Set global timezone to KSA (Asia/Riyadh)
+process.env.TZ = 'Asia/Riyadh';
+
 async function bootstrap() {
   const logger = new Logger('Server Main');
 

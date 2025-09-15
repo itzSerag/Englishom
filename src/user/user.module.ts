@@ -21,11 +21,13 @@ import {
   CertificationSchema,
 } from './models/certification.schema';
 import { CertificateRepo } from './repo/certificate.repo';
+import { ConfigModule } from '../common/config/config.module';
 
 // filepath: /mnt/DATA/Englishom/src/user/user.module.ts
 @Module({
   imports: [
     DatabaseModule,
+    ConfigModule, // Add ConfigModule for TimeService
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: UserProgress.name, schema: UserProgressSchema },

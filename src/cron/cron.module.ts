@@ -5,9 +5,10 @@ import { CronController } from './cron.controller';
 import { UserModule } from '../user/user.module';
 import { MailModule } from '../common/mail/mail.module';
 import { AdminModule } from '../admin/admin.module';
+import { ConfigModule } from '../common/config/config.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), UserModule, MailModule, AdminModule],
+  imports: [ScheduleModule.forRoot(), UserModule, MailModule, AdminModule, ConfigModule],
   controllers: [CronController],
   providers: [InactiveUserCronService],
   exports: [InactiveUserCronService],
