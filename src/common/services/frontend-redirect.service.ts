@@ -15,46 +15,26 @@ export class FrontendRedirectService {
   }
 
   /**
-   * Get the frontend URL from referer header
-   * Simply extracts the origin from the referer and redirects back there
+   * Get OAuth redirect URL - always use the configured frontend URL
+   * OAuth providers don't send useful referer headers, so we must use env config
    */
-  private getFrontendOriginFromReferer(referer?: string): string {
-    if (!referer) {
-      // Default to frontend URL from env
-      const defaultUrl = this.getDefaultFrontendUrl();
-      this.logger.debug(`No referer, using default frontend URL: ${defaultUrl}`);
-      return defaultUrl;
-    }
-
-    try {
-      const url = new URL(referer);
-      this.logger.debug(`Using referer origin: ${url.origin}`);
-      return url.origin;
-    } catch {
-      // If referer is invalid, default to frontend URL from env
-      const defaultUrl = this.getDefaultFrontendUrl();
-      this.logger.debug(`Invalid referer, using default frontend URL: ${defaultUrl}`);
-      return defaultUrl;
-    }
-  }
-
-  /**
-   * Get OAuth redirect URL - goes back to where the request came from
-   */
-  getOAuthRedirectUrl(referer?: string): string {
-    const origin = this.getFrontendOriginFromReferer(referer);
-    const redirectUrl = `${origin}/auth/callback`;
+  getOAuthRedirectUrl(): string {
+    const frontendUrl = this.getDefaultFrontendUrl();
+    const redirectUrl = `${frontendUrl}/auth/callback`;
     
-    this.logger.debug(`OAuth redirect URL: ${redirectUrl} (from referer: ${referer || 'none'})`);
+    this.logger.debug(`OAuth redirect URL: ${redirectUrl}`);
     return redirectUrl;
   }
 
   /**
-   * Get OAuth error redirect URL - goes back to where the request came from
+   * Get OAuth error redirect URL - always use the configured frontend URL
    */
-  getOAuthErrorRedirectUrl(error: string, message: string, referer?: string): string {
-    const origin = this.getFrontendOriginFromReferer(referer);
-    return `${origin}/auth/callback?error=${error}&message=${encodeURIComponent(message)}`;
+  getOAuthErrorRedirectUrl(error: string, message: string): string {
+    const frontendUrl = this.getDefaultFrontendUrl();
+    const redirectUrl = `${frontendUrl}/auth/callback?error=${error}&message=${encodeURIComponent(message)}`;
+    
+    this.logger.debug(`OAuth error redirect URL: ${redirectUrl}`);
+    return redirectUrl;
   }
 
   /**

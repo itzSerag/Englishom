@@ -148,8 +148,8 @@ export class UserAuthController {
       );
       const jwt = this.userAuthService.generateToken(newUser);
       
-      // Redirect back to wherever the request came from
-      const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl(req.get('Referer'));
+      // Redirect back to frontend with token
+      const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl();
       this.logger.debug(`Redirecting to: ${redirectUrl}?token=***`);
       
       return res.redirect(`${redirectUrl}?token=${jwt}`);
@@ -163,7 +163,6 @@ export class UserAuthController {
       const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
         'auth_failed',
         err.message || 'Authentication failed',
-        req.get('Referer')
       );
       return res.redirect(errorRedirectUrl);
     }
@@ -197,8 +196,8 @@ export class UserAuthController {
       );
       const jwt = this.userAuthService.generateToken(newUser);
       
-      // Redirect back to wherever the request came from
-      const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl(req.get('Referer'));
+      // Redirect back to frontend with token
+      const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl();
       this.logger.debug(`Redirecting to: ${redirectUrl}?token=***`);
       
       return res.redirect(`${redirectUrl}?token=${jwt}`);
@@ -209,7 +208,6 @@ export class UserAuthController {
       const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
         'auth_failed',
         err.message || 'Authentication failed',
-        req.get('Referer')
       );
       return res.redirect(errorRedirectUrl);
     }

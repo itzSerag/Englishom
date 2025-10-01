@@ -219,9 +219,18 @@ Redirecting to: .../auth/callback?token=***
 **Cause**: User previously signed up with a different method
 **Solution**: This is expected behavior. User should log in using the original method.
 
-### Issue 4: Missing Referer Header
-**Cause**: Browser doesn't send referer or it's blocked
-**Solution**: The service now falls back to `FRONTEND_URL` from environment variables
+### Issue 4: Redirects to Facebook/Google instead of your site
+**Cause**: Missing or incorrect `FRONTEND_URL` in `.env`
+**Solution**: 
+- Add `FRONTEND_URL=https://serag-eldien.site` to your `.env` file
+- Restart your backend server
+- The system now always uses `FRONTEND_URL` for OAuth redirects (doesn't rely on referer headers)
+
+### Issue 5: CORS Errors
+**Cause**: Frontend origin not allowed
+**Solution**:
+- Make sure CORS is enabled for your frontend domain
+- Check `main.ts` CORS configuration
 
 ## Security Checklist
 
