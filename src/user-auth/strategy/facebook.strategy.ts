@@ -26,16 +26,26 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     profile: Profile,
     done: (err: any, user: any, info?: any) => void,
   ): Promise<any> {
-    const { emails, name } = profile;
-    const user: Partial<User> = {
-      email: emails[0].value,
-      firstName: name.givenName,
-      lastName: name.familyName,
-      strategy: profile.provider,
-    };
+    try {
+      const { emails, name } = profile;
+      
+      // Validate required fields
+      if (!emails?.[0]?.value) {
+        return done(new Error('Email is required from Facebook'), null);
+      }
 
-    // Activity tracking is handled by JWT strategy during token validation
-    // No need to update lastActivity here
-    done(null, user);
+      const user: Partial<User> = {
+        email: emails[0].value,
+        firstName: name?.givenName || '',
+        lastName: name?.familyName || '',
+        strategy: profile.provider,
+      };
+
+      // Pass the user data to the callback handler
+      // User will be found or created there
+      done(null, user);
+    } catch (error) {
+      done(error, null);
+    }
   }
 }

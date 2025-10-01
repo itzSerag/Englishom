@@ -140,6 +140,8 @@ export class UserAuthController {
         throw new UnauthorizedException('No user data received from Facebook');
       }
 
+      this.logger.debug(`Facebook OAuth callback - user email: ${user.email}`);
+
       const newUser: User = await this.userAuthService.findOrCreateOAuthUser(
         user,
         req,
@@ -148,7 +150,9 @@ export class UserAuthController {
       
       // Redirect back to wherever the request came from
       const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl(req.get('Referer'));
-      res.redirect(`${redirectUrl}?token=${jwt}`);
+      this.logger.debug(`Redirecting to: ${redirectUrl}?token=***`);
+      
+      return res.redirect(`${redirectUrl}?token=${jwt}`);
     } catch (err) {
       this.logger.error(
         `Facebook OAuth login failed: ${err.message}`,
@@ -158,7 +162,7 @@ export class UserAuthController {
       // Redirect back with error
       const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
         'auth_failed',
-        err.message,
+        err.message || 'Authentication failed',
         req.get('Referer')
       );
       return res.redirect(errorRedirectUrl);
@@ -185,6 +189,8 @@ export class UserAuthController {
         throw new UnauthorizedException('No user data received from Google');
       }
 
+      this.logger.debug(`Google OAuth callback - user email: ${user.email}`);
+
       const newUser: User = await this.userAuthService.findOrCreateOAuthUser(
         user,
         req,
@@ -193,14 +199,16 @@ export class UserAuthController {
       
       // Redirect back to wherever the request came from
       const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl(req.get('Referer'));
-      res.redirect(`${redirectUrl}?token=${jwt}`);
+      this.logger.debug(`Redirecting to: ${redirectUrl}?token=***`);
+      
+      return res.redirect(`${redirectUrl}?token=${jwt}`);
     } catch (err) {
       this.logger.error(`Google OAuth login failed: ${err.message}`, err.stack);
       
       // Redirect back with error
       const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
         'auth_failed',
-        err.message,
+        err.message || 'Authentication failed',
         req.get('Referer')
       );
       return res.redirect(errorRedirectUrl);

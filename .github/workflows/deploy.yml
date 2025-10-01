@@ -20,7 +20,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            cd /var/www/Englishom
+            cd /var/www/backend
             git pull origin master
             # Add your build/restart commands here
             # For example:

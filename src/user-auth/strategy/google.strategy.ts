@@ -25,22 +25,26 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: any,
     done: VerifyCallback,
   ): Promise<any> {
-    const { emails, name } = profile;
-    const user: Partial<User> = {
-      email: emails[0].value,
-      firstName: name.givenName,
-      lastName: name.familyName,
-      strategy: profile.provider,
-    };
+    try {
+      const { emails, name } = profile;
+      
+      // Validate required fields
+      if (!emails?.[0]?.value) {
+        return done(new Error('Email is required from Google'), null);
+      }
 
-    // Find the database user for OAuth validation
-    const dbUser = await this.userRepo.findOne({ email: user.email });
-    if (!dbUser) {
-      throw new Error('User not found');
+      const user: Partial<User> = {
+        email: emails[0].value,
+        firstName: name?.givenName || '',
+        lastName: name?.familyName || '',
+        strategy: profile.provider,
+      };
+
+      // Pass the user data to the callback handler
+      // User will be found or created there
+      done(null, user);
+    } catch (error) {
+      done(error, null);
     }
-
-    // Activity tracking is handled by JWT strategy during token validation
-    // No need to update lastActivity here
-    done(null, dbUser);
   }
 }
