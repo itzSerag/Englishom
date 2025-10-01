@@ -17,7 +17,9 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       callbackURL: `${configService.get('BASE_URL')}/api/auth/facebook/callback`,
       scope: ['email'],
       profileFields: ['id', 'emails', 'name'],
+      passReqToCallback: false,
     });
+    console.log('Facebook Strategy initialized with callback URL:', `${configService.get('BASE_URL')}/api/auth/facebook/callback`);
   }
 
   async validate(

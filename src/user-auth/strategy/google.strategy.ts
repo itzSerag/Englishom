@@ -16,7 +16,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.get('GOOGLE_CLIENT_SECRET'),
       callbackURL: `${configService.get('BASE_URL')}/api/auth/google/callback`,
       scope: ['email', 'profile'],
+      passReqToCallback: false,
     });
+    console.log('Google Strategy initialized with callback URL:', `${configService.get('BASE_URL')}/api/auth/google/callback`);
   }
 
   async validate(

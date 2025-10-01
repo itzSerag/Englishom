@@ -1,8 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class FrontendRedirectService {
   private readonly logger = new Logger(FrontendRedirectService.name);
+
+  constructor(private readonly configService: ConfigService) {}
+
+  /**
+   * Get the default frontend URL from environment variables
+   */
+  private getDefaultFrontendUrl(): string {
+    return this.configService.get<string>('FRONTEND_URL') || 'https://serag-eldien.site';
+  }
 
   /**
    * Get the frontend URL from referer header
@@ -10,16 +20,21 @@ export class FrontendRedirectService {
    */
   private getFrontendOriginFromReferer(referer?: string): string {
     if (!referer) {
-      // Default to user portal if no referer
-      return 'https://vite-tanstack-router.vercel.app';
+      // Default to frontend URL from env
+      const defaultUrl = this.getDefaultFrontendUrl();
+      this.logger.debug(`No referer, using default frontend URL: ${defaultUrl}`);
+      return defaultUrl;
     }
 
     try {
       const url = new URL(referer);
+      this.logger.debug(`Using referer origin: ${url.origin}`);
       return url.origin;
     } catch {
-      // If referer is invalid, default to user portal
-      return 'https://vite-tanstack-router.vercel.app';
+      // If referer is invalid, default to frontend URL from env
+      const defaultUrl = this.getDefaultFrontendUrl();
+      this.logger.debug(`Invalid referer, using default frontend URL: ${defaultUrl}`);
+      return defaultUrl;
     }
   }
 
@@ -46,7 +61,8 @@ export class FrontendRedirectService {
    * Get payment success redirect URL (for emails) - defaults to user portal
    */
   getPaymentSuccessUrl(levelName: string): string {
-    // Payments are always for users, so always use user portal
-    return `https://vite-tanstack-router.vercel.app/courses/${levelName.toLowerCase()}`;
+    // Payments are always for users, so always use frontend URL from env
+    const frontendUrl = this.getDefaultFrontendUrl();
+    return `${frontendUrl}/courses/${levelName.toLowerCase()}`;
   }
 }
