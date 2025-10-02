@@ -27,6 +27,11 @@ export class UserJwtStrategy extends PassportStrategy(Strategy, 'user-jwt') {
         throw new UnauthorizedException('User not found or inactive');
       }
 
+      // Validate session ID - single device login enforcement
+      if (payload.jti && user.activeSessionId !== payload.jti) {
+        throw new UnauthorizedException('Session expired. Please login again.');
+      }
+
       return cleanResponse(user);
     } catch (error) {
       throw new UnauthorizedException(error.message);

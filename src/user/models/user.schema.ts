@@ -23,6 +23,9 @@ export class User extends AbstractUser {
 
   @Prop({ type: String })
   suspensionReason?: string;
+
+  @Prop({ type: String })
+  activeSessionId?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

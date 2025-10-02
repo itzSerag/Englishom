@@ -57,7 +57,16 @@ export class UserAuthService {
       throw new ConflictException('User already exists with this email');
     }
 
-    const access_token = this.generateToken(user);
+    // Generate session ID and token
+    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    
+    // Store the session ID in database
+    await this.userRepo.findOneAndUpdate(
+      { _id: user._id },
+      { activeSessionId: jti }
+    );
+
+    const access_token = this.generateTokenWithJti(user, jti);
     return { user, access_token };
   }
 
@@ -105,13 +114,19 @@ export class UserAuthService {
       throw new UnauthorizedException('Invalid Credentials');
     }
 
-    const access_token = this.generateToken(user);
-
-    // Update last activity
+    // Generate new session ID - this will invalidate all other sessions
+    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    
+    // Update last activity and store new session ID (invalidates previous sessions)
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
-      { lastActivity: this.timeService.createDate() },
+      { 
+        lastActivity: this.timeService.createDate(),
+        activeSessionId: jti 
+      },
     );
+
+    const access_token = this.generateTokenWithJti(user, jti);
 
     return { access_token, user };
   }
@@ -137,11 +152,18 @@ export class UserAuthService {
 
     // Handle different causes
     if (cause === OtpCause.EMAIL_VERIFICATION) {
+      // Keep the same session ID from signup - just mark user as verified
       const [newUser, __] = await Promise.all([
-        this.userRepo.findOneAndUpdate({ email }, { isVerified: true }),
+        this.userRepo.findOneAndUpdate({ email }, { 
+          isVerified: true
+          // activeSessionId stays the same - no change
+        }),
         this.otpRepo.delete({ email, cause }),
       ]);
-      return newUser;
+      
+      // Return the existing session token (use existing activeSessionId)
+      const access_token = this.generateTokenWithJti(newUser, newUser.activeSessionId);
+      return { user: newUser, access_token };
     } else if (cause === OtpCause.FORGET_PASSWORD) {
       // For forget password, delete the OTP and generate reset token
       await this.otpRepo.delete({ email, cause });
@@ -203,7 +225,19 @@ export class UserAuthService {
   }
 
   generateToken(user: User) {
-    const payload: IPayload = { sub: user._id.toString(), email: user.email , role: 'user'};
+    // Generate a unique session ID for this login
+    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    return this.generateTokenWithJti(user, jti);
+  }
+
+  generateTokenWithJti(user: User, jti: string) {
+    const payload: IPayload = { 
+      sub: user._id.toString(), 
+      email: user.email, 
+      role: 'user',
+      jti 
+    };
+    
     try {
       return this.jwtService.sign(payload);
     } catch (err) {
@@ -219,6 +253,9 @@ export class UserAuthService {
     }
 
     const user = await this.userService.findByEmail(email);
+    
+    // Generate new session ID for OAuth login
+    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
 
     if (!user) {
       const password = Math.random().toString(36).slice(-8);
@@ -238,6 +275,7 @@ export class UserAuthService {
         isVerified: true,
         lastActivity: this.timeService.createDate(),
         country,
+        activeSessionId: jti,
       });
 
       return newUser;
@@ -251,6 +289,7 @@ export class UserAuthService {
 
     const updateData: any = {
       lastActivity: this.timeService.createDate(),
+      activeSessionId: jti, // Invalidate previous sessions
     };
 
     if (user.firstName !== firstName || user.lastName !== lastName) {

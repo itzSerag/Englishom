@@ -80,8 +80,7 @@ export class UserAuthController {
     // Handle different causes
     if (verifyOtpDto.cause === OtpCause.EMAIL_VERIFICATION) {
       // For email verification, return access token and user data
-      const user = result as User;
-      const access_token = this.userAuthService.generateToken(user);
+      const { user, access_token } = result as { user: User; access_token: string };
 
       return {
         access_token,
