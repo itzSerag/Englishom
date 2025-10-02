@@ -58,7 +58,13 @@ async function bootstrap() {
     app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
     const port = process.env.PORT ?? 3000;
-    await app.listen(port, '0.0.0.0');
+
+    // ON SERVER:
+    // 127.0.0.1 run only locally for security reasons
+    // 0.0.0.0 to run on all interfaces (less secure)
+
+    await app.listen(port, '127.0.0.1');
+
     logger.log(`Server successfully started on port ${port} ${Date.now()}`);
   } catch (error) {
     logger.error(
