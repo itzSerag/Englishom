@@ -184,6 +184,17 @@ export class SeederService implements OnModuleInit {
 
     const admins = [
       {
+        email: 'badr-admin@englishom.com',
+        firstName: 'Super',
+        lastName: 'Admin',
+        password: await bcrypt.hash('123456789asd', 12),
+        adminRole: AdminRole.SUPER,
+        country: 'KSA',
+        isActive: true,
+        createdBy: null,
+
+      },
+      {
         email: 'superadmin@englishom.com',
         firstName: 'Super',
         lastName: 'Admin',
@@ -191,7 +202,6 @@ export class SeederService implements OnModuleInit {
         adminRole: AdminRole.SUPER,
         country: 'Egypt',
         isActive: true,
-        isVerified: true,
         createdBy: null,
       },
       {
@@ -202,7 +212,6 @@ export class SeederService implements OnModuleInit {
         adminRole: AdminRole.MANAGER,
         country: 'Egypt',
         isActive: true,
-        isVerified: true,
       },
       {
         email: 'operator@englishom.com',
@@ -212,7 +221,6 @@ export class SeederService implements OnModuleInit {
         adminRole: AdminRole.OPERATOR,
         country: 'Jordan',
         isActive: true,
-        isVerified: true,
       },
       {
         email: 'viewer@englishom.com',
@@ -222,7 +230,6 @@ export class SeederService implements OnModuleInit {
         adminRole: AdminRole.VIEW,
         country: 'UAE',
         isActive: true,
-        isVerified: true,
       },
     ];
 
@@ -271,6 +278,7 @@ export class SeederService implements OnModuleInit {
         descriptionAr: 'تعلم الأساسيات الأولى للغة الإنجليزية',
         descriptionEn: 'Learn the first basics of English language',
         price: 199,
+        isAvailable: true,
       },
       {
         level_name: Level_Name.LEVEL_A2,
@@ -279,6 +287,7 @@ export class SeederService implements OnModuleInit {
         descriptionAr: 'تطوير المهارات الأساسية في اللغة الإنجليزية',
         descriptionEn: 'Develop basic skills in English language',
         price: 249,
+        isAvailable: true,
       },
       {
         level_name: Level_Name.LEVEL_B1,
@@ -287,6 +296,7 @@ export class SeederService implements OnModuleInit {
         descriptionAr: 'بناء الثقة في التواصل باللغة الإنجليزية',
         descriptionEn: 'Build confidence in English communication',
         price: 299,
+        isAvailable: true,
       },
       {
         level_name: Level_Name.LEVEL_B2,
@@ -295,6 +305,7 @@ export class SeederService implements OnModuleInit {
         descriptionAr: 'إتقان المهارات المتقدمة في اللغة الإنجليزية',
         descriptionEn: 'Master advanced English language skills',
         price: 349,
+        isAvailable: true,
       },
       {
         level_name: Level_Name.LEVEL_C1,
@@ -303,6 +314,7 @@ export class SeederService implements OnModuleInit {
         descriptionAr: 'الوصول إلى مستوى الطلاقة في اللغة الإنجليزية',
         descriptionEn: 'Reach fluency level in English language',
         price: 399,
+        isAvailable: true,
       },
       {
         level_name: Level_Name.LEVEL_C2,
@@ -311,6 +323,7 @@ export class SeederService implements OnModuleInit {
         descriptionAr: 'إتقان كامل وشامل للغة الإنجليزية',
         descriptionEn: 'Complete and comprehensive mastery of English',
         price: 449,
+        isAvailable: true,
       },
     ];
 

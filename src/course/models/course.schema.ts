@@ -29,6 +29,9 @@ export class Course extends AbstractDocument {
 
   @Prop({ required: true, type: Number })
   price: number;
+
+  @Prop({ required: true, type: Boolean, default: true })
+  isAvailable: boolean;
 }
 
 export const CourseSchema = SchemaFactory.createForClass(Course);

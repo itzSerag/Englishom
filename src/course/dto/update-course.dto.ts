@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
 import { Level_Name } from '../../common/shared/enums';
 
 export class UpdateCourseDto {
@@ -23,9 +23,12 @@ export class UpdateCourseDto {
   @IsString()
   descriptionEn?: string;
   
-
   // the price but be not minus value
   @IsPositive()
   @IsOptional()
   price?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isAvailable?: boolean;
 }

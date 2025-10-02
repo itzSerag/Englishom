@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { AdminRole, Level_Name } from '../common/shared/enums';
