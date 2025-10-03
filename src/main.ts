@@ -21,25 +21,36 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     app.setGlobalPrefix('api');
-    const corsOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['*'];
+
+    const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(origin => origin.trim()) || [];
+  
+  // LOG THIS - Very important for debugging
+    console.log('🌐 CORS Origins configured:', corsOrigins);
+    console.log('📝 CORS_ORIGIN from env:', process.env.CORS_ORIGIN);
 
     app.enableCors({
-      origin: corsOrigins,
+      origin: (origin, callback) => {
+        console.log('🔍 Incoming origin:', origin);
+        
+        // Allow requests with no origin (like mobile apps, Postman, curl)
+        if (!origin) {
+          return callback(null, true);
+        }
+        
+        if (corsOrigins.includes(origin)) {
+          console.log('✅ Origin allowed:', origin);
+          callback(null, true);
+        } else {
+          console.log('❌ Origin blocked:', origin);
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
-      methods: process.env.CORS_METHODS?.split(',') || [
-        'GET',
-        'POST',
-        'PUT',
-        'DELETE',
-        'PATCH',
-        'OPTIONS',
-      ],
-      allowedHeaders: process.env.CORS_HEADERS?.split(',') || [
-        'Content-Type',
-        'Authorization',
-        'Accept',
-      ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      exposedHeaders: ['Set-Cookie'],
       preflightContinue: false,
+      optionsSuccessStatus: 204,
     });
 
     app.useGlobalPipes(
