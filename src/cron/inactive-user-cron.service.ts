@@ -23,7 +23,8 @@ export class InactiveUserCronService {
       this.emailTemplate = fs.readFileSync(templatePath, 'utf8');
     } catch (error) {
       // Fallback template if file loading fails
-    this.logger.error('Failed to load email template file, using fallback template',
+      this.logger.error(
+        'Failed to load email template file, using fallback template',
       );
       this.emailTemplate = this.getFallbackTemplate();
     }

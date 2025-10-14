@@ -80,7 +80,10 @@ export class UserAuthController {
     // Handle different causes
     if (verifyOtpDto.cause === OtpCause.EMAIL_VERIFICATION) {
       // For email verification, return access token and user data
-      const { user, access_token } = result as { user: User; access_token: string };
+      const { user, access_token } = result as {
+        user: User;
+        access_token: string;
+      };
 
       return {
         access_token,
@@ -146,23 +149,24 @@ export class UserAuthController {
         req,
       );
       const jwt = this.userAuthService.generateToken(newUser);
-      
+
       // Redirect back to frontend with token
       const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl();
       this.logger.debug(`Redirecting to: ${redirectUrl}?token=***`);
-      
+
       return res.redirect(`${redirectUrl}?token=${jwt}`);
     } catch (err) {
       this.logger.error(
         `Facebook OAuth login failed: ${err.message}`,
         err.stack,
       );
-      
+
       // Redirect back with error
-      const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
-        'auth_failed',
-        err.message || 'Authentication failed',
-      );
+      const errorRedirectUrl =
+        this.frontendRedirectService.getOAuthErrorRedirectUrl(
+          'auth_failed',
+          err.message || 'Authentication failed',
+        );
       return res.redirect(errorRedirectUrl);
     }
   }
@@ -194,20 +198,21 @@ export class UserAuthController {
         req,
       );
       const jwt = this.userAuthService.generateToken(newUser);
-      
+
       // Redirect back to frontend with token
       const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl();
       this.logger.debug(`Redirecting to: ${redirectUrl}?token=***`);
-      
+
       return res.redirect(`${redirectUrl}?token=${jwt}`);
     } catch (err) {
       this.logger.error(`Google OAuth login failed: ${err.message}`, err.stack);
-      
+
       // Redirect back with error
-      const errorRedirectUrl = this.frontendRedirectService.getOAuthErrorRedirectUrl(
-        'auth_failed',
-        err.message || 'Authentication failed',
-      );
+      const errorRedirectUrl =
+        this.frontendRedirectService.getOAuthErrorRedirectUrl(
+          'auth_failed',
+          err.message || 'Authentication failed',
+        );
       return res.redirect(errorRedirectUrl);
     }
   }

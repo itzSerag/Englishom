@@ -18,7 +18,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       scope: ['email', 'profile'],
       passReqToCallback: false,
     });
-    console.log('Google Strategy initialized with callback URL:', `${configService.get('BASE_URL')}/api/auth/google/callback`);
+    console.log(
+      'Google Strategy initialized with callback URL:',
+      `${configService.get('BASE_URL')}/api/auth/google/callback`,
+    );
   }
 
   async validate(
@@ -29,7 +32,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): Promise<any> {
     try {
       const { emails, name } = profile;
-      
+
       // Validate required fields
       if (!emails?.[0]?.value) {
         return done(new Error('Email is required from Google'), null);

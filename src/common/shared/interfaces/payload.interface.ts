@@ -1,7 +1,7 @@
 export interface IPayload {
   sub: string;
   email: string;
-  role : 'user';
+  role: 'user';
   jti?: string;
 }
 

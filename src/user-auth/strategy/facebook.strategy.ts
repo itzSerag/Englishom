@@ -19,7 +19,10 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       profileFields: ['id', 'emails', 'name'],
       passReqToCallback: false,
     });
-    console.log('Facebook Strategy initialized with callback URL:', `${configService.get('BASE_URL')}/api/auth/facebook/callback`);
+    console.log(
+      'Facebook Strategy initialized with callback URL:',
+      `${configService.get('BASE_URL')}/api/auth/facebook/callback`,
+    );
   }
 
   async validate(
@@ -30,7 +33,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   ): Promise<any> {
     try {
       const { emails, name } = profile;
-      
+
       // Validate required fields
       if (!emails?.[0]?.value) {
         return done(new Error('Email is required from Facebook'), null);

@@ -12,10 +12,9 @@ import {
   ValidateNested,
   ValidationError,
 } from 'class-validator';
-import { Level_Name, QuestionType } from '../../common/shared/enums';
+import { Level_Name, QuestionType, LESSONS } from '../../common/shared/enums';
 import { BadRequestException } from '@nestjs/common';
 import { plainToInstance, Type, ClassConstructor } from 'class-transformer';
-import { LESSONS } from '../../common/shared/enums';
 
 // SUB DTOs
 class Instructions {
@@ -42,12 +41,12 @@ class UseCase {
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
-  en: Array<String>;
+  en: Array<string>;
 
   @IsArray()
   @IsNotEmpty({ each: true })
   @IsString({ each: true })
-  ar: Array<String>;
+  ar: Array<string>;
 }
 
 class Definition {

@@ -20,7 +20,7 @@ export class AdminRoleGuard implements CanActivate {
     );
 
     const request = context.switchToHttp().getRequest();
-    const admin : Admin = request.user;
+    const admin: Admin = request.user;
 
     // Check if the route is public
     if (

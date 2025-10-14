@@ -12,7 +12,12 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { CreateAdminDto, UpdateAdminDto, AdminSearchDto, GetAdminDto } from './dto';
+import {
+  CreateAdminDto,
+  UpdateAdminDto,
+  AdminSearchDto,
+  GetAdminDto,
+} from './dto';
 import { Admin } from './models/admin.schema';
 import { CurrentAdmin } from '../admin-auth/decorators/current-admin.decorator';
 import { AdminRoles } from '../admin-auth/decorators/admin-roles.decorator';
@@ -36,15 +41,12 @@ export class AdminController {
     private readonly ipService: IpService,
     private readonly userService: UserService,
   ) {}
-  
-
 
   @Get('me')
   async getCurrentAdmin(@CurrentAdmin() currentAdmin: Admin) {
-    log(currentAdmin)
+    log(currentAdmin);
     return cleanResponse(currentAdmin);
   }
-
 
   // Create new admin - Only SUPER admin
   @AdminRoles(AdminRole.SUPER)
@@ -76,7 +78,6 @@ export class AdminController {
     return cleanResponseArray(admins);
   }
 
-  
   // Update admin
   @AdminRoles(AdminRole.SUPER)
   @Patch(':id')
@@ -92,7 +93,7 @@ export class AdminController {
     );
     return cleanResponse(admin);
   }
-  
+
   // Delete admin - Only SUPER admin
   @AdminRoles(AdminRole.SUPER)
   @Delete(':id')
@@ -102,7 +103,7 @@ export class AdminController {
   ) {
     return await this.adminService.deleteAdmin(mongoID.id, currentAdmin);
   }
-  
+
   @AdminRoles(AdminRole.SUPER)
   @Post('deactivate-admin/:id')
   async deactivateAdmin(@Param('id') id: string) {
@@ -154,14 +155,20 @@ export class AdminController {
     @CurrentAdmin() currentAdmin: Admin,
   ) {
     // Only SUPER admin can block users
-    if (updateStatusDto.status === UserStatus.BLOCKED && currentAdmin.adminRole !== AdminRole.SUPER) {
+    if (
+      updateStatusDto.status === UserStatus.BLOCKED &&
+      currentAdmin.adminRole !== AdminRole.SUPER
+    ) {
       throw new ConflictException('Only SUPER admin can block users');
     }
 
-    const user = await this.userService.updateUserStatus(userId, updateStatusDto);
+    const user = await this.userService.updateUserStatus(
+      userId,
+      updateStatusDto,
+    );
     return cleanResponse(user);
   }
-  
+
   // Get admin by ID - SUPER and MANAGER can view admin details
   @Get(':id')
   async getAdminById(@Param() mongoID: GetAdminDto) {

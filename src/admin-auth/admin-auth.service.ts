@@ -60,7 +60,7 @@ export class AdminAuthService {
       role: 'admin',
     };
 
-    return  this.jwtService.sign(payload);
+    return this.jwtService.sign(payload);
   }
 
   /**

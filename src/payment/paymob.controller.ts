@@ -39,9 +39,11 @@ export class PaymobController {
     private readonly courseService: CourseService,
   ) {}
 
-  private validateHMAC(data: PaymobCallbackData, providedHMAC: string): boolean {
+  private validateHMAC(
+    data: PaymobCallbackData,
+    providedHMAC: string,
+  ): boolean {
     const hmacSecret = this.configService.get<string>('PAYMOB_HMAC_SECRET');
-    
 
     try {
       // Extract the required fields for HMAC calculation
@@ -81,16 +83,17 @@ export class PaymobController {
 
       this.logger.log(`Calculated HMAC: ${calculatedHMAC}`);
       this.logger.log(`Provided HMAC: ${providedHMAC}`);
-      
+
       // Compare the HMACs (case-insensitive)
-      const isValid = calculatedHMAC.toLowerCase() === providedHMAC.toLowerCase();
-      
+      const isValid =
+        calculatedHMAC.toLowerCase() === providedHMAC.toLowerCase();
+
       if (!isValid) {
         this.logger.error('HMAC validation failed - signatures do not match');
       } else {
         this.logger.log('HMAC validation successful');
       }
-      
+
       return isValid;
     } catch (error) {
       this.logger.error(`HMAC validation error: ${error.message}`);
@@ -163,18 +166,21 @@ export class PaymobController {
     @Body() paymentIntentionDto: PaymentRequestDto,
     @CurrentUser() user: User,
   ) {
-    
     if (!user) {
       throw new BadRequestException('User authentication required');
     }
 
     // Check if the authenticated user is an admin
-    if ('adminRole' in user ) {
-      throw new BadRequestException('Admins cannot purchase courses. All courses are already available to admin accounts.');
+    if ('adminRole' in user) {
+      throw new BadRequestException(
+        'Admins cannot purchase courses. All courses are already available to admin accounts.',
+      );
     }
 
     if (!user.firstName || !user.lastName || !user.email) {
-      throw new BadRequestException('User profile incomplete - missing required fields');
+      throw new BadRequestException(
+        'User profile incomplete - missing required fields',
+      );
     }
 
     const integration_id = this.configService.get<number>(
@@ -186,10 +192,8 @@ export class PaymobController {
     }
 
     try {
-
       let course: Course;
       try {
-
         // Name of the course already uniquely identifies the course
         course = await this.courseService.findByLevelName(
           paymentIntentionDto.level_name,
@@ -203,33 +207,32 @@ export class PaymobController {
 
       // SAUDI ARABIA
 
-     const data = {
-      amount: course.price, // Use whole currency amount for our internal processing
-      currency: 'SAR', // <- Saudi Riyal
-      payment_methods: [integration_id],
-      items: [
-        {
-          name: paymentIntentionDto.level_name,
-          amount: course.price,
-          description: course.descriptionEn || `${course.titleEn} course`,
-          quantity: 1,
+      const data = {
+        amount: course.price, // Use whole currency amount for our internal processing
+        currency: 'SAR', // <- Saudi Riyal
+        payment_methods: [integration_id],
+        items: [
+          {
+            name: paymentIntentionDto.level_name,
+            amount: course.price,
+            description: course.descriptionEn || `${course.titleEn} course`,
+            quantity: 1,
+          },
+        ],
+        billing_data: {
+          apartment: 'dummy',
+          first_name: user.firstName,
+          last_name: user.lastName,
+          street: 'dummy',
+          building: 'dummy',
+          phone_number: '+966500000000', // <- KSA phone format
+          city: 'dummy',
+          country: 'SA', // <- Saudi Arabia
+          email: user.email,
+          floor: 'dummy',
+          state: 'dummy',
         },
-      ],
-      billing_data: {
-        apartment: 'dummy',
-        first_name: user.firstName,
-        last_name: user.lastName,
-        street: 'dummy',
-        building: 'dummy',
-        phone_number: "+966500000000", // <- KSA phone format
-        city: "dummy",
-        country: 'SA', // <- Saudi Arabia
-        email: user.email,
-        floor: 'dummy',
-        state: 'dummy',
-      },
-    };
-
+      };
 
       this.logger.log(
         `Processing payment for user ${user._id}, level: ${paymentIntentionDto.level_name}`,
@@ -252,12 +255,6 @@ export class PaymobController {
       );
     }
   }
-
-
-
-
-  
-
 
   @Get('debug/order/:userId')
   async debugUserOrders(

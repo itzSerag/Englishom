@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 
 enum FileType {
@@ -254,7 +254,7 @@ export class FileUploadService {
       // Assign unique IDs to items if they don't have one
       uploadFileDTO.data.forEach((item) => {
         if (!item.id) {
-          item.id = uuidv4();
+          item.id = uuid();
         }
       });
 

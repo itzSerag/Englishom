@@ -22,12 +22,6 @@ async function bootstrap() {
 
     app.setGlobalPrefix('api');
 
-    const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(origin => origin.trim()) || [];
-  
-  // LOG THIS - Very important for debugging
-    console.log('🌐 CORS Origins configured:', corsOrigins);
-    console.log('📝 CORS_ORIGIN from env:', process.env.CORS_ORIGIN);
-
     app.enableCors({
       origin: '*', // Allows all origins but you CANNOT use credentials: true
       credentials: false, // Must be false with wildcard

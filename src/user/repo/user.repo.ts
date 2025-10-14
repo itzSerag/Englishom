@@ -78,7 +78,9 @@ export class UserRepo extends AbstractRepo<User> {
         `Error getting total days in level: ${error.message}`,
         error.stack,
       );
-      throw new InternalServerErrorException('Failed to get total days in level');
+      throw new InternalServerErrorException(
+        'Failed to get total days in level',
+      );
     }
   }
 

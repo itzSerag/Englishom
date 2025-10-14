@@ -8,7 +8,13 @@ import { AdminModule } from '../admin/admin.module';
 import { ConfigModule } from '../common/config/config.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), UserModule, MailModule, AdminModule, ConfigModule],
+  imports: [
+    ScheduleModule.forRoot(),
+    UserModule,
+    MailModule,
+    AdminModule,
+    ConfigModule,
+  ],
   controllers: [CronController],
   providers: [InactiveUserCronService],
   exports: [InactiveUserCronService],

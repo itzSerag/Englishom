@@ -19,7 +19,9 @@ import { AdminRoleGuard } from './guards/admin-roles.guard';
       imports: [ConfigModule],
       useFactory: async (configService) => ({
         secret: configService.get('JWT_ADMIN_SECRET'),
-        signOptions: { expiresIn: configService.get('JWT_ADMIN_EXPIRATION_TIME') },
+        signOptions: {
+          expiresIn: configService.get('JWT_ADMIN_EXPIRATION_TIME'),
+        },
       }),
       inject: [ConfigService],
     }),

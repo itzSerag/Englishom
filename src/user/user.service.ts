@@ -246,7 +246,11 @@ export class UserService {
     }
 
     // Mark the day as completed
-    const result = await this.userRepo.markDayAsCompleted(userId, levelName, dayNumber);
+    const result = await this.userRepo.markDayAsCompleted(
+      userId,
+      levelName,
+      dayNumber,
+    );
 
     // Check if user has completed day 50 for auto-completion
     await this.checkAndAutoCompleteLevelIfNeeded(userId, levelName, dayNumber);

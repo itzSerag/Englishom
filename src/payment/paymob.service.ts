@@ -44,9 +44,10 @@ export class PaymobService {
       this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
     this.PAYMOB_SECRET_KEY =
       this.configService.getOrThrow<string>('PAYMOB_SECRET_KEY');
-    
-    this.PAYMOB_INTENTION_URL =
-      this.configService.getOrThrow<string>('PAYMOB_INTENTION_URL');
+
+    this.PAYMOB_INTENTION_URL = this.configService.getOrThrow<string>(
+      'PAYMOB_INTENTION_URL',
+    );
 
     // Load email template
     this.loadPaymentSuccessEmailTemplate();
@@ -133,7 +134,7 @@ export class PaymobService {
         })),
       };
 
-      const res = await fetch(`${this.PAYMOB_INTENTION_URL}` , {
+      const res = await fetch(`${this.PAYMOB_INTENTION_URL}`, {
         method: 'POST',
         headers: {
           Authorization: `Token ${this.PAYMOB_SECRET_KEY}`,
@@ -511,7 +512,8 @@ export class PaymobService {
       });
 
       // Get course URL for payment success email
-      const courseUrl = this.frontendRedirectService.getPaymentSuccessUrl(levelName);
+      const courseUrl =
+        this.frontendRedirectService.getPaymentSuccessUrl(levelName);
 
       // Replace template variables
       const personalizedEmail = this.paymentSuccessEmailTemplate

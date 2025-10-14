@@ -6,7 +6,7 @@ export const CurrentAdmin = createParamDecorator(
     const request = ctx.switchToHttp().getRequest();
     // in case if we only need specific data from the admin
 
-    log(data)
+    log(data);
 
     return data ? request.user?.[data] : request.user;
   },

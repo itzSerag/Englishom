@@ -192,7 +192,6 @@ export class SeederService implements OnModuleInit {
         country: 'KSA',
         isActive: true,
         createdBy: null,
-
       },
       {
         email: 'superadmin@englishom.com',

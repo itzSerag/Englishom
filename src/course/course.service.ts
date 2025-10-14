@@ -7,9 +7,7 @@ import { Course } from './models/course.schema';
 
 @Injectable()
 export class CourseService {
-  constructor(
-    private readonly courseRepo: CourseRepo
-  ) {}
+  constructor(private readonly courseRepo: CourseRepo) {}
 
   async findAll(): Promise<Course[]> {
     return await this.courseRepo.find({});
@@ -29,9 +27,7 @@ export class CourseService {
     return this.courseRepo.create(createCourseDto);
   }
 
-  async update(
-    updateCourseDto: UpdateCourseDto,
-  ): Promise<Course> {
+  async update(updateCourseDto: UpdateCourseDto): Promise<Course> {
     const updatedCourse = await this.courseRepo.findOneAndUpdate(
       { level_name: updateCourseDto.level_name },
       updateCourseDto,

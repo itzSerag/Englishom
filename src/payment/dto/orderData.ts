@@ -9,7 +9,7 @@ export class PaymentRequestDto {
 
   @IsString()
   @IsNotEmpty()
-  phone_number: "00000000000";
+  phone_number: '00000000000';
 
   @IsString()
   @IsNotEmpty()

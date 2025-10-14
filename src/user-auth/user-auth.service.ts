@@ -58,12 +58,13 @@ export class UserAuthService {
     }
 
     // Generate session ID and token
-    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    
+    const jti =
+      Math.random().toString(36).substring(2) + Date.now().toString(36);
+
     // Store the session ID in database
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
-      { activeSessionId: jti }
+      { activeSessionId: jti },
     );
 
     const access_token = this.generateTokenWithJti(user, jti);
@@ -115,14 +116,15 @@ export class UserAuthService {
     }
 
     // Generate new session ID - this will invalidate all other sessions
-    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    
+    const jti =
+      Math.random().toString(36).substring(2) + Date.now().toString(36);
+
     // Update last activity and store new session ID (invalidates previous sessions)
     await this.userRepo.findOneAndUpdate(
       { _id: user._id },
-      { 
+      {
         lastActivity: this.timeService.createDate(),
-        activeSessionId: jti 
+        activeSessionId: jti,
       },
     );
 
@@ -154,15 +156,21 @@ export class UserAuthService {
     if (cause === OtpCause.EMAIL_VERIFICATION) {
       // Keep the same session ID from signup - just mark user as verified
       const [newUser, __] = await Promise.all([
-        this.userRepo.findOneAndUpdate({ email }, { 
-          isVerified: true
-          // activeSessionId stays the same - no change
-        }),
+        this.userRepo.findOneAndUpdate(
+          { email },
+          {
+            isVerified: true,
+            // activeSessionId stays the same - no change
+          },
+        ),
         this.otpRepo.delete({ email, cause }),
       ]);
-      
+
       // Return the existing session token (use existing activeSessionId)
-      const access_token = this.generateTokenWithJti(newUser, newUser.activeSessionId);
+      const access_token = this.generateTokenWithJti(
+        newUser,
+        newUser.activeSessionId,
+      );
       return { user: newUser, access_token };
     } else if (cause === OtpCause.FORGET_PASSWORD) {
       // For forget password, delete the OTP and generate reset token
@@ -226,18 +234,19 @@ export class UserAuthService {
 
   generateToken(user: User) {
     // Generate a unique session ID for this login
-    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const jti =
+      Math.random().toString(36).substring(2) + Date.now().toString(36);
     return this.generateTokenWithJti(user, jti);
   }
 
   generateTokenWithJti(user: User, jti: string) {
-    const payload: IPayload = { 
-      sub: user._id.toString(), 
-      email: user.email, 
+    const payload: IPayload = {
+      sub: user._id.toString(),
+      email: user.email,
       role: 'user',
-      jti 
+      jti,
     };
-    
+
     try {
       return this.jwtService.sign(payload);
     } catch (err) {
@@ -253,9 +262,10 @@ export class UserAuthService {
     }
 
     const user = await this.userService.findByEmail(email);
-    
+
     // Generate new session ID for OAuth login
-    const jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const jti =
+      Math.random().toString(36).substring(2) + Date.now().toString(36);
 
     if (!user) {
       const password = Math.random().toString(36).slice(-8);

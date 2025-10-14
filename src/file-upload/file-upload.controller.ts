@@ -27,9 +27,8 @@ import { AdminRoles } from 'src/admin-auth/decorators';
 import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
 import { UserJwtGuard } from '../user-auth/guards';
 
-
 // The UserJwtGuard ensures that only authenticated users can access certain endpoints.
-// And not applied for all the endpoints in this controller, 
+// And not applied for all the endpoints in this controller,
 // only for those that require user authentication.
 
 @Controller('files')
@@ -48,7 +47,9 @@ export class FileUploadController {
   @UseGuards(UserJwtGuard)
   async getUserAudios(@CurrentUser() user: User) {
     if (!user?._id) {
-      throw new BadRequestException('User not authenticated or invalid user data');
+      throw new BadRequestException(
+        'User not authenticated or invalid user data',
+      );
     }
     return await this.uploadService.getUserAudios(user._id.toString());
   }
@@ -60,7 +61,9 @@ export class FileUploadController {
     @Param('levelName') levelName: string,
   ) {
     if (!user?._id) {
-      throw new BadRequestException('User not authenticated or invalid user data');
+      throw new BadRequestException(
+        'User not authenticated or invalid user data',
+      );
     }
     return await this.uploadService.getUserAudiosByLevel(
       user._id.toString(),
@@ -76,7 +79,9 @@ export class FileUploadController {
     @Param('day') day: string,
   ) {
     if (!user?._id) {
-      throw new BadRequestException('User not authenticated or invalid user data');
+      throw new BadRequestException(
+        'User not authenticated or invalid user data',
+      );
     }
     try {
       const audio = await this.uploadService.getUserDayAudio(
@@ -117,7 +122,9 @@ export class FileUploadController {
     @CurrentUser() user: User,
   ) {
     if (!user?._id) {
-      throw new BadRequestException('User not authenticated or invalid user data');
+      throw new BadRequestException(
+        'User not authenticated or invalid user data',
+      );
     }
     this.validateAudioFile(file);
 
@@ -135,7 +142,9 @@ export class FileUploadController {
     @Query('audioKey') audioKey: string,
   ) {
     if (!user?._id) {
-      throw new BadRequestException('User not authenticated or invalid user data');
+      throw new BadRequestException(
+        'User not authenticated or invalid user data',
+      );
     }
     if (!audioKey) {
       throw new BadRequestException('audioKey is required');

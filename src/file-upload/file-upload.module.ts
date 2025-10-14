@@ -2,11 +2,13 @@ import { Module, forwardRef } from '@nestjs/common';
 import { FileUploadService } from './file-upload.service';
 import { FileUploadController } from './file-upload.controller';
 import { AdminModule } from '../admin/admin.module';
+import { UserResultsController } from './controllers/user-results.controller';
+import { UserResultsService } from './services/user-results.service';
 
 @Module({
   imports: [forwardRef(() => AdminModule)],
-  controllers: [FileUploadController],
-  providers: [FileUploadService],
+  controllers: [FileUploadController, UserResultsController],
+  providers: [FileUploadService, UserResultsService],
   exports: [FileUploadService],
 })
 export class FileUploadModule {}

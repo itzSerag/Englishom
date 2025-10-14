@@ -194,8 +194,7 @@ interface Order {
   data: Data;
 }
 
-interface Data {
-}
+interface Data {}
 
 interface Shippingdata {
   id: number;

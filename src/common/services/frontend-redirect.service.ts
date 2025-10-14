@@ -11,7 +11,10 @@ export class FrontendRedirectService {
    * Get the default frontend URL from environment variables
    */
   private getDefaultFrontendUrl(): string {
-    return this.configService.get<string>('FRONTEND_URL') || 'https://serag-eldien.site';
+    return (
+      this.configService.get<string>('FRONTEND_URL') ||
+      'https://serag-eldien.site'
+    );
   }
 
   /**
@@ -21,7 +24,7 @@ export class FrontendRedirectService {
   getOAuthRedirectUrl(): string {
     const frontendUrl = this.getDefaultFrontendUrl();
     const redirectUrl = `${frontendUrl}/auth/callback`;
-    
+
     this.logger.debug(`OAuth redirect URL: ${redirectUrl}`);
     return redirectUrl;
   }
@@ -32,7 +35,7 @@ export class FrontendRedirectService {
   getOAuthErrorRedirectUrl(error: string, message: string): string {
     const frontendUrl = this.getDefaultFrontendUrl();
     const redirectUrl = `${frontendUrl}/auth/callback?error=${error}&message=${encodeURIComponent(message)}`;
-    
+
     this.logger.debug(`OAuth error redirect URL: ${redirectUrl}`);
     return redirectUrl;
   }
