@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsString, Max, Min } from "class-validator";
+import { IsEnum , IsNumber , Max, Min } from "class-validator";
 import { LESSONS, Level_Name } from "../../common/shared/enums";
 
 
@@ -24,8 +24,6 @@ export class SpeakCompareTranscriptsDto{
     @Min(0)
     sentenceIndex: number;
 
-    // What the user actually said (transcribed from their audio)
-    @IsString()
-    userTranscript: string;
+    // handle the file upload in multer -- the controller 
 
 }

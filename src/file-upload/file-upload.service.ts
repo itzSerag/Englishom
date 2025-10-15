@@ -500,4 +500,26 @@ export class FileUploadService {
       url: `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`,
     };
   }
+
+   public async getAudioBufferFromS3(s3Key: string): Promise<Buffer> {
+    const params = {
+      Bucket: this.configService.get<string>('AWS_S3_BUCKET'),
+      Key: s3Key,
+    };
+
+    try {
+        const command = new GetObjectCommand(params);
+      const response = await this.s3Client.send(command);
+      const dataBodyString = await response.Body.transformToByteArray();
+      
+      if (!dataBodyString) {
+        throw new Error('No audio data found in S3 response');
+      }
+
+      // Body is already a Buffer when from S3
+      return dataBodyString as Buffer;
+    } catch (error) {
+      throw new Error(`Failed to fetch audio from S3: ${error.message}`);
+    }
+  }
 }

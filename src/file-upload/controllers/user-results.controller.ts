@@ -1,4 +1,5 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SpeakCompareTranscriptsDto } from '../dto/read-compare-transcripts.dto';
 import { UserResultsService } from '../services/user-results.service';
 
@@ -8,9 +9,16 @@ export class UserResultsController {
     constructor(private readonly userResultService : UserResultsService) {}
 
   @Post('speak/compare-transcript')
-  async compareSpeakTranscript(@Body() speakCompareTranscriptsDto : SpeakCompareTranscriptsDto) {
+  @UseInterceptors(FileInterceptor('audio'))
+  async compareSpeakTranscript(
+    @Body() speakCompareTranscriptsDto : SpeakCompareTranscriptsDto,
+    @UploadedFile() audioFile: Express.Multer.File
+  ) {
 
-    const result = await this.userResultService.compareSpeakTranscript(speakCompareTranscriptsDto);
+    const result = await this.userResultService.compareSpeakTranscript(
+      speakCompareTranscriptsDto,
+      audioFile
+    );
 
     return {
         message: 'Transcript comparison completed',
