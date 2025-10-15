@@ -310,6 +310,10 @@ class GRAMMAR {
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
   words?: Array<string>;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 class PHRASAL_VERBS {
