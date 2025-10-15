@@ -3,32 +3,20 @@ import { SpeakCompareTranscriptsDto } from '../dto/read-compare-transcripts.dto'
 import { FileUploadService } from '../file-upload.service';
 import { compareTwoStrings } from 'string-similarity';
 import { ConfigService } from '@nestjs/config';
-import * as fs from 'fs';
-import { promisify } from 'util';
-import * as path from 'path';
-import { WhisperNode } from 'whisper-node';
-
-const writeFileAsync = promisify(fs.writeFile);
-const unlinkAsync = promisify(fs.unlink);
-const mkdirAsync = promisify(fs.mkdir);
+import OpenAI from 'openai';
+import { toFile } from 'openai/uploads';
 
 @Injectable()
 export class UserResultsService {
   private readonly logger = new Logger(UserResultsService.name);
-  private readonly whisper: WhisperNode;
+  private readonly openai: OpenAI;
 
   constructor(
     private readonly fileUploadService: FileUploadService,
     private readonly configService: ConfigService,
   ) {
-    // Initialize Whisper with configuration
-    this.whisper = new WhisperNode({
-      modelName: 'base.en', // Options: tiny.en, base.en, small.en, medium.en, large
-      autoDownloadModelName: 'base.en',
-      whisperOptions: {
-        language: 'en',
-        word_timestamps: false,
-      },
+    this.openai = new OpenAI({
+      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
     });
   }
 
@@ -73,8 +61,8 @@ export class UserResultsService {
     const targetSentence = sentencesData.sentences[sentenceIndex];
     const correctSentence = targetSentence.sentence;
 
-    // 4. Transcribe the audio using Whisper
-    const userTranscript = await this.transcribeAudio(audioFile.buffer);
+    // 4. Transcribe the audio using OpenAI Whisper
+    const userTranscript = await this.transcribeAudio(audioFile);
 
     if (!userTranscript || userTranscript.trim().length === 0) {
       throw new BadRequestException('Could not transcribe audio. Please try again with clearer audio.');
@@ -95,7 +83,7 @@ export class UserResultsService {
   private calculateSimilarity(originalText: string, spokenText: string): number {
     // Normalize both texts
     const normalizeText = (text: string) => 
-      text.toLowerCase().replace(/[^\w\s]/g, '').trim().split(/\s+/).filter(word => word.length > 0);
+      text.toLowerCase().replaceAll(/[^\w\s]/g, '').trim().split(/\s+/).filter(word => word.length > 0);
 
     const originalWords = normalizeText(originalText);
     const spokenWords = normalizeText(spokenText);
@@ -131,53 +119,84 @@ export class UserResultsService {
     return Math.round((matches / originalWords.length) * 100);
   }
 
-  // ---- STAGE_1: Transcribe audio using Whisper ------------ //
-  private async transcribeAudio(audioBuffer: Buffer): Promise<string> {
-    let tempFilePath: string | null = null;
-
+  // ---- STAGE_1: Transcribe audio using OpenAI Whisper ------------ //
+  private async transcribeAudio(audioFile: Express.Multer.File): Promise<string> {
     try {
-      // 1. Create temp directory if it doesn't exist
-      const tempDir = path.join(process.cwd(), 'temp');
-      if (!fs.existsSync(tempDir)) {
-        await mkdirAsync(tempDir, { recursive: true });
+      this.logger.log(`Transcribing audio file: ${audioFile.originalname}`);
+
+      // Basic size guard to avoid huge uploads that degrade performance
+      const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB soft limit
+      if (audioFile.size && audioFile.size > MAX_SIZE_BYTES) {
+        throw new BadRequestException('Audio file is too large. Please upload a file under 20 MB.');
       }
 
-      // 2. Write buffer to temporary file (Whisper needs a file path)
-      tempFilePath = path.join(tempDir, `audio_${Date.now()}.wav`);
-      await writeFileAsync(tempFilePath, audioBuffer);
+      // Convert Buffer to a File-like using OpenAI helper (avoids extra copies and ensures filename)
+      const file = await toFile(audioFile.buffer, audioFile.originalname);
 
-      // 3. Transcribe using whisper-node
-      this.logger.log(`Transcribing audio file: ${tempFilePath}`);
-      const output = await this.whisper.transcribe(tempFilePath);
+      // Abort request if it takes too long (network stalls, etc.)
+      const controller = new AbortController();
+      const TIMEOUT_MS = 60_000; // 60s timeout; tune as needed
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-      // 4. Extract text from output
-      if (!output?.length) {
-        throw new Error('No transcription output received');
+      // Use a faster/cheaper transcribe model if available; fall back to whisper-1
+      // Set language to speed up decoding when known (most lessons are English)
+      const preferredModel = this.configService.get<string>('OPENAI_TRANSCRIBE_MODEL') || 'gpt-4o-mini-transcribe';
+      const language = this.configService.get<string>('OPENAI_TRANSCRIBE_LANGUAGE') || 'en';
+
+      const invokeTranscription = async (model: string) => {
+        const apiStart = Date.now();
+        const res = await this.openai.audio.transcriptions.create(
+          {
+            file,
+            model,
+            language,
+            temperature: 0,
+          },
+          { signal: controller.signal }
+        );
+        const apiElapsed = Date.now() - apiStart;
+        this.logger.log(`Transcription API (${model}) finished in ${apiElapsed} ms (size: ${audioFile.size ?? 'unknown'} bytes)`);
+        return res;
+      };
+
+      const isModelNotFound = (err: any) =>
+        err?.status === 404 || /model(.+)?(not found|does not exist)/i.test(err?.message || '');
+
+      let transcription: any;
+      try {
+        transcription = await invokeTranscription(preferredModel);
+      } catch (err) {
+        if (preferredModel !== 'whisper-1' && isModelNotFound(err)) {
+          this.logger.warn(`Preferred model '${preferredModel}' not available. Falling back to 'whisper-1'.`);
+          clearTimeout(timeout);
+          // Recreate controller for the second attempt
+          const fallbackController = new AbortController();
+          const fallbackTimeout = setTimeout(() => fallbackController.abort(), TIMEOUT_MS);
+          try {
+            transcription = await this.openai.audio.transcriptions.create(
+              { file, model: 'whisper-1', language, temperature: 0 },
+              { signal: fallbackController.signal }
+            );
+          } finally {
+            clearTimeout(fallbackTimeout);
+          }
+        } else {
+          throw err;
+        }
+      } finally {
+        clearTimeout(timeout);
       }
 
-      // whisper-node returns array with text property
-      const transcription = output.map(segment => segment.speech || '').join(' ').trim();
-
-      if (!transcription) {
+  // Recent models return `text`; some experimental ones may return `output_text`
+  const text: string = transcription?.text ?? transcription?.output_text ?? '';
+      if (!text) {
         throw new Error('Empty transcription result');
       }
 
-      this.logger.log(`Transcription successful: ${transcription}`);
-      return transcription;
+      this.logger.log(`Transcription successful`);      return text.trim();
     } catch (error) {
       this.logger.error(`Transcription failed: ${error.message}`, error.stack);
       throw new BadRequestException(`Failed to transcribe audio: ${error.message}`);
-    } finally {
-      // 5. Cleanup: Delete temporary file
-      if (tempFilePath) {
-        try {
-          await unlinkAsync(tempFilePath);
-          this.logger.log(`Cleaned up temp file: ${tempFilePath}`);
-        } catch (cleanupError) {
-          // Log but don't throw - main operation succeeded
-          this.logger.warn(`Failed to cleanup temp file: ${cleanupError.message}`);
-        }
-      }
     }
   }
 }

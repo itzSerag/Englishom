@@ -4,9 +4,10 @@ import { FileUploadController } from './file-upload.controller';
 import { AdminModule } from '../admin/admin.module';
 import { UserResultsController } from './controllers/user-results.controller';
 import { UserResultsService } from './services/user-results.service';
+import { PaymentModule } from '../payment/paymob.module';
 
 @Module({
-  imports: [forwardRef(() => AdminModule)],
+  imports: [forwardRef(() => AdminModule), PaymentModule],
   controllers: [FileUploadController, UserResultsController],
   providers: [FileUploadService, UserResultsService],
   exports: [FileUploadService],
