@@ -25,7 +25,6 @@ export class UserResultsController {
     @UploadedFile() audioFile: Express.Multer.File,
   ) {
 
-     // Check for existing completed order using transaction session
     const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
       user._id.toString(),
       speakCompareTranscriptsDto.level_name,
@@ -41,7 +40,6 @@ export class UserResultsController {
     );
 
     return {
-        message: 'Transcript comparison completed',
         ...result // includes: similarityPercentage, correctSentence, userTranscript, sentenceIndex, isPassed
     }
   }

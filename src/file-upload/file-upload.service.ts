@@ -77,7 +77,7 @@ export class FileUploadService {
     const key = this.generateFileKey(
       fileTypePath,
       uploadFileDTO,
-      file.originalname.trim().replace(/\s+/g, '_'),
+      file.originalname.trim().replaceAll(/\s+/g, '_'),
     );
 
     try {
@@ -358,6 +358,28 @@ export class FileUploadService {
     }
   }
 
+  async getAudioBufferFromS3(s3Key: string): Promise<Buffer> {
+    const params = {
+      Bucket: this.configService.get<string>('AWS_S3_BUCKET'),
+      Key: s3Key,
+    };
+
+    try {
+        const command = new GetObjectCommand(params);
+      const response = await this.s3Client.send(command);
+      const dataBodyString = await response.Body.transformToByteArray();
+      
+      if (!dataBodyString) {
+        throw new Error('No audio data found in S3 response');
+      }
+
+      // Body is already a Buffer when from S3
+      return dataBodyString as Buffer;
+    } catch (error) {
+      throw new Error(`Failed to fetch audio from S3: ${error.message}`);
+    }
+  }
+
   private createJsonKey(uploadDTO: UploadDTO | UploadFileDTO): string {
     return `Levels/${uploadDTO.level_name}/${uploadDTO.day}/${uploadDTO.lesson_name}.json`;
   }
@@ -453,6 +475,12 @@ export class FileUploadService {
     }
   }
 
+
+  /**
+   * This overwrites the entire JSON file in S3 with the provided data.
+   * Use with caution to avoid data loss. 
+   */
+
   private async updateJsonInS3(key: string, data: JsonFile): Promise<void> {
     try {
       const jsonString = JSON.stringify(data);
@@ -501,25 +529,4 @@ export class FileUploadService {
     };
   }
 
-   public async getAudioBufferFromS3(s3Key: string): Promise<Buffer> {
-    const params = {
-      Bucket: this.configService.get<string>('AWS_S3_BUCKET'),
-      Key: s3Key,
-    };
-
-    try {
-        const command = new GetObjectCommand(params);
-      const response = await this.s3Client.send(command);
-      const dataBodyString = await response.Body.transformToByteArray();
-      
-      if (!dataBodyString) {
-        throw new Error('No audio data found in S3 response');
-      }
-
-      // Body is already a Buffer when from S3
-      return dataBodyString as Buffer;
-    } catch (error) {
-      throw new Error(`Failed to fetch audio from S3: ${error.message}`);
-    }
-  }
 }
