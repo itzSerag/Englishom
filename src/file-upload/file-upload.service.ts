@@ -252,16 +252,17 @@ export class FileUploadService {
       const jsonData = await this.getOrInitializeJsonData(key);
 
       // Assign unique IDs to items if they don't have one
-      uploadFileDTO.data.forEach((item) => {
+      for (const item of uploadFileDTO.data) {
         if (!item.id) {
           item.id = uuid();
         }
-      });
+      }
 
       this.validateJsonDataArray(jsonData);
       jsonData.data.push(...uploadFileDTO.data);
 
       await this.updateJsonInS3(key, jsonData);
+      
     } catch (error) {
       this.logger.error(
         `Failed to insert object into JSON data array: ${error.message}`,
