@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { SpeakCompareTranscriptsDto } from '../dto/read-compare-transcripts.dto';
 import { FileUploadService } from '../file-upload.service';
 import { compareTwoStrings } from 'string-similarity';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
+import { SpeakCompareTranscriptsDto } from '../dto/speak-compare-transcripts.dto';
+import { LESSONS, Level_Name } from '../../common/shared/enums';
 
 @Injectable()
 export class UserResultsService {
@@ -33,9 +34,9 @@ export class UserResultsService {
 
     // 1. Fetch the lesson data based on level_name, day, and lesson
     const lessonData = await this.fileUploadService.getContentByName({
-      level_name,
+      level_name : level_name as Level_Name,
       day: day.toString(),
-      lesson_name: lesson_name,
+      lesson_name: lesson_name as LESSONS,
     });
 
     if (!lessonData?.data || lessonData.data.length === 0) {

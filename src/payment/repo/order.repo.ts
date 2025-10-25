@@ -64,7 +64,7 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
 
   async findCompletedOrder(
     userId: string,
-    levelName: Level_Name,
+    levelName: Level_Name | string,
     session?: ClientSession,
   ): Promise<Order | null> {
     // Convert userId to ObjectId

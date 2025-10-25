@@ -1,11 +1,11 @@
 import { BadRequestException, Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SpeakCompareTranscriptsDto } from '../dto/read-compare-transcripts.dto';
 import { UserResultsService } from '../services/user-results.service';
 import { UserJwtGuard } from '../../user-auth/guards';
 import { OrderRepo } from '../../payment/repo/order.repo';
 import { User } from '../../user/models/user.schema';
 import { CurrentUser } from '../../user-auth/decorator/get-curr-user.decorator';
+import { SpeakCompareTranscriptsDto } from '../dto/speak-compare-transcripts.dto';
 
 @Controller('/user-results')
 export class UserResultsController {
@@ -21,8 +21,8 @@ export class UserResultsController {
   @UseInterceptors(FileInterceptor('audio'))
   async compareSpeakTranscript(
     @Body() speakCompareTranscriptsDto : SpeakCompareTranscriptsDto,
-    @CurrentUser() user: User,
     @UploadedFile() audioFile: Express.Multer.File,
+    @CurrentUser() user: User,
   ) {
 
     const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
