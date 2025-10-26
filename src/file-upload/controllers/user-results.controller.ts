@@ -18,13 +18,19 @@ export class UserResultsController {
 
   @UseGuards(UserJwtGuard)
   @Post('speak/compare-transcript')
-  @UseInterceptors(FileInterceptor('audio'))
+  @UseInterceptors(FileInterceptor('audio', {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10 MB hard cap at request layer
+    },
+  }))
   async compareSpeakTranscript(
     @Body() speakCompareTranscriptsDto : SpeakCompareTranscriptsDto,
     @UploadedFile() audioFile: Express.Multer.File,
     @CurrentUser() user: User,
   ) {
 
+  /////
+  // NOTE: consider wrapping this into a reusable function and using it across the backend
     const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
       user._id.toString(),
       speakCompareTranscriptsDto.level_name,
@@ -33,14 +39,15 @@ export class UserResultsController {
     if (!existingCompletedOrder) {
       throw new BadRequestException('User has not purchased this level');
     }
+    /////
     
     const result = await this.userResultService.compareSpeakTranscript(
       speakCompareTranscriptsDto,
       audioFile
     );
 
-    return {
-        ...result // includes: similarityPercentage, correctSentence, userTranscript, sentenceIndex, isPassed
-    }
+  return {
+    ...result // includes: similarityPercentage, correctSentence, userTranscript, isPassed
+  }
   }
 }

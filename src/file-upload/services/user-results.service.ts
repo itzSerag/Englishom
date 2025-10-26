@@ -1,19 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { FileUploadService } from '../file-upload.service';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { compareTwoStrings } from 'string-similarity';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
 import { SpeakCompareTranscriptsDto } from '../dto/speak-compare-transcripts.dto';
-import { LESSONS, Level_Name } from '../../common/shared/enums';
 
 @Injectable()
 export class UserResultsService {
   private readonly logger = new Logger(UserResultsService.name);
   private readonly openai: OpenAI;
+  // Simple in-process concurrency limiter
+  private inFlight = 0;
+  private readonly MAX_CONCURRENCY = 15; // keep small for safety; tune later
 
   constructor(
-    private readonly fileUploadService: FileUploadService,
     private readonly configService: ConfigService,
   ) {
     this.openai = new OpenAI({
@@ -25,42 +25,20 @@ export class UserResultsService {
     speakCompareTranscriptsDto: SpeakCompareTranscriptsDto,
     audioFile: Express.Multer.File
   ) {
-    const { level_name, day, lesson_name, sentenceIndex } = speakCompareTranscriptsDto;
+    const { sentenceText } = speakCompareTranscriptsDto;
 
     // Validate audio file
     if (!audioFile) {
       throw new BadRequestException('Audio file is required');
     }
 
-    // 1. Fetch the lesson data based on level_name, day, and lesson
-    const lessonData = await this.fileUploadService.getContentByName({
-      level_name : level_name as Level_Name,
-      day: day.toString(),
-      lesson_name: lesson_name as LESSONS,
-    });
-
-    if (!lessonData?.data || lessonData.data.length === 0) {
-      throw new NotFoundException('Lesson data not found');
+    // The frontend now passes the exact sentence text to compare against.
+    const correctSentence = (sentenceText ?? '').toString().trim();
+    if (!correctSentence) {
+      throw new BadRequestException('sentenceText is required and must be non-empty');
     }
 
-    // 2. Extract the sentences array from the lesson data
-    const sentencesData = lessonData.data.find(item => item.sentences);
-
-    if (!sentencesData || !Array.isArray(sentencesData.sentences) || sentencesData.sentences.length === 0) {
-      throw new NotFoundException('No sentences found in lesson data');
-    }
-
-    // 3. Get the specific sentence the user is trying to speak
-    if (sentenceIndex < 0 || sentenceIndex >= sentencesData.sentences.length) {
-      throw new NotFoundException(
-        `Sentence index ${sentenceIndex} is out of range. Sentence not available with this index.`
-      );
-    }
-
-    const targetSentence = sentencesData.sentences[sentenceIndex]; // returns { sentence: string, soundSrc: string, ... }
-    const correctSentence = targetSentence.sentence;
-
-    const userTranscript : string = await this.transcribeAudio(audioFile);
+  const userTranscript : string = await this.withConcurrencyLimit(() => this.transcribeAudio(audioFile));
 
     if (!userTranscript || userTranscript.trim().length === 0) {
       throw new BadRequestException('Could not transcribe audio. Please try again with clearer audio.');
@@ -73,7 +51,6 @@ export class UserResultsService {
       similarityPercentage,
       correctSentence,
       userTranscript,
-      sentenceIndex,
       isPassed: similarityPercentage >= 70, // 70% threshold
     };
   }
@@ -136,6 +113,32 @@ export class UserResultsService {
   }
 
   /**
+   * Very small in-service concurrency limiter to avoid bursts overwhelming outbound calls
+   */
+  private async withConcurrencyLimit<T>(fn: () => Promise<T>): Promise<T> {
+    // Fast-path if under limit
+    if (this.inFlight < this.MAX_CONCURRENCY) {
+      this.inFlight++;
+      try { return await fn(); } finally { this.inFlight--; }
+    }
+
+    // Wait with jittered backoff until under limit
+    const start = Date.now();
+    const MAX_WAIT_MS = 10_000; // 10s max wait to keep UX reasonable
+    let delay = 50;
+    while (this.inFlight >= this.MAX_CONCURRENCY) {
+      if (Date.now() - start > MAX_WAIT_MS) {
+        throw new BadRequestException('Server is busy, please try again shortly.');
+      }
+      await new Promise(r => setTimeout(r, delay + Math.floor(Math.random() * 25)));
+      delay = Math.min(250, delay * 1.5);
+    }
+
+    this.inFlight++;
+    try { return await fn(); } finally { this.inFlight--; }
+  }
+
+  /**
    * Validates that the audio file size is within acceptable limits
    */
   private validateAudioFileSize(audioFile: Express.Multer.File): void {
@@ -178,14 +181,10 @@ export class UserResultsService {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const apiStart = Date.now();
       const transcription = await this.openai.audio.transcriptions.create(
         { file, model, language, temperature: 0 },
         { signal: controller.signal }
       );
-
-      const apiElapsed = Date.now() - apiStart;
-      this.logger.log(`Transcription API (${model}) finished in ${apiElapsed} ms (size: ${fileSize ?? 'unknown'} bytes)`);
 
       const text: string = transcription?.text ?? '';
       if (!text) {

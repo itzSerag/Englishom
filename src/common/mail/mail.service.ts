@@ -26,15 +26,17 @@ export interface CustomEmailOptions {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly apiInstance: TransactionalEmailsApi;
+  private readonly apiInstance: TransactionalEmailsApi | null;
+  private readonly enabled: boolean; // When false, emails are no-op and never throw
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('BREVO_API_KEY');
     if (!apiKey) {
-      this.logger.error(
-        'BREVO_API_KEY is not configured in environment variables',
+      this.logger.warn(
+        'BREVO_API_KEY is not configured; MailService will run in disabled mode (emails will be skipped).',
       );
-      throw new Error('BREVO_API_KEY is not configured');
+      this.enabled = false;
+      return; // Leave apiInstance as null and operate in no-op mode
     }
 
     // Log API key info for debugging (hide most of the key for security)
@@ -48,11 +50,18 @@ export class MailService {
 
     this.apiInstance = new TransactionalEmailsApi();
     this.apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
+    this.enabled = true;
 
     this.logger.log('MailService initialized with Brevo API');
   }
 
   async sendEmail(to: string, otp: string, cause?: OtpCause): Promise<boolean> {
+    if (!this.enabled || !this.apiInstance) {
+      this.logger.warn(
+        `Skipping email send (disabled). to=${to}, cause=${cause ?? 'N/A'}`,
+      );
+      return false;
+    }
     if (!this.isValidEmail(to)) {
       this.logger.warn(`Invalid email format: ${to}`);
       return false;
@@ -69,43 +78,19 @@ export class MailService {
     sendSmtpEmail.subject = subject;
     sendSmtpEmail.htmlContent = htmlContent;
 
-    try {
-      this.logger.log(`Sending email to ${to}...`);
-      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+    this.logger.log(`Sending email to ${to}...`);
+    const result = await this.sendWithRetry(
+      () => this.apiInstance.sendTransacEmail(sendSmtpEmail),
+      `sendEmail to ${to}`,
+    );
+
+    if (result) {
       this.logger.log(
         `Email sent successfully to ${to}. Message ID: ${result.body?.messageId || 'N/A'}`,
       );
       return true;
-    } catch (err: any) {
-      this.logger.error(
-        `Failed to send email to ${to}: ${err.message}`,
-        err.stack,
-      );
-
-      // Enhanced error logging
-      if (err.response) {
-        this.logger.error(`Brevo API Error Details:`, {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-          headers: err.response.headers,
-        });
-
-        // Specific handling for 401 errors
-        if (err.response.status === 401) {
-          this.logger.error('Authentication failed - Check your Brevo API key');
-          this.logger.error(
-            'Ensure BREVO_API_KEY is correctly set in your environment variables',
-          );
-        }
-      } else if (err.request) {
-        this.logger.error('No response received from Brevo API:', err.request);
-      } else {
-        this.logger.error('Error setting up the request:', err.message);
-      }
-
-      return false;
     }
+    return false;
   }
 
   private isValidEmail(email: string): boolean {
@@ -147,89 +132,70 @@ export class MailService {
   }
 
   async sendCustomEmail(mailOptions: CustomEmailOptions): Promise<boolean> {
-    try {
-      // Validate that either htmlContent or textContent is provided
-      if (!mailOptions.htmlContent && !mailOptions.textContent) {
-        this.logger.error(
-          'Either htmlContent or textContent is required for sending email',
-        );
-        return false;
-      }
-
-      const recipients = Array.isArray(mailOptions.to)
-        ? mailOptions.to.map((email) => ({ email }))
-        : [{ email: mailOptions.to }];
-
-      const invalidEmails = recipients.filter(
-        (r) => !this.isValidEmail(r.email),
+    if (!this.enabled || !this.apiInstance) {
+      this.logger.warn(
+        `Skipping custom email send (disabled). to=${Array.isArray(mailOptions.to) ? mailOptions.to.join(',') : mailOptions.to}, subject=${mailOptions.subject}`,
       );
-      if (invalidEmails.length > 0) {
-        this.logger.warn(
-          `Invalid email(s): ${invalidEmails.map((r) => r.email).join(', ')}`,
-        );
-        return false;
-      }
-
-      const sendSmtpEmail = new SendSmtpEmail();
-      sendSmtpEmail.sender = mailOptions.sender || {
-        name: 'Englishom',
-        email: 'no-reply@englishom.com',
-      };
-      sendSmtpEmail.to = recipients;
-      sendSmtpEmail.subject = mailOptions.subject;
-      sendSmtpEmail.htmlContent = mailOptions.htmlContent;
-      sendSmtpEmail.textContent = mailOptions.textContent;
-      if (mailOptions.cc) {
-        sendSmtpEmail.cc = mailOptions.cc.map((email) => ({ email }));
-      }
-      if (mailOptions.bcc) {
-        sendSmtpEmail.bcc = mailOptions.bcc.map((email) => ({ email }));
-      }
-      if (mailOptions.replyTo) {
-        sendSmtpEmail.replyTo = mailOptions.replyTo;
-      }
-      if (mailOptions.attachments) {
-        sendSmtpEmail.attachment = mailOptions.attachments;
-      }
-
-      this.logger.log(
-        `Sending custom email to ${recipients.map((r) => r.email).join(', ')}...`,
+      return false;
+    }
+    // Validate that either htmlContent or textContent is provided
+    if (!mailOptions.htmlContent && !mailOptions.textContent) {
+      this.logger.error(
+        'Either htmlContent or textContent is required for sending email',
       );
-      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      return false;
+    }
+
+    const recipients = Array.isArray(mailOptions.to)
+      ? mailOptions.to.map((email) => ({ email }))
+      : [{ email: mailOptions.to }];
+
+    const invalidEmails = recipients.filter((r) => !this.isValidEmail(r.email));
+    if (invalidEmails.length > 0) {
+      this.logger.warn(
+        `Invalid email(s): ${invalidEmails.map((r) => r.email).join(', ')}`,
+      );
+      return false;
+    }
+
+    const sendSmtpEmail = new SendSmtpEmail();
+    sendSmtpEmail.sender = mailOptions.sender || {
+      name: 'Englishom',
+      email: 'no-reply@englishom.com',
+    };
+    sendSmtpEmail.to = recipients;
+    sendSmtpEmail.subject = mailOptions.subject;
+    sendSmtpEmail.htmlContent = mailOptions.htmlContent;
+    sendSmtpEmail.textContent = mailOptions.textContent;
+    if (mailOptions.cc) {
+      sendSmtpEmail.cc = mailOptions.cc.map((email) => ({ email }));
+    }
+    if (mailOptions.bcc) {
+      sendSmtpEmail.bcc = mailOptions.bcc.map((email) => ({ email }));
+    }
+    if (mailOptions.replyTo) {
+      sendSmtpEmail.replyTo = mailOptions.replyTo;
+    }
+    if (mailOptions.attachments) {
+      sendSmtpEmail.attachment = mailOptions.attachments;
+    }
+
+    this.logger.log(
+      `Sending custom email to ${recipients.map((r) => r.email).join(', ')}...`,
+    );
+
+    const result = await this.sendWithRetry(
+      () => this.apiInstance.sendTransacEmail(sendSmtpEmail),
+      `sendCustomEmail to ${recipients.map((r) => r.email).join(', ')}`,
+    );
+
+    if (result) {
       this.logger.log(
         `Custom email sent successfully. Message ID: ${result.body?.messageId || 'N/A'}`,
       );
       return true;
-    } catch (err: any) {
-      this.logger.error(
-        `Custom email sending failed: ${err.message}`,
-        err.stack,
-      );
-
-      // Enhanced error logging
-      if (err.response) {
-        this.logger.error(`Brevo API Error Details:`, {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-          headers: err.response.headers,
-        });
-
-        // Specific handling for 401 errors
-        if (err.response.status === 401) {
-          this.logger.error('Authentication failed - Check your Brevo API key');
-          this.logger.error(
-            'Ensure BREVO_API_KEY is correctly set in your environment variables',
-          );
-        }
-      } else if (err.request) {
-        this.logger.error('No response received from Brevo API:', err.request);
-      } else {
-        this.logger.error('Error setting up the request:', err.message);
-      }
-
-      return false;
     }
+    return false;
   }
 
   /**
@@ -237,6 +203,12 @@ export class MailService {
    * @returns Promise<boolean> - true if connection is successful
    */
   async testConnection(): Promise<boolean> {
+    if (!this.enabled || !this.apiInstance) {
+      this.logger.warn(
+        'MailService is disabled (no API key). Connection test skipped.',
+      );
+      return false;
+    }
     try {
       this.logger.log('Testing Brevo API connection...');
 
@@ -251,7 +223,7 @@ export class MailService {
       testEmail.htmlContent = '<p>This is a connection test</p>';
 
       // Note: This might fail with invalid email, but we're mainly testing auth
-      await this.apiInstance.sendTransacEmail(testEmail);
+  await this.apiInstance.sendTransacEmail(testEmail);
 
       this.logger.log('Brevo API connection test successful');
       return true;
@@ -281,6 +253,61 @@ export class MailService {
         }
         return false;
       }
+    }
+  }
+
+  // Retry helper: attempts operation up to 1 + maxRetries times; returns result or null
+  private async sendWithRetry<T>(
+    operation: () => Promise<T>,
+    context: string,
+    maxRetries = 2,
+    baseDelayMs = 300,
+  ): Promise<T | null> {
+    let attempt = 0;
+    while (attempt <= maxRetries) {
+      try {
+        const res = await operation();
+        if (attempt > 0) {
+          this.logger.warn(`Email ${context} succeeded after ${attempt} retr${attempt === 1 ? 'y' : 'ies'}`);
+        }
+        return res;
+      } catch (err: any) {
+        this.logBrevoError(err, `${context} (attempt ${attempt + 1})`);
+        if (attempt === maxRetries) {
+          this.logger.error(`Email ${context} failed after ${attempt + 1} attempts`);
+          return null;
+        }
+        const delay = baseDelayMs * (attempt + 1);
+        await this.delay(delay);
+        attempt++;
+      }
+    }
+    return null;
+  }
+
+  private async delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private logBrevoError(err: any, context: string) {
+    this.logger.error(`Failed to ${context}: ${err?.message ?? err}`);
+    if (err?.response) {
+      this.logger.error(`Brevo API Error Details:`, {
+        status: err.response.status,
+        statusText: err.response.statusText,
+        data: err.response.data,
+        headers: err.response.headers,
+      });
+      if (err.response.status === 401) {
+        this.logger.error('Authentication failed - Check your Brevo API key');
+        this.logger.error(
+          'Ensure BREVO_API_KEY is correctly set in your environment variables',
+        );
+      }
+    } else if (err?.request) {
+      this.logger.error('No response received from Brevo API:', err.request);
+    } else if (err) {
+      this.logger.error('Error setting up the request:', err.message ?? String(err));
     }
   }
 }
