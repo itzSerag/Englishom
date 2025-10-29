@@ -25,6 +25,7 @@ import { ForgetPasswordDto, ResetPasswordWithTokenDto } from './dto';
 import { OtpCause } from './enum/otp-cause.enum';
 import { FrontendRedirectService } from 'src/common/services/frontend-redirect.service';
 import { cleanResponse } from '../common/utils/response.utils';
+import { AuthMessages } from '../common/shared/const';
 
 @Controller('auth')
 export class UserAuthController {
@@ -70,11 +71,7 @@ export class UserAuthController {
   @HttpCode(HttpStatus.OK)
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    // if there is no cause in verifyOtpDto, default to EMAIL_VERIFICATION
-    if (!verifyOtpDto.cause) {
-      verifyOtpDto.cause = OtpCause.EMAIL_VERIFICATION;
-    }
-
+    
     const result = await this.userAuthService.verifyOtp(verifyOtpDto);
 
     // Handle different causes
@@ -139,10 +136,8 @@ export class UserAuthController {
   ): Promise<any> {
     try {
       if (!user) {
-        throw new UnauthorizedException('No user data received from Facebook');
+        throw new UnauthorizedException(AuthMessages.FACEBOOK_NO_DATA);
       }
-
-      this.logger.debug(`Facebook OAuth callback - user email: ${user.email}`);
 
       const newUser: User = await this.userAuthService.findOrCreateOAuthUser(
         user,
@@ -152,6 +147,7 @@ export class UserAuthController {
 
       // Redirect back to frontend with token
       const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl();
+
       this.logger.debug(`Redirecting to: ${redirectUrl}?token=***`);
 
       return res.redirect(`${redirectUrl}?token=${jwt}`);
@@ -188,10 +184,8 @@ export class UserAuthController {
   ): Promise<any> {
     try {
       if (!user) {
-        throw new UnauthorizedException('No user data received from Google');
+        throw new UnauthorizedException(AuthMessages.GOOGLE_NO_DATA);
       }
-
-      this.logger.debug(`Google OAuth callback - user email: ${user.email}`);
 
       const newUser: User = await this.userAuthService.findOrCreateOAuthUser(
         user,

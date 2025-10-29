@@ -24,6 +24,8 @@ import { IResetTokenPayload } from './interfaces/reset-token-payload.interface';
 import { ResendOtpDto } from './dto';
 import { UserStatus } from '../common/shared';
 import { TimeService } from '../common/config/time.service';
+import { AuthMessages } from '../common/shared/const';
+import { TokenType } from './enum';
 
 @Injectable()
 export class UserAuthService {
@@ -148,7 +150,7 @@ export class UserAuthService {
 
     const otpRecord = await this.otpRepo.findOne({ email, cause });
 
-    if (!otpRecord || otpRecord.otp !== otp) {
+    if (otpRecord?.otp !== otp) {
       throw new BadRequestException('Invalid or expired OTP');
     }
 
@@ -178,7 +180,7 @@ export class UserAuthService {
 
       const resetTokenPayload: IResetTokenPayload = {
         email,
-        type: 'password_reset',
+        type: TokenType.PASSWORD_RESET,
       };
 
       const resetToken = this.jwtService.sign(resetTokenPayload, {
@@ -187,10 +189,10 @@ export class UserAuthService {
 
       return {
         resetToken,
-        message: 'OTP verified successfully. You can now reset your password.',
+        message: AuthMessages.OTP_VERIFIED_SUCCESSFULLY,
       };
     } else {
-      throw new BadRequestException('Something went wrong in otp verification');
+      throw new BadRequestException('Something went wrong - otp verification');
     }
   }
 
@@ -214,22 +216,23 @@ export class UserAuthService {
 
     const message =
       resendOtpDto.cause === OtpCause.EMAIL_VERIFICATION
-        ? 'OTP has been sent to your email'
-        : 'Password reset OTP has been sent to your email';
+        ? AuthMessages.OTP_SENT
+        : AuthMessages.FORGET_PASSWORD;
 
     return { message };
   }
 
+
+
   async forgetPassword(email: string) {
     const user = await this.userRepo.findOne({ email });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) { throw new NotFoundException(AuthMessages.USER_NOT_FOUND_OR_INACTIVE); }
 
     await this.generateAndSendOtp(email, OtpCause.FORGET_PASSWORD);
 
-    return { message: 'Password reset OTP has been sent to your email' };
+    return { message: AuthMessages.FORGET_PASSWORD };
+  
   }
 
   generateToken(user: User) {
@@ -256,10 +259,6 @@ export class UserAuthService {
 
   async findOrCreateOAuthUser(profile: any, req?: any) {
     const { email, strategy, firstName, lastName } = profile;
-
-    if (!email) {
-      throw new BadRequestException('Email is required for OAuth login');
-    }
 
     const user = await this.userService.findByEmail(email);
 
@@ -293,7 +292,7 @@ export class UserAuthService {
 
     if (user.strategy !== strategy) {
       throw new ConflictException(
-        `Email already registered using ${user.strategy}. Please login using that method.`,
+        AuthMessages.EMAIL_ANOTHER_METHOD
       );
     }
 
@@ -326,8 +325,8 @@ export class UserAuthService {
     try {
       const payload = this.jwtService.verify<IResetTokenPayload>(resetToken);
 
-      if (payload.type !== 'password_reset') {
-        throw new BadRequestException('Invalid reset token type');
+      if (payload.type !== TokenType.PASSWORD_RESET) {
+        throw new BadRequestException(AuthMessages.INVALID_TOKEN_TYPE);
       }
 
       const { email } = payload;
@@ -350,11 +349,11 @@ export class UserAuthService {
       return { message: 'Password reset successful' };
     } catch (error) {
       if (error.name === 'JsonWebTokenError') {
-        throw new BadRequestException('Invalid reset token');
+        throw new BadRequestException(AuthMessages.RESET_TOKEN_UNACCEPTED);
       }
       if (error.name === 'TokenExpiredError') {
         throw new BadRequestException(
-          'Reset token has expired. Please request a new password reset.',
+          AuthMessages.INVALID_SESSION,
         );
       }
       throw error;

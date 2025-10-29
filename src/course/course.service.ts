@@ -9,7 +9,7 @@ import { Course } from './models/course.schema';
 export class CourseService {
   constructor(private readonly courseRepo: CourseRepo) {}
 
-  async findAll(): Promise<Course[]> {
+  async findAllCourses(): Promise<Course[]> {
     return await this.courseRepo.find({});
   }
 
@@ -23,15 +23,16 @@ export class CourseService {
     return course;
   }
 
-  async create(createCourseDto: CreateCourseDto): Promise<Course> {
+  async createCourse(createCourseDto: CreateCourseDto): Promise<Course> {
     return this.courseRepo.create(createCourseDto);
   }
 
-  async update(updateCourseDto: UpdateCourseDto): Promise<Course> {
+  async updateCourse(updateCourseDto: UpdateCourseDto): Promise<Course> {
     const updatedCourse = await this.courseRepo.findOneAndUpdate(
       { level_name: updateCourseDto.level_name },
       updateCourseDto,
     );
+    
     if (!updatedCourse) {
       throw new NotFoundException(
         `Course with level name ${updateCourseDto.level_name} not found`,

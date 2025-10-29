@@ -13,8 +13,7 @@ export class AdminAuthController {
   @Post('login')
   async login(@Body() adminLoginDto: AdminLoginDto) {
     const { admin, access_token } = await this.adminAuthService.login(
-      adminLoginDto.email,
-      adminLoginDto.password,
+     adminLoginDto
     );
 
     return {

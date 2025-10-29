@@ -2,10 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
 import { TimeService } from './time.service';
-import { ConfigService } from './config.service';
 
 @Module({
-  providers: [TimeService, ConfigService],
+  providers: [TimeService],
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
@@ -33,11 +32,6 @@ import { ConfigService } from './config.service';
         GOOGLE_CLIENT_ID: Joi.string().required(),
         GOOGLE_CLIENT_SECRET: Joi.string().required(),
 
-        // Local Storage
-        LOCAL_STORAGE_PATH: Joi.string().default('./uploads'),
-        LOCAL_STORAGE_URL: Joi.string()
-          .uri()
-          .default('http://localhost:3000/uploads'),
 
         // Paymob
         PAYMOB_API_KEY: Joi.string().required(),
@@ -46,8 +40,8 @@ import { ConfigService } from './config.service';
         PAYMOB_SECRET_KEY: Joi.string().required(),
         PAYMOB_HMAC_SECRET: Joi.string().required(),
 
-        // // Brevo (formerly SendinBlue)
-        // BREVO_API_KEY: Joi.string().required(),
+        // Email API (Brevo)
+        BREVO_API_KEY: Joi.string().required(),
       }),
       validationOptions: {
         allowUnknown: true, // Allows env vars not specified in the schema

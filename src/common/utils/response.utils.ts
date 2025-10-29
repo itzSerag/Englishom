@@ -1,3 +1,27 @@
+
+
+/**
+ * Public function to clean a single object
+ * Removes sensitive fields and normalizes IDs
+ */
+export function cleanResponse<T extends Record<string, any>>(
+  obj: T,
+  sensitiveFields: string[] = ['password', 'otp', '__v'],
+): T {
+  if (!obj) return obj;
+
+  let cleaned = { ...obj };
+
+  // Remove sensitive fields
+  for (const field of sensitiveFields) {
+    delete cleaned[field];
+  }
+  // Normalize _id/id/userId to consistent strings
+  cleaned = normalizeObject(cleaned);
+  return cleaned;
+}
+
+
 /**
  * Internal helper to normalize MongoDB ObjectId fields to strings
  * Keeps _id format for consistency across the app
@@ -20,28 +44,6 @@ function normalizeObject<T extends Record<string, any>>(obj: T): T {
   return clone;
 }
 
-/**
- * Public function to clean a single object
- * Removes sensitive fields and normalizes IDs
- */
-export function cleanResponse<T extends Record<string, any>>(
-  obj: T,
-  sensitiveFields: string[] = ['password', 'otp', '__v'],
-): T {
-  if (!obj) return obj;
-
-  let cleaned = { ...obj };
-
-  // Remove sensitive fields
-  for (const field of sensitiveFields) {
-    delete cleaned[field];
-  }
-
-  // Normalize _id/id/userId to consistent strings
-  cleaned = normalizeObject(cleaned);
-
-  return cleaned;
-}
 
 /**
  * Public function to clean an array of objects

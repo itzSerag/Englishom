@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { UserRepo } from '../user/repo/user.repo';
 import { MailService } from '../common/mail/mail.service';
 import { Role, UserStatus } from '../common/shared';
-import * as fs from 'fs';
-import * as path from 'path';
 import { TimeService } from '../common/config/time.service';
+import { EmailMessages } from '../common/shared/const';
+import { UserProcessingResult } from './interface/user-proccessing-result.interface';
 
 @Injectable()
 export class InactiveUserCronService {
@@ -18,157 +18,196 @@ export class InactiveUserCronService {
     private readonly emailService: MailService,
     private readonly timeService: TimeService,
   ) {
-    try {
-      const templatePath = path.join(__dirname, 'email-template.html');
-      this.emailTemplate = fs.readFileSync(templatePath, 'utf8');
-    } catch (error) {
-      // Fallback template if file loading fails
-      this.logger.error(
-        'Failed to load email template file, using fallback template',
-      );
-      this.emailTemplate = this.getFallbackTemplate();
-    }
-
-    try {
-      const suspensionTemplatePath = path.join(
-        __dirname,
-        'suspension-email-template.html',
-      );
-      this.suspensionEmailTemplate = fs.readFileSync(
-        suspensionTemplatePath,
-        'utf8',
-      );
-    } catch (error) {
-      // Fallback template if file loading fails
-      this.logger.error(
-        'Failed to load suspension email template file, using fallback template',
-      );
+      this.emailTemplate =this.getEmailTemplate();
       this.suspensionEmailTemplate = this.getSuspensionEmailTemplate();
-    }
   }
 
-  @Cron('0 9 * * *', {
-    name: 'check-inactive-users',
-    timeZone: 'Asia/Riyadh',
-  })
-  async handleInactiveUsers() {
-    const startTime = this.timeService.createDate();
-    this.logger.log('🔄 Starting inactive user management job...');
+  /**
+   * 
+   * 5 AM every day, Riyadh time -- Traffic is low at this time
+   * Sends motivational emails to users inactive for 7+ days
+   * Suspends accounts inactive for 65+ days
+   */
 
-    try {
-      // Calculate 7 days ago for motivational emails
-      const sevenDaysAgo = this.timeService.createDate();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      // Calculate 65 days ago for suspension
-      const sixtyFiveDaysAgo = this.timeService.createDate();
-      sixtyFiveDaysAgo.setDate(sixtyFiveDaysAgo.getDate() - 65);
+  
 
-      // Find users to suspend (65+ days inactive)
-      const usersToSuspend = await this.userRepo.find({
-        lastActivity: { $lt: sixtyFiveDaysAgo },
-        role: { $ne: Role.ADMIN },
-        isVerified: true,
-        status: UserStatus.ACTIVE, // Only suspend active users
-      });
+ @Cron(CronExpression.EVERY_DAY_AT_5AM, {
+  name: 'check-inactive-users',
+  timeZone: 'Asia/Riyadh',
+})
+@Cron(CronExpression.EVERY_DAY_AT_5AM, {
+  name: 'check-inactive-users',
+  timeZone: 'Asia/Riyadh',
+})
+async handleInactiveUsers() {
+  const startTime = this.timeService.createDate();
+  this.logger.log('🔄 Starting inactive user management job...');
 
-      // Find users for motivational emails (7+ days inactive but less than 65 days)
-      const usersForMotivation = await this.userRepo.find({
-        lastActivity: { $gte: sixtyFiveDaysAgo, $lt: sevenDaysAgo },
-        role: { $ne: Role.ADMIN },
-        isVerified: true,
-        status: UserStatus.ACTIVE,
-      });
+  try {
+    // Configuration
+    const BATCH_SIZE = 50; // Process 50 users in parallel
+    const BATCH_DELAY_MS = 1000; // 1 second between batches
+    const EMAIL_DELAY_MS = 100; // 100ms between individual emails
 
-      this.logger.log(
-        `📧 Found ${usersForMotivation.length} users for motivational emails`,
+    // 65 days ago (for suspension)
+    const sixtyFiveDaysAgo = new Date(
+      startTime.getTime() - 65 * 24 * 60 * 60 * 1000,
+    );
+
+    // Find all users inactive for up to 65+ days
+    const inactiveUsers = await this.userRepo.find({
+      lastActivity: { $lt: startTime, $gte: sixtyFiveDaysAgo },
+      role: { $ne: Role.ADMIN },
+      isVerified: true,
+      status: UserStatus.ACTIVE,
+    });
+
+    this.logger.log(`📊 Found ${inactiveUsers.length} inactive users to check`);
+
+    let motivationSuccessCount = 0;
+    let motivationFailureCount = 0;
+    let suspensionSuccessCount = 0;
+    let suspensionFailureCount = 0;
+
+    // Process users in batches
+    for (let i = 0; i < inactiveUsers.length; i += BATCH_SIZE) {
+      const batch = inactiveUsers.slice(i, i + BATCH_SIZE);
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(inactiveUsers.length / BATCH_SIZE);
+      
+      this.logger.log(`🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} users)`);
+
+      // Process current batch in parallel
+      const batchResults = await Promise.allSettled(
+        batch.map(async (user) => {
+          const userResult = await this.processSingleUser(user);
+          
+          // Small delay between email sends within the same batch
+          if (userResult.sentEmail) {
+            await this.delay(EMAIL_DELAY_MS);
+          }
+          
+          return userResult;
+        })
       );
-      this.logger.log(`⚠️ Found ${usersToSuspend.length} users to suspend`);
 
-      let motivationSuccessCount = 0;
-      let motivationFailureCount = 0;
-      let suspensionSuccessCount = 0;
-      let suspensionFailureCount = 0;
 
-      // Process suspensions first
-      for (const user of usersToSuspend) {
-        try {
-          // Update user status to suspended
-          await this.userRepo.findOneAndUpdate(
-            { _id: user._id },
-            {
-              status: UserStatus.SUSPENDED,
-              suspendedAt: this.timeService.createDate(),
-              suspensionReason:
-                'Account suspended due to inactivity (65+ days)',
-            },
-          );
-
-          // Send suspension notification email
-          await this.sendSuspensionEmail(user);
-          suspensionSuccessCount++;
-          this.logger.debug(`⚠️ User suspended: ${user.email}`);
-        } catch (error) {
-          suspensionFailureCount++;
-          this.logger.error(
-            `❌ Failed to suspend user ${user.email}: ${error.message}`,
-          );
-        }
-
-        // Add delay to avoid overwhelming email service
-        await this.delay(300);
-      }
-
-      // Process motivational emails
-      for (const user of usersForMotivation) {
-        try {
-          await this.sendMotivationalEmail(user);
-          motivationSuccessCount++;
-          this.logger.debug(`✉️ Email sent to: ${user.email}`);
-        } catch (error) {
+      // Count results from this batch
+      for (const result of batchResults) {
+        if (result.status === 'fulfilled') {
+          const userResult = result.value;
+          if (userResult.motivation?.success) motivationSuccessCount++;
+          if (userResult.motivation?.failure) motivationFailureCount++;
+          if (userResult.suspension?.success) suspensionSuccessCount++;
+          if (userResult.suspension?.failure) suspensionFailureCount++;
+        } else {
+          // If the entire user processing failed, count it as both motivation and suspension failure
           motivationFailureCount++;
-          this.logger.error(
-            `❌ Failed to send email to ${user.email}: ${error.message}`,
-          );
+          suspensionFailureCount++;
+          this.logger.error(`❌ Failed to process user in batch: ${('' + (result as any).reason)}`);
         }
-
-        // Add small delay to avoid overwhelming email service
-        await this.delay(300);
       }
 
-      const endTime = this.timeService.createDate();
-      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+      // Delay between batches (but not after the last batch)
+      if (i + BATCH_SIZE < inactiveUsers.length) {
+        await this.delay(BATCH_DELAY_MS);
+      }
+    }
 
-      this.logger.log(
-        `✅ Inactive user management job completed in ${duration}s`,
+    const endTime = this.timeService.createDate();
+    const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+
+    this.logger.log(`✅ Inactive user job completed in ${duration}s`);
+    this.logger.log(
+      `📧 Motivation: ${motivationSuccessCount} sent, ${motivationFailureCount} failed`,
+    );
+    this.logger.log(
+      `⚠️ Suspensions: ${suspensionSuccessCount} done, ${suspensionFailureCount} failed`,
+    );
+
+    // Log performance summary
+    const totalProcessed = motivationSuccessCount + motivationFailureCount + suspensionSuccessCount + suspensionFailureCount;
+    const successRate = totalProcessed > 0 
+      ? ((motivationSuccessCount + suspensionSuccessCount) / totalProcessed * 100).toFixed(1)
+      : '0';
+    this.logger.log(`📊 Overall success rate: ${successRate}%`);
+
+  } catch (error) {
+    this.logger.error(`💥 Error in inactive user job: ${error.message}`);
+  }
+}
+
+
+  /**
+ * Process a single user and determine what action to take
+ */
+private async processSingleUser(user: any): Promise<UserProcessingResult> {
+  const now = this.timeService.createDate();
+  const diffInDays = Math.floor(
+    (now.getTime() - new Date(user.lastActivity).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  const result: UserProcessingResult = {
+    sentEmail: false,
+    motivation: null,
+    suspension: null
+  };
+
+  // --- Suspension check (>= 65 days) ---
+  if (diffInDays >= 65) {
+    try {
+      await this.userRepo.findOneAndUpdate(
+        { _id: user._id },
+        {
+          status: UserStatus.SUSPENDED,
+          suspendedAt: now,
+          suspensionReason: EmailMessages.SuspensionReasonMessage,
+        },
       );
-      this.logger.log(
-        `📊 Results: ${motivationSuccessCount} motivation emails sent, ${motivationFailureCount} failed`,
-      );
-      this.logger.log(
-        `📊 Suspensions: ${suspensionSuccessCount} successful, ${suspensionFailureCount} failed`,
-      );
+
+      await this.sendSuspensionEmail(user);
+      result.suspension = { success: true };
+      result.sentEmail = true;
+      this.logger.debug(`⚠️ User suspended: ${user.email}`);
     } catch (error) {
-      this.logger.error(
-        `💥 Error in inactive user job: ${error.message}`,
-        error.stack,
-      );
+      result.suspension = { failure: true, error: error.message };
+      this.logger.error(`❌ Failed to suspend ${user.email}: ${error.message}`);
+    }
+    return result;
+  }
+
+  // --- Motivational email check (every 7 days: 7, 14, 21...) ---
+  if (diffInDays > 0 && diffInDays % 7 === 0 ) {
+    try {
+      await this.sendMotivationalEmail(user);
+      result.motivation = { success: true };
+      result.sentEmail = true;
+      this.logger.debug(`✉️ Motivational email sent to: ${user.email}`);
+    } catch (error) {
+      result.motivation = { failure: true, error: error.message };
+      this.logger.error(`❌ Failed to send email to ${user.email}: ${error.message}`);
     }
   }
+
+  return result;
+}
+
+
 
   private async sendMotivationalEmail(user: any): Promise<void> {
     // Replace template variables
     const personalizedEmail = this.emailTemplate
-      .replace(/{{userName}}/g, user.firstName || 'there')
-      .replace(
-        /{{loginUrl}}/g,
+      .replaceAll('{{userName}}', user.firstName || 'there')
+      .replaceAll(
+        '{{loginUrl}}',
         process.env.FRONTEND_URL || 'https://englishom.com/login',
       );
 
     // Prepare email data
     const mailOptions = {
       to: user.email,
-      subject: 'We miss you! Come back and continue your English journey 🌟',
+      subject: EmailMessages.weMissYouMessage,
       htmlContent: personalizedEmail,
     };
 
@@ -179,16 +218,16 @@ export class InactiveUserCronService {
   private async sendSuspensionEmail(user: any): Promise<void> {
     // Create suspension email template
     const suspensionEmail = this.suspensionEmailTemplate
-      .replace(/{{userName}}/g, user.firstName || 'there')
-      .replace(
-        /{{supportUrl}}/g,
+      .replaceAll('{{userName}}', user.firstName || 'there')
+      .replaceAll(
+        '{{supportUrl}}',
         process.env.FRONTEND_URL || 'https://englishom.com/contact',
       );
 
     // Prepare email data
     const mailOptions = {
       to: user.email,
-      subject: '⚠️ Your Englishom Account Has Been Suspended - Contact Support',
+      subject: EmailMessages.AccountSuspendedMessage,
       htmlContent: suspensionEmail,
     };
 
@@ -204,13 +243,10 @@ export class InactiveUserCronService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // Manual trigger method for testing (optional)
-  async triggerManually(): Promise<void> {
-    this.logger.log('🔧 Manually triggering inactive user management job...');
-    await this.handleInactiveUsers();
-  }
+  
 
-  private getFallbackTemplate(): string {
+ 
+  private getEmailTemplate(): string {
     return `
 <!DOCTYPE html>
 <html>

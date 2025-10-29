@@ -17,8 +17,6 @@ export class VerifyOtpDto {
   otp: string;
 
   @IsOptional()
-  @IsEnum(OtpCause, {
-    message: 'Cause must be either email_verification or forget_password',
-  })
-  cause?: OtpCause;
+  @IsEnum(OtpCause)
+  cause?: OtpCause = OtpCause.EMAIL_VERIFICATION;
 }

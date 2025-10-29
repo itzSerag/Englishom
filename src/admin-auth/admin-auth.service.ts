@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { AdminRepo } from '../admin/repo/admin.repo';
 import { IAdminPayload } from '../common/shared/interfaces/payload.interface';
 import { Admin } from '../admin/models/admin.schema';
-import { log } from 'console';
+import { AdminLoginDto } from './dto';
 
 @Injectable()
 export class AdminAuthService {
@@ -20,33 +20,25 @@ export class AdminAuthService {
   /**
    * Admin login - Separate from user login
    */
-  async login(email: string, password: string) {
-    const admin = await this.adminRepo.findByEmail(email);
+  async login(adminLoginDto : AdminLoginDto): Promise<{ access_token: string; admin: Admin }> {
+    const admin = await this.adminRepo.findByEmail(adminLoginDto.email);
 
-    log(admin, 'this is the admin');
-
-    if (!admin) {
-      throw new NotFoundException('Invalid credentials');
+    if (!admin && admin?.isActive) {
+      throw new NotFoundException('Invalid credentials or Admin is deactivated');
     }
 
-    if (!admin.isActive) {
-      throw new UnauthorizedException('Admin account is deactivated');
-    }
-
-    const isValidPassword = await bcrypt.compare(password, admin.password);
+    const isValidPassword = await bcrypt.compare(adminLoginDto.password, admin.password);
 
     if (!isValidPassword) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Update last activity
     await this.adminRepo.findOneAndUpdate(
       { _id: admin._id },
       { lastActivity: new Date() },
     );
 
     const access_token = this.generateToken(admin);
-
     return { access_token, admin };
   }
 
@@ -68,12 +60,6 @@ export class AdminAuthService {
    */
   async validateAdmin(adminId: string): Promise<Admin | null> {
     const admin = await this.adminRepo.findOne({ _id: adminId });
-
-    // if admin is inactive ir blocked by super admin return null
-    if (!admin?.isActive) {
-      return null;
-    }
-
     return admin;
   }
 }

@@ -13,24 +13,25 @@ export class CourseController {
   // NestJS already understands that the controller methods are async
 
   // and will handle the promise resolution for me.
-  @Get()
   @Public()
+  @Get()
   async findAll() {
-    const courses = await this.courseService.findAll();
+    const courses = await this.courseService.findAllCourses();
     return courses;
   }
 
-  @Get(':level_name')
   @Public()
+  @Get(':level_name')
   async findByLevelName(@Param('level_name') level_name: Level_Name) {
     const course = await this.courseService.findByLevelName(level_name);
     return course;
   }
 
+  // Viewer Admin Can not update courses
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER, AdminRole.OPERATOR)
   @Patch('admin')
   async update(@Body() updateCourseDto: UpdateCourseDto) {
-    const course = await this.courseService.update(updateCourseDto);
+    const course = await this.courseService.updateCourse(updateCourseDto);
     return course;
   }
 }

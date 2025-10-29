@@ -5,6 +5,7 @@ import { IPayload } from '../../common/shared/interfaces/payload.interface';
 import { ConfigService } from '@nestjs/config';
 import { UserAuthService } from '../user-auth.service';
 import { cleanResponse } from '../../common/utils/response.utils';
+import { AuthMessages } from '../../common/shared/const';
 
 @Injectable()
 export class UserJwtStrategy extends PassportStrategy(Strategy, 'user-jwt') {
@@ -15,7 +16,7 @@ export class UserJwtStrategy extends PassportStrategy(Strategy, 'user-jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET'),
     });
   }
 
@@ -24,12 +25,12 @@ export class UserJwtStrategy extends PassportStrategy(Strategy, 'user-jwt') {
       const user = await this.userAuthService.validateUser(payload.sub);
 
       if (!user) {
-        throw new UnauthorizedException('User not found or inactive');
+        throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
       }
 
       // Validate session ID - single device login enforcement
       if (payload.jti && user.activeSessionId !== payload.jti) {
-        throw new UnauthorizedException('Session expired. Please login again.');
+        throw new UnauthorizedException(AuthMessages.INVALID_SESSION);
       }
 
       return cleanResponse(user);

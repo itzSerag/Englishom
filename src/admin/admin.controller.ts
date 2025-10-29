@@ -28,7 +28,6 @@ import {
   cleanResponse,
   cleanResponseArray,
 } from '../common/utils/response.utils';
-import { log } from 'console';
 import { UserService } from '../user/user.service';
 import { UpdateUserStatusDto } from '../user/dto/update-user-status.dto';
 import { PaginationDto } from '../user/dto/pagination.dto';
@@ -44,11 +43,10 @@ export class AdminController {
 
   @Get('me')
   async getCurrentAdmin(@CurrentAdmin() currentAdmin: Admin) {
-    log(currentAdmin);
     return cleanResponse(currentAdmin);
   }
 
-  // Create new admin - Only SUPER admin
+  
   @AdminRoles(AdminRole.SUPER)
   @Post('create-admin')
   async createAdmin(
@@ -78,7 +76,7 @@ export class AdminController {
     return cleanResponseArray(admins);
   }
 
-  // Update admin
+  
   @AdminRoles(AdminRole.SUPER)
   @Patch(':id')
   async updateAdmin(
@@ -113,7 +111,6 @@ export class AdminController {
 
   // ===== USER MANAGEMENT ENDPOINTS =====
 
-  // Get all users with pagination - SUPER and MANAGER can view users
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @Get('users')
   async getAllUsers(@Query() paginationDto: PaginationDto) {

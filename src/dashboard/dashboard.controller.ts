@@ -26,9 +26,9 @@ export class DashboardController {
 
   /**
    * Get comprehensive dashboard statistics -- main page
-   * Access: SUPER and MANAGER only
+   * Access: All Admins
    */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @AdminRoles()
   @Get('stats')
   async getDashboardStats() {
     this.logger.log('Dashboard stats requested');
@@ -37,9 +37,9 @@ export class DashboardController {
 
   /**
    * Get detailed user information for course assignment
-   * Access: SUPER and MANAGER only
+   * Access: All Admins
    */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @AdminRoles()
   @Get('user-details/:userId')
   async getUserDetails(@Param('userId') userId: string) {
     this.logger.log(`Fetching user details for: ${userId}`);
@@ -50,7 +50,7 @@ export class DashboardController {
    * Search users for course assignment with improved validation
    * Access: SUPER and MANAGER only
    */
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @AdminRoles()
   @Get('users')
   async searchUsers(@Query(ValidationPipe) searchDto: DashboardSearchDto) {
     this.logger.log(`Searching users with params:`, searchDto);
