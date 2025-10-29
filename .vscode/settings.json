@@ -3,7 +3,9 @@
         "Brevo",
         "Englishom",
         "paymob",
-        "Transac"
+        "Transac",
+        "wavefile",
+        "xenova"
     ],
     "editor.formatOnSave": true
 }

@@ -1,11 +1,11 @@
 import { BadRequestException, Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UserResultsService } from '../services/user-results.service';
 import { UserJwtGuard } from '../../user-auth/guards';
 import { OrderRepo } from '../../payment/repo/order.repo';
 import { User } from '../../user/models/user.schema';
 import { CurrentUser } from '../../user-auth/decorator/get-curr-user.decorator';
 import { SpeakCompareTranscriptsDto } from '../dto/speak-compare-transcripts.dto';
+import { UserResultsService } from '../services/user-results.service';
 
 @Controller('/user-results')
 export class UserResultsController {
