@@ -7,24 +7,29 @@ export class TransformersAudioTranscribe implements OnModuleInit {
   private inFlight = 0;
   private readonly MAX_CONCURRENCY = 15;
   private transcriber: any | null = null;
-  private pipeline: any;
-  private WaveFile: any;
+  private pipelineFunc: any;
+  private WaveFileClass: any;
 
   async onModuleInit(): Promise<void> {
-    // ✅ Dynamic import for ESM packages
-    const transformers = await import('@xenova/transformers');
-    this.pipeline = transformers.pipeline;
-    
-    const wavefile = await import('wavefile');
-    this.WaveFile = wavefile.WaveFile;
-
-    // Preload model
+    // ✅ Use Function constructor to prevent TypeScript from converting to require()
     try {
+      // Load transformers
+      const loadTransformers = new Function('return import("@xenova/transformers")');
+      const transformers = await loadTransformers();
+      this.pipelineFunc = transformers.pipeline;
+      
+      // Load wavefile
+      const loadWavefile = new Function('return import("wavefile")');
+      const wavefile = await loadWavefile();
+      this.WaveFileClass = wavefile.WaveFile;
+
+      // Preload model
       this.logger.log('Preloading Whisper model...');
-      this.transcriber = await this.pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+      this.transcriber = await this.pipelineFunc('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
       this.logger.log('✅ Model preloaded successfully');
     } catch (err) {
-      this.logger.warn(`Failed to preload model: ${err.message}`);
+      this.logger.error(`Failed to initialize: ${err.message}`);
+      throw err;
     }
   }
 
@@ -34,7 +39,7 @@ export class TransformersAudioTranscribe implements OnModuleInit {
         if (!this.transcriber) {
           const modelName = options?.model ?? 'Xenova/whisper-tiny.en';
           this.logger.log(`Loading Whisper model: ${modelName}...`);
-          this.transcriber = await this.pipeline('automatic-speech-recognition', modelName);
+          this.transcriber = await this.pipelineFunc('automatic-speech-recognition', modelName);
         }
 
         const audioData = this.processAudioBuffer(audioBuffer);
@@ -56,7 +61,7 @@ export class TransformersAudioTranscribe implements OnModuleInit {
 
   private processAudioBuffer(buffer: Buffer): Float32Array {
     try {
-      const wav = new this.WaveFile(buffer);
+      const wav = new this.WaveFileClass(buffer);
       
       wav.toBitDepth('32f');
       wav.toSampleRate(16000);
