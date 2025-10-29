@@ -1,29 +1,51 @@
 import { Injectable, Logger, BadRequestException, OnModuleInit } from '@nestjs/common';
-import { pipeline } from '@xenova/transformers';
-import { WaveFile } from 'wavefile';
 
 @Injectable()
-export class TransformersAudioTranscribe  implements OnModuleInit {
+export class TransformersAudioTranscribe implements OnModuleInit {
   private readonly logger = new Logger(TransformersAudioTranscribe.name);
   
   private inFlight = 0;
   private readonly MAX_CONCURRENCY = 15;
   private transcriber: any | null = null;
+  private pipeline: any;
+  private WaveFile: any;
+
+  async onModuleInit(): Promise<void> {
+    // ✅ Dynamic import for ESM packages
+    const transformers = await import('@xenova/transformers');
+    this.pipeline = transformers.pipeline;
+    
+    const wavefile = await import('wavefile');
+    this.WaveFile = wavefile.WaveFile;
+
+    // Preload model
+    try {
+      this.logger.log('Preloading Whisper model...');
+      this.transcriber = await this.pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+      this.logger.log('✅ Model preloaded successfully');
+    } catch (err) {
+      this.logger.warn(`Failed to preload model: ${err.message}`);
+    }
+  }
 
   async transcribeAudio(audioBuffer: Buffer, options?: { model?: string }): Promise<string> {
     return this.withConcurrencyLimit(async () => {
       try {
         if (!this.transcriber) {
           const modelName = options?.model ?? 'Xenova/whisper-tiny.en';
-          this.transcriber = await pipeline('automatic-speech-recognition', modelName);
+          this.logger.log(`Loading Whisper model: ${modelName}...`);
+          this.transcriber = await this.pipeline('automatic-speech-recognition', modelName);
         }
 
-        // ✅ Process audio directly from buffer (no temp file needed!)
         const audioData = this.processAudioBuffer(audioBuffer);
 
-        // ✅ Run transcription
+        this.logger.log('Running transcription...');
+        const start = performance.now();
         const output = await this.transcriber(audioData);
-      
+        const duration = ((performance.now() - start) / 1000).toFixed(2);
+        
+        this.logger.log(`✅ Transcription completed in ${duration}s`);
+
         return output?.text ?? '';
       } catch (err) {
         this.logger.error(`Transcription failed: ${err.message}`);
@@ -32,59 +54,31 @@ export class TransformersAudioTranscribe  implements OnModuleInit {
     });
   }
 
-  /**
-   * Convert audio buffer to Float32Array format required by Whisper
-   */
   private processAudioBuffer(buffer: Buffer): Float32Array {
     try {
-      // Read .wav file and convert to required format
-      const wav = new WaveFile(buffer);
+      const wav = new this.WaveFile(buffer);
       
-      // Convert to 32-bit float (pipeline expects Float32Array)
       wav.toBitDepth('32f');
-      
-      // Whisper expects 16kHz sampling rate
       wav.toSampleRate(16000);
       
-      let audioData: any = wav.getSamples();
+      let audioData = wav.getSamples();
       
-      // Handle multi-channel audio (merge to mono)
       if (Array.isArray(audioData)) {
         if (audioData.length > 1) {
           const SCALING_FACTOR = Math.sqrt(2);
           
-          // Merge channels into first channel
           for (let i = 0; i < audioData[0].length; ++i) {
             audioData[0][i] = SCALING_FACTOR * (audioData[0][i] + audioData[1][i]) / 2;
           }
         }
         
-        // Select first channel
         audioData = audioData[0];
       }
       
-      // Ensure we return a Float32Array (convert from Float64Array, Array<number>, etc. if needed)
-      if (!(audioData instanceof Float32Array)) {
-        return Float32Array.from(audioData);
-      }
-      
-      return audioData ;
+      return audioData as Float32Array;
     } catch (err) {
       this.logger.error(`Audio processing failed: ${err.message}`);
       throw new Error(`Invalid audio format: ${err.message}`);
-    }
-  }
-
-  /**
-   * Preload the model on application startup (optional but recommended)
-   */
-  async onModuleInit(): Promise<void> {
-    try {
-      this.logger.log('Preloading Whisper model...');
-      const modelName = 'Xenova/whisper-tiny.en';
-      this.transcriber = await pipeline('automatic-speech-recognition', modelName);
-    } catch (err) {
-      this.logger.warn(`Failed to preload model: ${err.message}`);
     }
   }
 
