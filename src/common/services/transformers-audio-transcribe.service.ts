@@ -5,15 +5,16 @@ export class TransformersAudioTranscribe implements OnModuleInit {
   private readonly logger = new Logger(TransformersAudioTranscribe.name);
   
   private inFlight = 0;
-  private readonly MAX_CONCURRENCY = 15;
+  private readonly MAX_CONCURRENCY = 20;
   private transcriber: any | null = null;
   private pipelineFunc: any;
   private WaveFileClass: any;
 
   async onModuleInit(): Promise<void> {
-    // ✅ Use Function constructor to prevent TypeScript from converting to require()
+
     try {
-      // Load transformers
+      // Load transformers using function to support dynamic import
+      // and prevent bundling issues
       const loadTransformers = new Function('return import("@xenova/transformers")');
       const transformers = await loadTransformers();
       this.pipelineFunc = transformers.pipeline;
@@ -21,7 +22,7 @@ export class TransformersAudioTranscribe implements OnModuleInit {
       // Load wavefile
       const loadWavefile = new Function('return import("wavefile")');
       const wavefile = await loadWavefile();
-      this.WaveFileClass = wavefile.WaveFile;
+      this.WaveFileClass = wavefile.WaveFile || wavefile.default?.WaveFile;
 
       // Preload model
       this.logger.log('Preloading Whisper model...');
@@ -63,7 +64,7 @@ export class TransformersAudioTranscribe implements OnModuleInit {
     try {
       const wav = new this.WaveFileClass(buffer);
       
-      wav.toBitDepth('32f');
+      wav.toBitDepth('32f'); // Convert to 32-bit float
       wav.toSampleRate(16000);
       
       let audioData = wav.getSamples();
