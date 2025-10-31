@@ -1,120 +1,60 @@
 import { Injectable, Logger, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { pipeline, Pipeline } from '@xenova/transformers';
+import { WaveFile } from 'wavefile';
 
 @Injectable()
 export class TransformersAudioTranscribe implements OnModuleInit {
   private readonly logger = new Logger(TransformersAudioTranscribe.name);
-  
-  private inFlight = 0;
-  private readonly MAX_CONCURRENCY = 20;
-  private transcriber: any | null = null;
-  private pipelineFunc: any;
-  private WaveFileClass: any;
+  private transcriber: Pipeline | null = null;
+  private queue = 0;
+  private readonly MAX_QUEUE = 5; // Lower limit for better RAM management
 
   async onModuleInit(): Promise<void> {
-
     try {
-      // Load transformers using function to support dynamic import
-      // and prevent bundling issues
-      const loadTransformers = new Function('return import("@xenova/transformers")');
-      const transformers = await loadTransformers();
-      this.pipelineFunc = transformers.pipeline;
-      
-      // Load wavefile
-      const loadWavefile = new Function('return import("wavefile")');
-      const wavefile = await loadWavefile();
-      this.WaveFileClass = wavefile.WaveFile || wavefile.default?.WaveFile;
-
-      // Preload model
       this.logger.log('Preloading Whisper model...');
-      this.transcriber = await this.pipelineFunc('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
-      this.logger.log('✅ Model preloaded successfully');
+      this.transcriber = await pipeline(
+        'automatic-speech-recognition',
+        'Xenova/whisper-tiny.en',
+        { quantized: true } // Use quantized model for lower RAM usage
+      );
+      this.logger.log('✅ Model ready');
     } catch (err) {
-      this.logger.error(`Failed to initialize: ${err.message}`);
+      this.logger.error(`Init failed: ${err.message}`);
       throw err;
     }
   }
 
-  async transcribeAudio(audioBuffer: Buffer, options?: { model?: string }): Promise<string> {
-    return this.withConcurrencyLimit(async () => {
-      try {
-        if (!this.transcriber) {
-          const modelName = options?.model ?? 'Xenova/whisper-tiny.en';
-          this.logger.log(`Loading Whisper model: ${modelName}...`);
-          this.transcriber = await this.pipelineFunc('automatic-speech-recognition', modelName);
-        }
+  async transcribeAudio(audioBuffer: Buffer): Promise<string> {
+    // Simple queue check
+    if (this.queue >= this.MAX_QUEUE) {
+      throw new BadRequestException('Server busy, retry later');
+    }
 
-        const audioData = this.processAudioBuffer(audioBuffer);
-
-        this.logger.log('Running transcription...');
-        const start = performance.now();
-        const output = await this.transcriber(audioData);
-        const duration = ((performance.now() - start) / 1000).toFixed(2);
-        
-        this.logger.log(`✅ Transcription completed in ${duration}s`);
-
-        return output?.text ?? '';
-      } catch (err) {
-        this.logger.error(`Transcription failed: ${err.message}`);
-        throw new BadRequestException(`Transcription error: ${err.message}`);
-      }
-    });
-  }
-
-  private processAudioBuffer(buffer: Buffer): Float32Array {
+    this.queue++;
     try {
-      const wav = new this.WaveFileClass(buffer);
-      
-      wav.toBitDepth('32f'); // Convert to 32-bit float
+      // Direct conversion without intermediate steps
+      const wav = new WaveFile(audioBuffer);
+      wav.toBitDepth('32f');
       wav.toSampleRate(16000);
+
+      let samples = wav.getSamples();
       
-      let audioData = wav.getSamples();
-      
-      if (Array.isArray(audioData)) {
-        if (audioData.length > 1) {
-          const SCALING_FACTOR = Math.sqrt(2);
-          
-          for (let i = 0; i < audioData[0].length; ++i) {
-            audioData[0][i] = SCALING_FACTOR * (audioData[0][i] + audioData[1][i]) / 2;
-          }
-        }
-        
-        audioData = audioData[0];
+      // Stereo to mono if needed
+      if (Array.isArray(samples)) {
+        samples = samples[0]; // Just take left channel (simpler than mixing)
       }
-      
-      return audioData as Float32Array;
+
+      const result = await this.transcriber(samples, {
+        chunk_length_s: 30, // Process in chunks to reduce RAM
+        stride_length_s: 5,
+      });
+
+      return result.text || '';
     } catch (err) {
-      this.logger.error(`Audio processing failed: ${err.message}`);
-      throw new Error(`Invalid audio format: ${err.message}`);
-    }
-  }
-
-  private async withConcurrencyLimit<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.inFlight < this.MAX_CONCURRENCY) {
-      this.inFlight++;
-      try {
-        return await fn();
-      } finally {
-        this.inFlight--;
-      }
-    }
-
-    const start = Date.now();
-    const MAX_WAIT_MS = 10_000;
-    let delay = 50;
-
-    while (this.inFlight >= this.MAX_CONCURRENCY) {
-      if (Date.now() - start > MAX_WAIT_MS) {
-        throw new BadRequestException('Server is busy, please try again shortly.');
-      }
-      await new Promise(r => setTimeout(r, delay + Math.random() * 25));
-      delay = Math.min(250, delay * 1.5);
-    }
-
-    this.inFlight++;
-    try {
-      return await fn();
+      this.logger.error(`Transcription failed: ${err.message}`);
+      throw new BadRequestException('Transcription failed');
     } finally {
-      this.inFlight--;
+      this.queue--;
     }
   }
 }
