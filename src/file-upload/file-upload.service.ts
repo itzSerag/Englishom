@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotAcceptableException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotAcceptableException, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
 import { v4 as uuid } from 'uuid';
@@ -7,6 +7,8 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import { Response } from 'express';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
 
 enum FileType {
   IMAGE = 'Images',
@@ -32,6 +34,10 @@ export class FileUploadService {
       bucketName: 'appFiles',
     });
     this.baseUrl = this.configService.get<string>('BASE_URL')?.replace(/\/$/, '') || '';
+    // Configure ffmpeg binary path if available
+    if (ffmpegPath) {
+      ffmpeg.setFfmpegPath(ffmpegPath);
+    }
   }
 
   /**
@@ -68,7 +74,9 @@ export class FileUploadService {
     userId: string,
   ): Promise<{ url: string }> {
     this.validateFile(file);
-    const key = `UserAudios/${userId}/${uploadFileDTO.level_name}/${uploadFileDTO.day}/today_audio.mp3`;
+    const isWav = file.mimetype?.includes('wav') || file.originalname?.toLowerCase().endsWith('.wav');
+    const ext = isWav ? 'wav' : 'mp3';
+    const key = `UserAudios/${userId}/${uploadFileDTO.level_name}/${uploadFileDTO.day}/today_audio.${ext}`;
     try {
       await this.uploadToGridFS(file, key);
       return { url: this.buildPublicUrl(key) };
@@ -94,15 +102,143 @@ export class FileUploadService {
     levelName: string,
     day: string,
   ): Promise<{ url: string } | null> {
-    const key = `UserAudios/${userId}/${levelName}/${day}/today_audio.mp3`;
+    // Try WAV first then MP3 for backward compatibility
+    const wavKey = `UserAudios/${userId}/${levelName}/${day}/today_audio.wav`;
+    const mp3Key = `UserAudios/${userId}/${levelName}/${day}/today_audio.mp3`;
     try {
-      const file = await this.findFileByName(key);
+      let file = await this.findFileByName(wavKey);
+      let key = wavKey;
+      if (!file) {
+        file = await this.findFileByName(mp3Key);
+        key = mp3Key;
+      }
       if (!file) return null;
       return { url: this.buildPublicUrl(key) };
     } catch (error) {
       this.logger.error(`Error retrieving day audio: ${error.message}`, error.stack);
       throw new InternalServerErrorException(`Failed to retrieve day audio: ${error.message}`);
     }
+  }
+
+  /**
+   * Combine all day audios for a user across a given level range (1..50) into a single MP3.
+   * Assumes daily audios stored at: UserAudios/<userId>/<levelName>/<day>/today_audio.mp3
+   * Returns URL of combined file. If any day is missing, skips it (at least one required).
+   */
+  async combineUserLevelAudios(userId: string, levelName: string, totalDays = 50): Promise<{ url: string; combinedKey: string; daysCombined: number }> {
+    if (!userId) throw new BadRequestException('userId required');
+    if (!levelName) throw new BadRequestException('levelName required');
+    const inputKeys: string[] = [];
+    for (let day = 1; day <= totalDays; day++) {
+      const wavKey = `UserAudios/${userId}/${levelName}/${day}/today_audio.wav`;
+      const mp3Key = `UserAudios/${userId}/${levelName}/${day}/today_audio.mp3`;
+      const wavFile = await this.findFileByName(wavKey);
+      if (wavFile) {
+        inputKeys.push(wavKey);
+        continue;
+      }
+      const mp3File = await this.findFileByName(mp3Key);
+      if (mp3File) inputKeys.push(mp3Key);
+    }
+    if (inputKeys.length === 0) {
+      throw new NotFoundException('No daily audios found to combine');
+    }
+  const combinedKey = `UserAudios/${userId}/${levelName}/combined/level_${levelName}_days_1-${totalDays}.wav`;
+
+    // If already exists, return existing (idempotent)
+    const existing = await this.findFileByName(combinedKey);
+    if (existing) {
+      return { url: this.buildPublicUrl(combinedKey), combinedKey, daysCombined: inputKeys.length };
+    }
+
+    try {
+      const buffers: { key: string; buffer: Buffer }[] = [];
+      for (const key of inputKeys) {
+        const buffer = await this.getAudioBufferFromGridFS(key);
+        buffers.push({ key, buffer });
+      }
+      const combinedBuffer = await this.concatenateAudioBuffers(buffers.map(b => b.buffer));
+      await this.saveBufferToGridFS(combinedKey, combinedBuffer, 'audio/wav');
+      return { url: this.buildPublicUrl(combinedKey), combinedKey, daysCombined: inputKeys.length };
+    } catch (error) {
+      this.logger.error(`Failed combining user audios: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(`Failed to combine audios: ${error.message}`);
+    }
+  }
+
+  /**
+   * Concatenate multiple MP3 buffers using ffmpeg concat demuxer.
+   * Falls back to naive Buffer concatenation if ffmpeg binary not set (may produce invalid file).
+   */
+  private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
+    if (buffers.length === 1) return buffers[0];
+    if (!ffmpegPath) {
+      // Fallback simple concat
+      this.logger.warn('ffmpeg-static not found, using naive buffer concatenation which may be invalid.');
+      return Buffer.concat(buffers);
+    }
+    const tmp = await import('node:os');
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const tmpDir = tmp.tmpdir();
+    const listFilePath = path.join(tmpDir, `concat_${Date.now()}_${Math.random().toString(36).slice(2)}.txt`);
+    const partFiles: string[] = [];
+    try {
+      // Write each buffer to a temp file
+      let idx = 0;
+      for (const buf of buffers) {
+        const partPath = path.join(tmpDir, `part_${Date.now()}_${idx}.wav`);
+        fs.writeFileSync(partPath, buf);
+        partFiles.push(partPath);
+        idx++;
+      }
+      // Create concat list file using String.raw for clarity
+      const listLines: string[] = [];
+      for (const p of partFiles) {
+        const sanitized = p.replaceAll("'", String.raw`'\''`);
+        listLines.push(String.raw`file '${sanitized}'`);
+      }
+      fs.writeFileSync(listFilePath, listLines.join('\n'), 'utf-8');
+      // Run ffmpeg concat
+      const outputPath = path.join(tmpDir, `combined_${Date.now()}.wav`);
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg()
+          .input(listFilePath)
+          .inputOptions(['-f concat', '-safe 0'])
+          // Re-encode to WAV (PCM 16-bit) to ensure consistent output regardless of source codecs
+          .outputOptions(['-c:a pcm_s16le'])
+          .on('error', (err) => reject(err))
+          .on('end', () => resolve())
+          .save(outputPath);
+      });
+      const outBuffer = fs.readFileSync(outputPath);
+      return outBuffer;
+    } finally {
+      // Cleanup temp files
+      try {
+        const fs = await import('node:fs');
+        if (fs.existsSync(listFilePath)) fs.unlinkSync(listFilePath);
+        for (const f of partFiles) if (fs.existsSync(f)) fs.unlinkSync(f);
+      } catch (err) {
+        this.logger.warn(`Temp file cleanup failed: ${err.message}`);
+      }
+    }
+  }
+
+  private async saveBufferToGridFS(key: string, buffer: Buffer, contentType: string): Promise<void> {
+    // Delete existing if any
+    const existing = await this.findFileByName(key);
+    if (existing) await this.bucket.delete(existing._id);
+    await new Promise<void>((resolve, reject) => {
+      const uploadStream = this.bucket.openUploadStream(key, {
+        contentType,
+        metadata: { logicalKey: key },
+      });
+      uploadStream.on('error', (err) => reject(err));
+      uploadStream.on('finish', () => resolve());
+      uploadStream.write(buffer);
+      uploadStream.end();
+    });
   }
 
   async deleteUserAudio(userId: string, audioKey: string): Promise<void> {

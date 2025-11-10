@@ -60,6 +60,18 @@ export class SeederController {
   }
 
   @AdminRoles(AdminRole.SUPER)
+  @Post('seed-super-test-user')
+  async seedSuperTestUser() {
+    const res = await this.seederService.seedSuperTestUser();
+    return {
+      message: '🧪 Super test user seeded with all levels and days completed',
+      email: res.email,
+      userId: res.userId,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @AdminRoles(AdminRole.SUPER)
   @Delete('clear-all')
   async clearAll() {
     await this.seederService.clearAllData();

@@ -29,6 +29,7 @@ import { AdminRole, Level_Name } from '../common/shared/enums';
 import { AdminRoles } from 'src/admin-auth/decorators';
 import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
 import { UserJwtGuard } from '../user-auth/guards';
+import { UserService } from '../user/user.service';
 
 // The UserJwtGuard ensures that only authenticated users can access certain endpoints.
 // And not applied for all the endpoints in this controller,
@@ -38,7 +39,10 @@ import { UserJwtGuard } from '../user-auth/guards';
 export class FileUploadController {
   private readonly logger = new Logger(FileUploadController.name);
 
-  constructor(private readonly uploadService: FileUploadService) {}
+  constructor(
+    private readonly uploadService: FileUploadService,
+    private readonly userService: UserService,
+  ) {}
 
   // Raw streaming endpoint for GridFS stored files (internal use by generated URLs)
   @Get('raw')
@@ -196,6 +200,33 @@ export class FileUploadController {
 
     await this.uploadService.deleteUserAudio(user._id.toString(), audioKey);
     return { message: 'Audio file deleted successfully' };
+  }
+
+  // Combine user's daily audios for a level into a single audio (restricted to when day 50 is open)
+  @UseGuards(UserJwtGuard)
+  @Post('user-audio/combine-level/:levelName')
+  async combineUserLevelAudios(
+    @CurrentUser() user: User,
+    @Param('levelName') levelName: string,
+    @Req() req: Request,
+  ) {
+    if (!user?._id) {
+      throw new BadRequestException('User not authenticated or invalid user data');
+    }
+    // completedDays returns the max completed day number (0 if none). Day 50 is open for audio combine if completedDays >= 49.
+    const completedDays = await this.userService.getCompletedDaysInLevel(
+      user._id.toString(),
+      levelName as Level_Name,
+    );
+    if (completedDays < 49) {
+      throw new BadRequestException('Day 50 is not open yet for this level');
+    }
+    const result = await this.uploadService.combineUserLevelAudios(
+      user._id.toString(),
+      levelName,
+      50,
+    );
+    return this.rewriteToLocalOrigin({ url: result.url }, req);
   }
 
   // Content upload - OPERATOR+ can upload content

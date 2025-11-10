@@ -5,9 +5,10 @@ import { AdminModule } from '../admin/admin.module';
 import { UserResultsController } from './controllers/user-results.controller';
 import { UserResultsService } from './services/user-results.service';
 import { PaymentModule } from '../payment/paymob.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
-  imports: [forwardRef(() => AdminModule), PaymentModule],
+  imports: [forwardRef(() => AdminModule), PaymentModule, UserModule],
   controllers: [FileUploadController, UserResultsController],
   providers: [FileUploadService, UserResultsService],
   exports: [FileUploadService],

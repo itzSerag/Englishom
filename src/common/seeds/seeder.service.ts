@@ -47,6 +47,12 @@ export class SeederService implements OnModuleInit {
         this.logger.log(
           'ℹ️ Database already has sufficient data, skipping seeding',
         );
+        // Always ensure the super test user exists even if bulk seeding is skipped
+        try {
+          await this.seedSuperTestUser();
+        } catch (err) {
+          this.logger.warn('Failed ensuring super test user:', err?.message || err);
+        }
       }
     }
   }
@@ -117,6 +123,8 @@ export class SeederService implements OnModuleInit {
       await this.seedUserProgress();
       await this.seedUserTasks();
       await this.seedCertifications();
+      // Create a super test user with full access and progress
+      await this.seedSuperTestUser();
       // Clear existing OTPs before seeding new ones to prevent duplicates
       await this.clearExistingOtps();
       await this.seedOtps();
@@ -971,5 +979,120 @@ export class SeederService implements OnModuleInit {
     this.logger.log(
       '✅ Data clearing would need custom implementation for each repo',
     );
+  }
+
+  /**
+   * Seed a dedicated super test user who owns all levels and completed all 50 days in each level.
+   * Email: supertestuser@gmail.com
+   */
+  async seedSuperTestUser() {
+    try {
+      const email = 'supertestuser@gmail.com';
+      const passwordHash = await bcrypt.hash('Password123!', 10);
+
+      // 1) Ensure user exists
+      let user = await this.userRepo.findOne({ email });
+      if (!user) {
+        user = await this.userRepo.create({
+          email,
+          firstName: 'Super',
+          lastName: 'TestUser',
+          password: passwordHash,
+          isVerified: true,
+          role: Role.USER,
+          status: UserStatus.ACTIVE,
+          strategy: Strategy.LOCAL,
+          country: 'Egypt',
+          lastActivity: new Date(),
+        } as any);
+        this.logger.log(`👤 Created super test user: ${email}`);
+      } else {
+        this.logger.log(`👤 Super test user already exists: ${email}`);
+      }
+
+      // 2) Ensure 50 days exist for every level
+      const levelNames = Object.values(Level_Name);
+      for (const levelName of levelNames) {
+        for (let dayNumber = 1; dayNumber <= 50; dayNumber++) {
+          const existingDay = await this.userRepo['dayModel'].findOne({
+            levelName,
+            dayNumber,
+          });
+          if (!existingDay) {
+            const dayData = {
+              _id: new Types.ObjectId(),
+              dayNumber,
+              levelName,
+            };
+            const day = new this.userRepo['dayModel'](dayData);
+            await day.save();
+          }
+        }
+      }
+      this.logger.log('📅 Ensured 50 days exist for all levels');
+
+      // 3) Ensure completed orders for all levels
+      const courses = await this.courseRepo.find({});
+      for (const course of courses) {
+        const existingOrder = await this.orderRepo.findOne({
+          userId: user._id,
+          levelName: course.level_name,
+        });
+        if (!existingOrder) {
+          await this.orderRepo.create({
+            userId: user._id as any,
+            levelName: course.level_name,
+            amount: course.price,
+            paymentStatus: PaymentStatus.COMPLETED,
+            paymentDate: new Date(),
+            paymentId: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          } as any);
+        }
+      }
+      this.logger.log('💳 Ensured completed orders for all levels');
+
+      // 4) Mark all 50 days completed in each level for this user
+      for (const levelName of levelNames) {
+        const days = await this.userRepo['dayModel']
+          .find({ levelName })
+          .select('_id dayNumber')
+          .sort({ dayNumber: 1 });
+        for (const day of days) {
+          await this.userRepo['userProgressModel'].updateOne(
+            { userId: user._id, dayId: day._id },
+            {
+              $set: {
+                completed: true,
+                completedAt: new Date(),
+              },
+            },
+            { upsert: true },
+          );
+        }
+      }
+      this.logger.log('📈 Marked all 50 days as completed for super test user');
+
+      // 5) Issue certificates for all levels
+      for (const levelName of levelNames) {
+        const existingCert = await this.certificateRepo.findOne({
+          userId: user._id,
+          level_name: levelName,
+        });
+        if (!existingCert) {
+          await this.certificateRepo.create({
+            userId: user._id as any,
+            level_name: levelName,
+            certificateId: `CERT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          } as any);
+        }
+      }
+      this.logger.log('🏅 Issued certificates for all levels for super test user');
+
+      this.logger.log('✅ Super test user seeding completed');
+      return { email, userId: user._id };
+    } catch (error) {
+      this.logger.error('Error seeding super test user:', error.message);
+      throw error;
+    }
   }
 }
