@@ -8,7 +8,8 @@ export enum AllowedImageMimeTypes {
 
 export enum AllowedAudioMimeTypes {
   MP3 = 'audio/mpeg',
-  WAV = 'audio/wav',
+  WAV = 'audio/wave',
+  WAV2 = 'audio/wav',
   OGG = 'audio/ogg',
   M4A = 'audio/mp4',
   AAC = 'audio/aac',

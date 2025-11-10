@@ -14,7 +14,10 @@ import {
   ValidationPipe,
   Logger,
   UseGuards,
+  Res,
+  Req,
 } from '@nestjs/common';
+import { Response, Request } from 'express';
 import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
@@ -37,25 +40,44 @@ export class FileUploadController {
 
   constructor(private readonly uploadService: FileUploadService) {}
 
+  // Raw streaming endpoint for GridFS stored files (internal use by generated URLs)
+  @Get('raw')
+  async streamRaw(@Query('key') key: string, @Res() res: Response) {
+    if (!key) {
+      throw new BadRequestException('key query param is required');
+    }
+    const decodedKey = decodeURIComponent(key);
+    try {
+      await this.uploadService.streamFile(decodedKey, res);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Failed streaming file ${decodedKey}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
   @Get('')
-  async getContentByName(@Query(ValidationPipe) content: UploadFileDTO) {
+  async getContentByName(@Query(ValidationPipe) content: UploadFileDTO): Promise<{ data: any[] }> {
     const result = await this.uploadService.getContentByName(content);
     return result; // Service now always returns { data: [] } if no content
   }
 
-  @Get('user-audio')
   @UseGuards(UserJwtGuard)
+  @Get('user-audio')
   async getUserAudios(@CurrentUser() user: User) {
     if (!user?._id) {
       throw new BadRequestException(
         'User not authenticated or invalid user data',
       );
     }
-    return await this.uploadService.getUserAudios(user._id.toString());
+    const items = await this.uploadService.getUserAudios(user._id.toString());
+    return items;
   }
 
-  @Get('user-audio/:levelName')
   @UseGuards(UserJwtGuard)
+  @Get('user-audio/:levelName')
   async getUserAudiosByLevel(
     @CurrentUser() user: User,
     @Param('levelName') levelName: string,
@@ -65,14 +87,15 @@ export class FileUploadController {
         'User not authenticated or invalid user data',
       );
     }
-    return await this.uploadService.getUserAudiosByLevel(
+    const items = await this.uploadService.getUserAudiosByLevel(
       user._id.toString(),
       levelName,
     );
+    return items;
   }
 
-  @Get('user-audio/:levelName/:day')
   @UseGuards(UserJwtGuard)
+  @Get('user-audio/:levelName/:day')
   async getUserDayAudio(
     @CurrentUser() user: User,
     @Param('levelName') levelName: Level_Name,
@@ -107,8 +130,8 @@ export class FileUploadController {
     }
   }
 
-  @Post('user-audio')
   @UseGuards(UserJwtGuard)
+  @Post('user-audio')
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
@@ -120,6 +143,7 @@ export class FileUploadController {
     @UploadedFile() file: Express.Multer.File,
     @Body() uploadFileDTO: UploadFileDTO,
     @CurrentUser() user: User,
+    @Req() req: Request,
   ) {
     if (!user?._id) {
       throw new BadRequestException(
@@ -127,16 +151,16 @@ export class FileUploadController {
       );
     }
     this.validateAudioFile(file);
-
-    return await this.uploadService.uploadUserAudio(
+    const result = await this.uploadService.uploadUserAudio(
       file,
       uploadFileDTO,
       user._id.toString(),
     );
+    return this.rewriteToLocalOrigin(result, req);
   }
 
-  @Delete('user-audio')
   @UseGuards(UserJwtGuard)
+  @Delete('user-audio')
   async deleteUserAudio(
     @CurrentUser() user: User,
     @Query('audioKey') audioKey: string,
@@ -199,9 +223,11 @@ export class FileUploadController {
   async uploadSingleFile(
     @UploadedFile() file: Express.Multer.File,
     @Body() uploadFileDTO: UploadFileDTO,
+    @Req() req: Request,
   ) {
     this.validateMediaFile(file);
-    return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
+    const result = await this.uploadService.uploadSingleFile(file, uploadFileDTO);
+    return this.rewriteToLocalOrigin(result, req);
   }
 
   // Delete from JSON data array - MANAGER+ can delete content
@@ -213,7 +239,21 @@ export class FileUploadController {
     return { message: 'Object deleted successfully' };
   }
 
-  // Delete file - MANAGER+ can delete content
+  private rewriteToLocalOrigin(result: { url: string }, req: Request): { url: string } {
+    try {
+      const url = new URL(result.url);
+      const origin = `${req.protocol}://${req.get('host')}`;
+      const rebuilt = `${origin}${url.pathname}${url.search}`;
+      return { url: rebuilt };
+    } catch {
+      const keyMatch = /[?&]key=([^&]+)/.exec(result.url);
+      const key = keyMatch ? keyMatch[1] : '';
+      const origin = `${req.protocol}://${req.get('host')}`;
+      return { url: `${origin}/api/files/raw?key=${key}` };
+    }
+  }
+
+  // Delete file - MANAGER can delete content
   @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
   @UseGuards(AdminJwtGuard, AdminRoleGuard)
   @Delete()

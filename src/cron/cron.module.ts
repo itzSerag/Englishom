@@ -9,7 +9,7 @@ import { ConfigModule } from '../common/config/config.module';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
+    ScheduleModule.forRoot(), // nestjs cron module
     UserModule,
     MailModule,
     AdminModule,
