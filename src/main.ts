@@ -26,7 +26,7 @@ async function bootstrap() {
       origin: '*', // Allows all origins but you CANNOT use credentials: true
       credentials: false, // Must be false with wildcard
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'Access-Control-Allow-Origin'],
       preflightContinue: false,
       optionsSuccessStatus: 204,
     });
