@@ -8,6 +8,7 @@ import {
 import * as express from 'express';
 import * as dotenv from 'dotenv';
 import { AllExceptionsFilter } from './common/filters/all-exception';
+import helmet from 'helmet';
 
 dotenv.config();
 
@@ -21,6 +22,9 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     app.setGlobalPrefix('api');
+    app.use(helmet({
+      crossOriginResourcePolicy : false,
+    }))
 
     app.enableCors({
       origin: '*', 
