@@ -30,9 +30,7 @@ async function bootstrap() {
     //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     // });
 
-    app.use(helmet({
-      crossOriginResourcePolicy : false,
-    }))
+    app.use(helmet.crossOriginResourcePolicy({policy: "cross-origin"}));
 
     app.useGlobalPipes(
       new ValidationPipe({

@@ -452,9 +452,6 @@ export class FileUploadService {
       `${dispositionType}; filename="${originalName}"`
     );
 
-    // Allow browsers to resume / seek (especially for audio)
-    res.setHeader('Accept-Ranges', 'bytes');
-
     // Optional length header for client progress (if available)
     if (typeof file.length === 'number') {
       res.setHeader('Content-Length', file.length.toString());
