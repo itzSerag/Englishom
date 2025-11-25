@@ -22,14 +22,17 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     app.setGlobalPrefix('api');
+    
+
+    // Handle CORS at Nginx level for better security and performance
+    // app.enableCors({
+    //   origin: '*', 
+    //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    // });
+
     app.use(helmet({
       crossOriginResourcePolicy : false,
     }))
-
-    app.enableCors({
-      origin: '*', 
-      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    });
 
     app.useGlobalPipes(
       new ValidationPipe({
