@@ -192,122 +192,74 @@ export class FileUploadService {
    * Concatenate multiple WAV buffers using ffmpeg concat demuxer.
    * Falls back to naive Buffer concatenation if ffmpeg binary not set (may produce invalid file).
    */
-  private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
+private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
     if (buffers.length === 1) return buffers[0];
     
-    let ffmpegBinaryPath: any = null;
-    
-    // Try ffmpeg-static first
     try {
-      const ffmpegStatic = await import('ffmpeg-static');
-      ffmpegBinaryPath = ffmpegStatic.default || ffmpegStatic;
-      if (ffmpegBinaryPath) {
-        this.logger.log(`Using ffmpeg-static at: ${ffmpegBinaryPath}`);
-      }
-    } catch (err) {
-      this.logger.log('ffmpeg-static not available');
-    }
-    
-    // Try system ffmpeg if static not found
-    if (!ffmpegBinaryPath) {
-      const { execSync } = require('child_process');
-      try {
-        // Use 'where' on Windows, 'which' on Unix
-        const command = process.platform === 'win32' ? 'where ffmpeg' : 'which ffmpeg';
-        const result = execSync(command, { encoding: 'utf-8' }).trim();
-        if (result) {
-          ffmpegBinaryPath = result.split('\n')[0]; // Take first result
-          this.logger.log(`Using system ffmpeg at: ${ffmpegBinaryPath}`);
+      const { WaveFile } = await import('wavefile');
+      
+      let combinedWave: any = null;
+      
+      for (const buffer of buffers) {
+        const wav = new WaveFile(buffer) as any;
+        
+        if (!combinedWave) {
+          combinedWave = wav;
+          continue;
         }
-      } catch (err) {
-        this.logger.log('System ffmpeg not found in PATH');
-      }
-    }
-    
-    if (!ffmpegBinaryPath) {
-      throw new Error('ffmpeg not found. Please install ffmpeg-static or ensure ffmpeg is in system PATH');
-    }
-    
-    // Rest of your ffmpeg concatenation code...
-    const tmp = await import('node:os');
-    const fs = await import('node:fs');
-    const path = await import('node:path');
-    const { spawn } = await import('node:child_process');
-    
-    const tmpDir = tmp.tmpdir();
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).slice(2);
-    const listFilePath = path.join(tmpDir, `concat_${timestamp}_${randomId}.txt`);
-    const outputPath = path.join(tmpDir, `combined_${timestamp}_${randomId}.wav`);
-    const partFiles: string[] = [];
-    
-    try {
-      // Write each buffer to a temp file
-      let idx = 0;
-      for (const buf of buffers) {
-        const partPath = path.join(tmpDir, `part_${timestamp}_${idx}_${randomId}.wav`);
-        fs.writeFileSync(partPath, buf);
-        partFiles.push(partPath);
-        idx++;
-      }
-      
-      // Create concat list file with proper formatting
-      const listLines: string[] = partFiles.map(p => {
-        const sanitizedPath = p.replace(/\\/g, '/');
-        return `file '${sanitizedPath}'`;
-      });
-      
-      fs.writeFileSync(listFilePath, listLines.join('\n'), 'utf-8');
-      this.logger.log(`FFmpeg concatenating ${partFiles.length} WAV files...`);
-      
-      // Use spawn instead of fluent-ffmpeg for better error handling
-      await new Promise<void>((resolve, reject) => {
-        const args = [
-          '-f', 'concat',
-          '-safe', '0',
-          '-i', listFilePath,
-          '-c', 'copy', // Use stream copy for same codec
-          outputPath
-        ];
         
-        const ffmpegProcess = spawn(ffmpegBinaryPath, args);
-        let stderr = '';
+        // Type assertion to access properties
+        const combinedFmt = combinedWave.fmt as {
+          sampleRate: number;
+          bitsPerSample: number;
+          numChannels: number;
+        };
         
-        ffmpegProcess.stderr.on('data', (data) => {
-          stderr += data.toString();
-        });
+        const wavFmt = wav.fmt as {
+          sampleRate: number;
+          bitsPerSample: number;
+          numChannels: number;
+        };
         
-        ffmpegProcess.on('close', (code) => {
-          if (code === 0) {
-            this.logger.log('FFmpeg concatenation completed successfully');
-            resolve();
-          } else {
-            this.logger.error(`FFmpeg failed with code ${code}: ${stderr}`);
-            reject(new Error(`FFmpeg process failed: ${stderr}`));
-          }
-        });
+        // Log format info for debugging
+        this.logger.log(`Combining audio: ${combinedFmt.sampleRate}Hz, ${combinedFmt.bitsPerSample}bit, ${combinedFmt.numChannels}ch`);
         
-        ffmpegProcess.on('error', (err) => {
-          reject(new Error(`Failed to start ffmpeg: ${err.message}`));
-        });
-      });
-      
-      const outBuffer = fs.readFileSync(outputPath);
-      this.logger.log(`Combined file size: ${outBuffer.length} bytes`);
-      
-      return outBuffer;
-    } finally {
-      // Cleanup temp files
-      try {
-        const filesToClean = [listFilePath, outputPath, ...partFiles];
-        for (const filePath of filesToClean) {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
+        // Concatenate samples
+        const combinedSamples = combinedWave.getSamples();
+        const newSamples = wav.getSamples();
+        
+        let concatenatedSamples: any;
+        
+        // Handle different sample array types
+        if (combinedSamples instanceof Int16Array) {
+          concatenatedSamples = new Int16Array([
+            ...Array.from(combinedSamples),
+            ...Array.from(newSamples as Int16Array)
+          ]);
+        } else if (combinedSamples instanceof Float32Array) {
+          concatenatedSamples = new Float32Array([
+            ...Array.from(combinedSamples),
+            ...Array.from(newSamples as Float32Array)
+          ]);
+        } else {
+          concatenatedSamples = new Uint8Array([
+            ...Array.from(combinedSamples as Uint8Array),
+            ...Array.from(newSamples as Uint8Array)
+          ]);
         }
-      } catch (err) {
-        this.logger.warn(`Temp file cleanup failed: ${err.message}`);
+        
+        combinedWave.fromScratch(
+          combinedFmt.numChannels,
+          combinedFmt.sampleRate,
+          combinedFmt.bitsPerSample,
+          concatenatedSamples
+        );
       }
+      
+      return Buffer.from(combinedWave.toBuffer());
+    } catch (error) {
+      this.logger.error(`WaveFile concatenation failed: ${error.message}`, error.stack);
+      throw new Error(`Audio concatenation failed: ${error.message}`);
     }
   }
 
