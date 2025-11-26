@@ -150,13 +150,6 @@ export class FileUploadService {
     
     const combinedKey = `UserAudios/${userId}/${levelName}/combined/level_${levelName}_days_1-${totalDays}.wav`;
 
-    // If already exists, return existing (idempotent)
-    const existing = await this.findFileByName(combinedKey);
-    if (existing) {
-      this.logger.log(`Combined file already exists: ${combinedKey}`);
-      return { url: this.buildPublicUrl(combinedKey), combinedKey, daysCombined: inputKeys.length };
-    }
-
     try {
       const buffers: { key: string; buffer: Buffer }[] = [];
       for (const key of inputKeys) {
