@@ -195,32 +195,45 @@ export class FileUploadService {
   private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
     if (buffers.length === 1) return buffers[0];
     
-    // Try to find ffmpeg - either from ffmpeg-static package or system installation
-    let ffmpegBinaryPath = ffmpegPath;
+    let ffmpegBinaryPath: any = null;
     
+    // Try ffmpeg-static first
+    try {
+      const ffmpegStatic = await import('ffmpeg-static');
+      ffmpegBinaryPath = ffmpegStatic.default || ffmpegStatic;
+      if (ffmpegBinaryPath) {
+        this.logger.log(`Using ffmpeg-static at: ${ffmpegBinaryPath}`);
+      }
+    } catch (err) {
+      this.logger.log('ffmpeg-static not available');
+    }
+    
+    // Try system ffmpeg if static not found
     if (!ffmpegBinaryPath) {
-      // Try to use system ffmpeg
       const { execSync } = require('child_process');
       try {
-        const which = execSync('which ffmpeg', { encoding: 'utf-8' }).trim();
-        if (which) {
-          ffmpegBinaryPath = which;
+        // Use 'where' on Windows, 'which' on Unix
+        const command = process.platform === 'win32' ? 'where ffmpeg' : 'which ffmpeg';
+        const result = execSync(command, { encoding: 'utf-8' }).trim();
+        if (result) {
+          ffmpegBinaryPath = result.split('\n')[0]; // Take first result
           this.logger.log(`Using system ffmpeg at: ${ffmpegBinaryPath}`);
         }
       } catch (err) {
-        this.logger.error('Could not find ffmpeg in system PATH');
+        this.logger.log('System ffmpeg not found in PATH');
       }
     }
     
     if (!ffmpegBinaryPath) {
-      // Fallback simple concat
-      this.logger.warn('ffmpeg not found, using naive buffer concatenation which may be invalid.');
-      return Buffer.concat(buffers);
+      throw new Error('ffmpeg not found. Please install ffmpeg-static or ensure ffmpeg is in system PATH');
     }
     
+    // Rest of your ffmpeg concatenation code...
     const tmp = await import('node:os');
     const fs = await import('node:fs');
     const path = await import('node:path');
+    const { spawn } = await import('node:child_process');
+    
     const tmpDir = tmp.tmpdir();
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).slice(2);
@@ -238,50 +251,59 @@ export class FileUploadService {
         idx++;
       }
       
-      // Create concat list file
-      const listLines: string[] = [];
-      for (const p of partFiles) {
-        // Replace backslashes with forward slashes for ffmpeg compatibility (fixes Windows issue)
+      // Create concat list file with proper formatting
+      const listLines: string[] = partFiles.map(p => {
         const sanitizedPath = p.replace(/\\/g, '/');
-        const sanitized = sanitizedPath.replaceAll("'", String.raw`'\''`);
-        listLines.push(String.raw`file '${sanitized}'`);
-      }
-      fs.writeFileSync(listFilePath, listLines.join('\n'), 'utf-8');
+        return `file '${sanitizedPath}'`;
+      });
       
+      fs.writeFileSync(listFilePath, listLines.join('\n'), 'utf-8');
       this.logger.log(`FFmpeg concatenating ${partFiles.length} WAV files...`);
       
-      // Run ffmpeg concat
+      // Use spawn instead of fluent-ffmpeg for better error handling
       await new Promise<void>((resolve, reject) => {
-        ffmpeg()
-          .setFfmpegPath(ffmpegBinaryPath)
-          .input(listFilePath)
-          .inputOptions(['-f concat', '-safe 0'])
-          // Re-encode to WAV (PCM 16-bit) to ensure consistent output
-          .outputOptions(['-c:a pcm_s16le', '-ar 44100']) // Added sample rate for consistency
-          .on('error', (err) => {
-            this.logger.error(`FFmpeg error: ${err.message}`);
-            reject(err);
-          })
-          .on('end', () => {
+        const args = [
+          '-f', 'concat',
+          '-safe', '0',
+          '-i', listFilePath,
+          '-c', 'copy', // Use stream copy for same codec
+          outputPath
+        ];
+        
+        const ffmpegProcess = spawn(ffmpegBinaryPath, args);
+        let stderr = '';
+        
+        ffmpegProcess.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+        
+        ffmpegProcess.on('close', (code) => {
+          if (code === 0) {
             this.logger.log('FFmpeg concatenation completed successfully');
             resolve();
-          })
-          .save(outputPath);
+          } else {
+            this.logger.error(`FFmpeg failed with code ${code}: ${stderr}`);
+            reject(new Error(`FFmpeg process failed: ${stderr}`));
+          }
+        });
+        
+        ffmpegProcess.on('error', (err) => {
+          reject(new Error(`Failed to start ffmpeg: ${err.message}`));
+        });
       });
       
       const outBuffer = fs.readFileSync(outputPath);
-      
-      // Clean up output file
-      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      this.logger.log(`Combined file size: ${outBuffer.length} bytes`);
       
       return outBuffer;
     } finally {
       // Cleanup temp files
       try {
-        const fs = await import('node:fs');
-        if (fs.existsSync(listFilePath)) fs.unlinkSync(listFilePath);
-        for (const f of partFiles) {
-          if (fs.existsSync(f)) fs.unlinkSync(f);
+        const filesToClean = [listFilePath, outputPath, ...partFiles];
+        for (const filePath of filesToClean) {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
         }
       } catch (err) {
         this.logger.warn(`Temp file cleanup failed: ${err.message}`);
