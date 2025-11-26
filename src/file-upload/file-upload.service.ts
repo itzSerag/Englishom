@@ -177,7 +177,11 @@ export class FileUploadService {
    * Falls back to naive Buffer concatenation if ffmpeg binary not set (may produce invalid file).
    */
   private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
-    if (buffers.length === 1) return buffers[0];
+    this.logger.log(`concatenateAudioBuffers called with ${buffers.length} buffer(s)`);
+    if (buffers.length === 1) {
+      this.logger.log(`Only one buffer provided, returning it without ffmpeg.`);
+      return buffers[0];
+    }
     
     if (!ffmpegPath) {
       // Fallback simple concat
@@ -200,6 +204,7 @@ export class FileUploadService {
       let idx = 0;
       for (const buf of buffers) {
         const partPath = path.join(tmpDir, `part_${timestamp}_${idx}_${randomId}.wav`);
+        this.logger.log(`Writing temp WAV part #${idx} to ${partPath} (size=${buf.length} bytes)`);
         fs.writeFileSync(partPath, buf);
         partFiles.push(partPath);
         idx++;
@@ -214,8 +219,7 @@ export class FileUploadService {
         listLines.push(String.raw`file '${sanitized}'`);
       }
       fs.writeFileSync(listFilePath, listLines.join('\n'), 'utf-8');
-      
-      this.logger.log(`FFmpeg concatenating ${partFiles.length} WAV files...`);
+      this.logger.log(`FFmpeg concatenating ${partFiles.length} WAV files using list file: ${listFilePath}`);
       
       // Run ffmpeg concat
       await new Promise<void>((resolve, reject) => {
@@ -225,6 +229,16 @@ export class FileUploadService {
           .inputOptions(['-f concat', '-safe 0'])
           // Re-encode to WAV (PCM 16-bit) to ensure consistent output
           .outputOptions(['-c:a pcm_s16le', '-ar 44100']) // Added sample rate for consistency
+          .on('start', (cmdLine) => {
+            this.logger.log(`FFmpeg process started: ${cmdLine}`);
+          })
+          .on('stderr', (line) => {
+            if (typeof this.logger.verbose === 'function') {
+              this.logger.verbose(`FFmpeg stderr: ${line}`);
+            } else {
+              this.logger.debug(`FFmpeg stderr: ${line}`);
+            }
+          })
           .on('error', (err) => {
             this.logger.error(`FFmpeg error: ${err.message}`);
             reject(err);
@@ -237,6 +251,7 @@ export class FileUploadService {
       });
       
       const outBuffer = fs.readFileSync(outputPath);
+      this.logger.log(`FFmpeg output file size: ${outBuffer.length} bytes (path=${outputPath})`);
       
       // Clean up output file
       if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
