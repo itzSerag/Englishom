@@ -9,6 +9,9 @@ import { GridFSBucket, ObjectId } from 'mongodb';
 import { Response } from 'express';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 enum FileType {
   IMAGE = 'Images',
@@ -183,77 +186,122 @@ export class FileUploadService {
   }
 
   /**
-   * Concatenate multiple WAV buffers using ffmpeg concat demuxer.
-   * Falls back to naive Buffer concatenation if ffmpeg binary not set (may produce invalid file).
+   * Concatenate multiple WAV buffers using ffmpeg for robust handling.
+   * Ensures: same sample rate, channel count normalization, avoids header corruption.
+   * Strategy:
+   *  - Write each buffer to a temp WAV file
+   *  - If formats mismatch, transcode to a common format (16-bit PCM, 44.1kHz, mono)
+   *  - Use filter_complex concat to join without mixing
+   *  - Read resulting file back into Buffer
    */
-private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
+  private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
     if (buffers.length === 1) return buffers[0];
-    
-    try {
-      const { WaveFile } = await import('wavefile');
-      
-      let combinedWave: any = null;
-      
-      for (const buffer of buffers) {
-        const wav = new WaveFile(buffer) as any;
-        
-        if (!combinedWave) {
-          combinedWave = wav;
-          continue;
+
+    if (!ffmpegPath) {
+      // Fallback: attempt WaveFile safe concatenation (single header). Better than naive Buffer.concat of whole files.
+      try {
+        const { WaveFile } = await import('wavefile');
+        let combined: any = null;
+        for (const buf of buffers) {
+          const wav = new WaveFile(buf) as any;
+          if (!combined) {
+            combined = wav; continue;
+          }
+          const combinedFmt = combined.fmt as { sampleRate: number; bitsPerSample: number; numChannels: number; };
+          const wavFmt = wav.fmt as { sampleRate: number; bitsPerSample: number; numChannels: number; };
+          if (combinedFmt.sampleRate !== wavFmt.sampleRate || combinedFmt.bitsPerSample !== wavFmt.bitsPerSample || combinedFmt.numChannels !== wavFmt.numChannels) {
+            this.logger.warn('Mismatched WAV formats without ffmpeg available; result may sound distorted.');
+          }
+          const a = combined.getSamples();
+          const b = wav.getSamples();
+          let merged: any;
+          if (a instanceof Int16Array) {
+            merged = new Int16Array(a.length + (b as Int16Array).length);
+            merged.set(a, 0); merged.set(b as Int16Array, a.length);
+          } else if (a instanceof Float32Array) {
+            merged = new Float32Array(a.length + (b as Float32Array).length);
+            merged.set(a, 0); merged.set(b as Float32Array, a.length);
+          } else {
+            const ua = a as Uint8Array; const ub = b as Uint8Array;
+            merged = new Uint8Array(ua.length + ub.length);
+            merged.set(ua, 0); merged.set(ub, ua.length);
+          }
+          combined.fromScratch(
+            combinedFmt.numChannels,
+            combinedFmt.sampleRate,
+            combinedFmt.bitsPerSample,
+            merged
+          );
         }
-        
-        // Type assertion to access properties
-        const combinedFmt = combinedWave.fmt as {
-          sampleRate: number;
-          bitsPerSample: number;
-          numChannels: number;
-        };
-        
-        const wavFmt = wav.fmt as {
-          sampleRate: number;
-          bitsPerSample: number;
-          numChannels: number;
-        };
-        
-        // Log format info for debugging
-        this.logger.log(`Combining audio: ${combinedFmt.sampleRate}Hz, ${combinedFmt.bitsPerSample}bit, ${combinedFmt.numChannels}ch`);
-        
-        // Concatenate samples
-        const combinedSamples = combinedWave.getSamples();
-        const newSamples = wav.getSamples();
-        
-        let concatenatedSamples: any;
-        
-        // Handle different sample array types
-        if (combinedSamples instanceof Int16Array) {
-          concatenatedSamples = new Int16Array([
-            ...Array.from(combinedSamples),
-            ...Array.from(newSamples as Int16Array)
-          ]);
-        } else if (combinedSamples instanceof Float32Array) {
-          concatenatedSamples = new Float32Array([
-            ...Array.from(combinedSamples),
-            ...Array.from(newSamples as Float32Array)
-          ]);
-        } else {
-          concatenatedSamples = new Uint8Array([
-            ...Array.from(combinedSamples as Uint8Array),
-            ...Array.from(newSamples as Uint8Array)
-          ]);
-        }
-        
-        combinedWave.fromScratch(
-          combinedFmt.numChannels,
-          combinedFmt.sampleRate,
-          combinedFmt.bitsPerSample,
-          concatenatedSamples
-        );
+        return Buffer.from(combined.toBuffer());
+      } catch (e) {
+        this.logger.error('Fallback concatenation failed', e as any);
+        throw new InternalServerErrorException('Audio concatenation failed (no ffmpeg)');
       }
-      
-      return Buffer.from(combinedWave.toBuffer());
+    }
+
+    // Use ffmpeg concat
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aud-cat-'));
+    const inputFiles: string[] = [];
+    try {
+      // Write inputs
+      for (let i = 0; i < buffers.length; i++) {
+        const filePath = path.join(tmpDir, `part_${i}.wav`);
+        fs.writeFileSync(filePath, buffers[i]);
+        inputFiles.push(filePath);
+      }
+
+      // Inspect first file for target format (optional future enhancement); we'll normalize.
+      const normalizedFiles: string[] = [];
+      for (const f of inputFiles) {
+        const normPath = path.join(tmpDir, `norm_${path.basename(f)}`);
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(f)
+            .outputOptions([
+              '-ar 44100', // sample rate
+              '-ac 1',     // mono to reduce chaos if channels differ
+              '-sample_fmt s16'
+            ])
+            .on('error', (err) => reject(err))
+            .on('end', () => resolve())
+            .save(normPath);
+        });
+        normalizedFiles.push(normPath);
+      }
+
+      // Build filter_complex concat segments
+      const outputFile = path.join(tmpDir, 'combined.wav');
+      await new Promise<void>((resolve, reject) => {
+        const cmd = ffmpeg();
+        normalizedFiles.forEach(f => cmd.input(f));
+        const n = normalizedFiles.length;
+        const filter = Array.from({ length: n }, (_, i) => `[${i}:a]`).join('') + `concat=n=${n}:v=0:a=1[out]`;
+        cmd
+          .complexFilter([filter])
+          .outputOptions(['-map [out]', '-c:a pcm_s16le'])
+          .on('error', (err) => reject(err))
+          .on('end', () => resolve())
+          .save(outputFile);
+      });
+
+      const result = fs.readFileSync(outputFile);
+      return result;
     } catch (error) {
-      this.logger.error(`WaveFile concatenation failed: ${error.message}`, error.stack);
-      throw new Error(`Audio concatenation failed: ${error.message}`);
+      this.logger.error(`ffmpeg concatenation failed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to concatenate audio with ffmpeg');
+    } finally {
+      // Clean temp dir asynchronously (best effort)
+      setTimeout(() => {
+        try {
+          for (const f of inputFiles) fs.existsSync(f) && fs.unlinkSync(f);
+          // May also remove normalized and output files
+          fs.readdirSync(tmpDir).forEach(name => {
+            const p = path.join(tmpDir, name);
+            try { fs.unlinkSync(p); } catch { /* ignore */ }
+          });
+          fs.rmdirSync(tmpDir);
+        } catch {/* ignore cleanup errors */}
+      }, 5000);
     }
   }
 
