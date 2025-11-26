@@ -471,7 +471,13 @@ private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
   }
 
   private async findFileByName(filename: string): Promise<{ _id: ObjectId; filename: string; length: number; metadata?: any; contentType?: string } | null> {
-    const files = await this.bucket.find({ filename }).toArray();
+    // GridFS allows multiple versions with the same filename.
+    // Always return the most recently uploaded version to avoid serving stale files.
+    const files = await this.bucket
+      .find({ filename })
+      .sort({ uploadDate: -1 })
+      .limit(1)
+      .toArray();
     return (files[0] as any) || null;
   }
 
