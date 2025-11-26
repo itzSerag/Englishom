@@ -195,7 +195,10 @@ export class FileUploadService {
       // Create concat list file using String.raw for clarity
       const listLines: string[] = [];
       for (const p of partFiles) {
-        const sanitized = p.replaceAll("'", String.raw`'\''`);
+        // Replace backslashes with forward slashes for ffmpeg compatibility (fixes Windows issue)
+        // On Linux/Ubuntu, paths already use forward slashes, so this is safe/no-op.
+        const sanitizedPath = p.replace(/\\/g, '/');
+        const sanitized = sanitizedPath.replaceAll("'", String.raw`'\''`);
         listLines.push(String.raw`file '${sanitized}'`);
       }
       fs.writeFileSync(listFilePath, listLines.join('\n'), 'utf-8');
