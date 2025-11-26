@@ -132,13 +132,19 @@ export class FileUploadService {
 
     const inputKeys: string[] = [];
     
+    this.logger.log(`Starting to search for WAV files - userId: ${userId}, levelName: ${levelName}, totalDays: ${totalDays}`);
+    
     // Only look for WAV files for consistency
     for (let day = 1; day <= totalDays; day++) {
       const wavKey = `UserAudios/${userId}/${levelName}/${day}/today_audio.wav`;
+      this.logger.log(`Checking for file: ${wavKey}`);
       const wavFile = await this.findFileByName(wavKey);
       
       if (wavFile) {
+        this.logger.log(`✓ Found: ${wavKey}`);
         inputKeys.push(wavKey);
+      } else {
+        this.logger.log(`✗ Not found: ${wavKey}`);
       }
     }
     
@@ -146,9 +152,17 @@ export class FileUploadService {
       throw new NotFoundException('No daily WAV audios found to combine');
     }
     
-    this.logger.log(`Found ${inputKeys.length} WAV files to combine for user ${userId}, level ${levelName}`);
+    this.logger.log(`==== SUMMARY: Found ${inputKeys.length} WAV files to combine ====`);
+    this.logger.log('Files to combine:', JSON.stringify(inputKeys, null, 2));
     
     const combinedKey = `UserAudios/${userId}/${levelName}/combined/level_${levelName}_days_1-${totalDays}.wav`;
+
+    // If already exists, return existing (idempotent)
+    const existing = await this.findFileByName(combinedKey);
+    if (existing) {
+      this.logger.log(`Combined file already exists: ${combinedKey}`);
+      return { url: this.buildPublicUrl(combinedKey), combinedKey, daysCombined: inputKeys.length };
+    }
 
     try {
       const buffers: { key: string; buffer: Buffer }[] = [];
@@ -159,8 +173,10 @@ export class FileUploadService {
       }
       
       this.logger.log(`Concatenating ${buffers.length} audio buffers...`);
+      this.logger.log(`Total buffer sizes: ${buffers.map((b, i) => `Buffer ${i}: ${b.buffer.length} bytes`).join(', ')}`);
       const combinedBuffer = await this.concatenateAudioBuffers(buffers.map(b => b.buffer));
       
+      this.logger.log(`Combined buffer size: ${combinedBuffer.length} bytes`);
       this.logger.log(`Saving combined buffer to: ${combinedKey}`);
       await this.saveBufferToGridFS(combinedKey, combinedBuffer, 'audio/wav');
       
@@ -177,15 +193,28 @@ export class FileUploadService {
    * Falls back to naive Buffer concatenation if ffmpeg binary not set (may produce invalid file).
    */
   private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
-    this.logger.log(`concatenateAudioBuffers called with ${buffers.length} buffer(s)`);
-    if (buffers.length === 1) {
-      this.logger.log(`Only one buffer provided, returning it without ffmpeg.`);
-      return buffers[0];
+    if (buffers.length === 1) return buffers[0];
+    
+    // Try to find ffmpeg - either from ffmpeg-static package or system installation
+    let ffmpegBinaryPath = ffmpegPath;
+    
+    if (!ffmpegBinaryPath) {
+      // Try to use system ffmpeg
+      const { execSync } = require('child_process');
+      try {
+        const which = execSync('which ffmpeg', { encoding: 'utf-8' }).trim();
+        if (which) {
+          ffmpegBinaryPath = which;
+          this.logger.log(`Using system ffmpeg at: ${ffmpegBinaryPath}`);
+        }
+      } catch (err) {
+        this.logger.error('Could not find ffmpeg in system PATH');
+      }
     }
     
-    if (!ffmpegPath) {
+    if (!ffmpegBinaryPath) {
       // Fallback simple concat
-      this.logger.warn('ffmpeg-static not found, using naive buffer concatenation which may be invalid.');
+      this.logger.warn('ffmpeg not found, using naive buffer concatenation which may be invalid.');
       return Buffer.concat(buffers);
     }
     
@@ -204,7 +233,6 @@ export class FileUploadService {
       let idx = 0;
       for (const buf of buffers) {
         const partPath = path.join(tmpDir, `part_${timestamp}_${idx}_${randomId}.wav`);
-        this.logger.log(`Writing temp WAV part #${idx} to ${partPath} (size=${buf.length} bytes)`);
         fs.writeFileSync(partPath, buf);
         partFiles.push(partPath);
         idx++;
@@ -219,26 +247,17 @@ export class FileUploadService {
         listLines.push(String.raw`file '${sanitized}'`);
       }
       fs.writeFileSync(listFilePath, listLines.join('\n'), 'utf-8');
-      this.logger.log(`FFmpeg concatenating ${partFiles.length} WAV files using list file: ${listFilePath}`);
+      
+      this.logger.log(`FFmpeg concatenating ${partFiles.length} WAV files...`);
       
       // Run ffmpeg concat
       await new Promise<void>((resolve, reject) => {
         ffmpeg()
-          .setFfmpegPath(ffmpegPath)
+          .setFfmpegPath(ffmpegBinaryPath)
           .input(listFilePath)
           .inputOptions(['-f concat', '-safe 0'])
           // Re-encode to WAV (PCM 16-bit) to ensure consistent output
           .outputOptions(['-c:a pcm_s16le', '-ar 44100']) // Added sample rate for consistency
-          .on('start', (cmdLine) => {
-            this.logger.log(`FFmpeg process started: ${cmdLine}`);
-          })
-          .on('stderr', (line) => {
-            if (typeof this.logger.verbose === 'function') {
-              this.logger.verbose(`FFmpeg stderr: ${line}`);
-            } else {
-              this.logger.debug(`FFmpeg stderr: ${line}`);
-            }
-          })
           .on('error', (err) => {
             this.logger.error(`FFmpeg error: ${err.message}`);
             reject(err);
@@ -251,7 +270,6 @@ export class FileUploadService {
       });
       
       const outBuffer = fs.readFileSync(outputPath);
-      this.logger.log(`FFmpeg output file size: ${outBuffer.length} bytes (path=${outputPath})`);
       
       // Clean up output file
       if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
