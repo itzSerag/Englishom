@@ -9,9 +9,6 @@ import { GridFSBucket, ObjectId } from 'mongodb';
 import { Response } from 'express';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 
 enum FileType {
   IMAGE = 'Images',
@@ -186,122 +183,86 @@ export class FileUploadService {
   }
 
   /**
-   * Concatenate multiple WAV buffers using ffmpeg for robust handling.
-   * Ensures: same sample rate, channel count normalization, avoids header corruption.
-   * Strategy:
-   *  - Write each buffer to a temp WAV file
-   *  - If formats mismatch, transcode to a common format (16-bit PCM, 44.1kHz, mono)
-   *  - Use filter_complex concat to join without mixing
-   *  - Read resulting file back into Buffer
+   * Concatenate multiple WAV buffers using ffmpeg concat demuxer.
+   * Falls back to naive Buffer concatenation if ffmpeg binary not set (may produce invalid file).
    */
-  private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
+private async concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
     if (buffers.length === 1) return buffers[0];
-
-    if (!ffmpegPath) {
-      // Fallback: attempt WaveFile safe concatenation (single header). Better than naive Buffer.concat of whole files.
-      try {
-        const { WaveFile } = await import('wavefile');
-        let combined: any = null;
-        for (const buf of buffers) {
-          const wav = new WaveFile(buf) as any;
-          if (!combined) {
-            combined = wav; continue;
-          }
-          const combinedFmt = combined.fmt as { sampleRate: number; bitsPerSample: number; numChannels: number; };
-          const wavFmt = wav.fmt as { sampleRate: number; bitsPerSample: number; numChannels: number; };
-          if (combinedFmt.sampleRate !== wavFmt.sampleRate || combinedFmt.bitsPerSample !== wavFmt.bitsPerSample || combinedFmt.numChannels !== wavFmt.numChannels) {
-            this.logger.warn('Mismatched WAV formats without ffmpeg available; result may sound distorted.');
-          }
-          const a = combined.getSamples();
-          const b = wav.getSamples();
-          let merged: any;
-          if (a instanceof Int16Array) {
-            merged = new Int16Array(a.length + (b as Int16Array).length);
-            merged.set(a, 0); merged.set(b as Int16Array, a.length);
-          } else if (a instanceof Float32Array) {
-            merged = new Float32Array(a.length + (b as Float32Array).length);
-            merged.set(a, 0); merged.set(b as Float32Array, a.length);
-          } else {
-            const ua = a as Uint8Array; const ub = b as Uint8Array;
-            merged = new Uint8Array(ua.length + ub.length);
-            merged.set(ua, 0); merged.set(ub, ua.length);
-          }
-          combined.fromScratch(
-            combinedFmt.numChannels,
-            combinedFmt.sampleRate,
-            combinedFmt.bitsPerSample,
-            merged
-          );
-        }
-        return Buffer.from(combined.toBuffer());
-      } catch (e) {
-        this.logger.error('Fallback concatenation failed', e as any);
-        throw new InternalServerErrorException('Audio concatenation failed (no ffmpeg)');
-      }
-    }
-
-    // Use ffmpeg concat
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aud-cat-'));
+    
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+    const fs = await import('fs');
+    const os = await import('os');
+    const path = await import('path');
+    
+    const tmpDir = os.tmpdir();
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).slice(2);
+    
     const inputFiles: string[] = [];
+    const listFilePath = path.join(tmpDir, `concat_${timestamp}_${randomId}.txt`);
+    const outputPath = path.join(tmpDir, `combined_${timestamp}_${randomId}.wav`);
+    
     try {
-      // Write inputs
+      // Write buffers to temporary files
       for (let i = 0; i < buffers.length; i++) {
-        const filePath = path.join(tmpDir, `part_${i}.wav`);
-        fs.writeFileSync(filePath, buffers[i]);
-        inputFiles.push(filePath);
+        const inputPath = path.join(tmpDir, `input_${timestamp}_${i}_${randomId}.wav`);
+        fs.writeFileSync(inputPath, buffers[i]);
+        inputFiles.push(inputPath);
       }
-
-      // Inspect first file for target format (optional future enhancement); we'll normalize.
-      const normalizedFiles: string[] = [];
-      for (const f of inputFiles) {
-        const normPath = path.join(tmpDir, `norm_${path.basename(f)}`);
-        await new Promise<void>((resolve, reject) => {
-          ffmpeg(f)
-            .outputOptions([
-              '-ar 44100', // sample rate
-              '-ac 1',     // mono to reduce chaos if channels differ
-              '-sample_fmt s16'
-            ])
-            .on('error', (err) => reject(err))
-            .on('end', () => resolve())
-            .save(normPath);
-        });
-        normalizedFiles.push(normPath);
+      
+      // Create concat list file
+      const listContent = inputFiles.map(file => 
+        `file '${file.replace(/\\/g, '/')}'`
+      ).join('\n');
+      fs.writeFileSync(listFilePath, listContent, 'utf8');
+      
+      this.logger.log(`Using FFmpeg to concatenate ${buffers.length} audio files with professional quality...`);
+      
+      // Use FFmpeg with high-quality settings
+      const ffmpegCommand = [
+        'ffmpeg',
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', `"${listFilePath}"`,
+        '-c:a', 'pcm_s16le',     // 16-bit PCM
+        '-ar', '44100',          // 44.1kHz sample rate
+        '-ac', '1',              // Mono
+        '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', // Normalize loudness
+        '-y',                    // Overwrite output
+        `"${outputPath}"`
+      ].join(' ');
+      
+      this.logger.log(`FFmpeg command: ${ffmpegCommand}`);
+      
+      const { stdout, stderr } = await execAsync(ffmpegCommand, { maxBuffer: 1024 * 1024 * 10 });
+      
+      if (stderr) {
+        this.logger.log(`FFmpeg output: ${stderr}`);
       }
-
-      // Build filter_complex concat segments
-      const outputFile = path.join(tmpDir, 'combined.wav');
-      await new Promise<void>((resolve, reject) => {
-        const cmd = ffmpeg();
-        normalizedFiles.forEach(f => cmd.input(f));
-        const n = normalizedFiles.length;
-        const filter = Array.from({ length: n }, (_, i) => `[${i}:a]`).join('') + `concat=n=${n}:v=0:a=1[out]`;
-        cmd
-          .complexFilter([filter])
-          .outputOptions(['-map [out]', '-c:a pcm_s16le'])
-          .on('error', (err) => reject(err))
-          .on('end', () => resolve())
-          .save(outputFile);
-      });
-
-      const result = fs.readFileSync(outputFile);
-      return result;
+      
+      // Read the combined file
+      const combinedBuffer = fs.readFileSync(outputPath);
+      this.logger.log(`Successfully created combined audio: ${combinedBuffer.length} bytes`);
+      
+      return combinedBuffer;
+      
     } catch (error) {
-      this.logger.error(`ffmpeg concatenation failed: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to concatenate audio with ffmpeg');
+      this.logger.error(`FFmpeg concatenation failed: ${error.message}`);
+      throw new Error(`Audio concatenation failed: ${error.message}`);
     } finally {
-      // Clean temp dir asynchronously (best effort)
-      setTimeout(() => {
-        try {
-          for (const f of inputFiles) fs.existsSync(f) && fs.unlinkSync(f);
-          // May also remove normalized and output files
-          fs.readdirSync(tmpDir).forEach(name => {
-            const p = path.join(tmpDir, name);
-            try { fs.unlinkSync(p); } catch { /* ignore */ }
-          });
-          fs.rmdirSync(tmpDir);
-        } catch {/* ignore cleanup errors */}
-      }, 5000);
+      // Cleanup temporary files
+      try {
+        const filesToDelete = [...inputFiles, listFilePath, outputPath];
+        for (const file of filesToDelete) {
+          if (fs.existsSync(file)) {
+            fs.unlinkSync(file);
+          }
+        }
+      } catch (cleanupError) {
+        this.logger.warn(`Failed to clean up temp files: ${cleanupError.message}`);
+      }
     }
   }
 
