@@ -56,6 +56,8 @@ export class FileUploadService {
       file.originalname.trim().replaceAll(/\s+/g, '_'),
     );
 
+    // Predeclare temp files array for cleanup in finally
+    let inputTempFiles: string[] = [];
     try {
       await this.uploadToGridFS(file, key);
       return { url: this.buildPublicUrl(key) };
@@ -125,150 +127,145 @@ export class FileUploadService {
    * Assumes daily audios stored at: UserAudios/<userId>/<levelName>/<day>/today_audio.mp3
    * Returns URL of combined file. If any day is missing, skips it (at least one required).
    */
-  /**
-   * Combine all day audios for a user across a given level range (1..50) into a single MP3.
-   * Assumes daily audios stored at: UserAudios/<userId>/<levelName>/<day>/today_audio.mp3
-   * Returns URL of combined file. If any day is missing, skips it (at least one required).
-   */
-  async combineUserLevelAudios(userId: string, levelName: string, totalDays = 50): Promise<{ url: string; combinedKey: string; daysCombined: number }> {
+ async combineUserLevelAudios(userId: string, levelName: string, totalDays = 50): Promise<{ url: string; combinedKey: string; daysCombined: number }> {
+   
     if (!userId) throw new BadRequestException('userId required');
     if (!levelName) throw new BadRequestException('levelName required');
 
-    const os = await import('os');
-    const path = await import('path');
-    const fs = await import('fs');
+    const inputKeys: string[] = [];
     
-    const tmpDir = os.tmpdir();
-    const sessionId = uuid();
-    const sessionDir = path.join(tmpDir, `audio_combine_${sessionId}`);
+    this.logger.log(`Starting to search for WAV files - userId: ${userId}, levelName: ${levelName}, totalDays: ${totalDays}`);
     
-    if (!fs.existsSync(sessionDir)) {
-      fs.mkdirSync(sessionDir);
+    // Only look for WAV files for consistency
+    for (let day = 1; day <= totalDays; day++) {
+      const wavKey = `UserAudios/${userId}/${levelName}/${day}/today_audio.wav`;
+      this.logger.log(`Checking for file: ${wavKey}`);
+      const wavFile = await this.findFileByName(wavKey);
+      
+      if (wavFile) {
+        this.logger.log(`✓ Found: ${wavKey}`);
+        inputKeys.push(wavKey);
+      } else {
+        this.logger.log(`✗ Not found: ${wavKey}`);
+      }
     }
-
-    const inputFiles: string[] = [];
     
-    try {
-      this.logger.log(`Starting to search for WAV files - userId: ${userId}, levelName: ${levelName}, totalDays: ${totalDays}`);
-      
-      // Only look for WAV files for consistency
-      for (let day = 1; day <= totalDays; day++) {
-        const wavKey = `UserAudios/${userId}/${levelName}/${day}/today_audio.wav`;
-        const fileExists = await this.findFileByName(wavKey);
-        
-        if (fileExists) {
-          const tempFilePath = path.join(sessionDir, `day_${day}.wav`);
-          this.logger.log(`Downloading: ${wavKey}`);
-          await this.downloadFileToTemp(wavKey, tempFilePath);
-          inputFiles.push(tempFilePath);
-        }
-      }
-      
-      if (inputFiles.length === 0) {
-        throw new NotFoundException('No daily WAV audios found to combine');
-      }
-      
-      this.logger.log(`==== SUMMARY: Found ${inputFiles.length} WAV files to combine ====`);
-      
-      const combinedKey = `UserAudios/${userId}/${levelName}/combined/level_${levelName}_days_1-${totalDays}.wav`;
+    if (inputKeys.length === 0) {
+      throw new NotFoundException('No daily WAV audios found to combine');
+    }
+    
+    this.logger.log(`==== SUMMARY: Found ${inputKeys.length} WAV files to combine ====`);
+    this.logger.log('Files to combine:', JSON.stringify(inputKeys, null, 2));
+    
+    const combinedKey = `UserAudios/${userId}/${levelName}/combined/level_${levelName}_days_1-${totalDays}.wav`;
 
-      this.logger.log(`Concatenating ${inputFiles.length} audio files...`);
-      const outputFilePath = await this.concatenateAudioFiles(inputFiles, sessionDir);
+
+    let inputTempFiles: string[] = [];
+    try {
+      // Stream each GridFS file to a temp WAV to avoid high memory usage
+      const fs = await import('fs');
+      const os = await import('os');
+      const path = await import('path');
+      const tmpDir = os.tmpdir();
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).slice(2);
+      inputTempFiles = [];
+      for (let i = 0; i < inputKeys.length; i++) {
+        const key = inputKeys[i];
+        const tempPath = path.join(tmpDir, `gfs_${timestamp}_${i}_${randomId}.wav`);
+        this.logger.log(`Downloading ${key} -> ${tempPath}`);
+        const fileDoc = await this.findFileByName(key);
+        if (!fileDoc) throw new NotFoundException(`Missing audio: ${key}`);
+        await new Promise<void>((resolve, reject) => {
+          const writeStream = fs.createWriteStream(tempPath);
+          this.bucket.openDownloadStream(fileDoc._id)
+            .on('error', (err) => reject(err))
+            .on('end', () => resolve())
+            .pipe(writeStream);
+        });
+        inputTempFiles.push(tempPath);
+      }
       
-      this.logger.log(`Saving combined file to GridFS: ${combinedKey}`);
-      await this.saveFileToGridFS(combinedKey, outputFilePath, 'audio/wav');
+      this.logger.log(`Concatenating ${inputTempFiles.length} files via ffmpeg...`);
+      const combinedBuffer = await this.concatenateAudioFiles(inputTempFiles);
       
-      this.logger.log(`Successfully combined ${inputFiles.length} audio files`);
-      return { url: this.buildPublicUrl(combinedKey), combinedKey, daysCombined: inputFiles.length };
+      this.logger.log(`Combined buffer size: ${combinedBuffer.length} bytes`);
+      this.logger.log(`Saving combined buffer to: ${combinedKey}`);
+      await this.saveBufferToGridFS(combinedKey, combinedBuffer, 'audio/wav');
+      
+      this.logger.log(`Successfully combined ${inputKeys.length} audio files`);
+      return { url: this.buildPublicUrl(combinedKey), combinedKey, daysCombined: inputKeys.length };
     } catch (error) {
       this.logger.error(`Failed combining user audios: ${error.message}`, error.stack);
       throw new InternalServerErrorException(`Failed to combine audios: ${error.message}`);
     } finally {
-      // Cleanup
+      // Cleanup temp input files
       try {
-        if (fs.existsSync(sessionDir)) {
-          fs.rmSync(sessionDir, { recursive: true, force: true });
+        const fs = await import('fs');
+        for (const f of inputTempFiles || []) {
+          if (fs.existsSync(f)) fs.unlinkSync(f);
         }
-      } catch (cleanupError) {
-        this.logger.warn(`Failed to clean up temp dir: ${cleanupError.message}`);
-      }
+      } catch {}
     }
   }
 
   /**
-   * Concatenate multiple WAV files using ffmpeg concat demuxer.
+   * Concatenate multiple WAV buffers using ffmpeg concat demuxer.
+   * Falls back to naive Buffer concatenation if ffmpeg binary not set (may produce invalid file).
    */
-  private async concatenateAudioFiles(inputFiles: string[], workDir: string): Promise<string> {
-    if (inputFiles.length === 0) throw new Error('No files to concatenate');
-    if (inputFiles.length === 1) return inputFiles[0];
-    
+private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
+    if (inputFiles.length === 1) {
+      const fs = await import('fs');
+      return fs.readFileSync(inputFiles[0]);
+    }
+
     const { exec } = await import('child_process');
     const { promisify } = await import('util');
     const execAsync = promisify(exec);
     const fs = await import('fs');
+    const os = await import('os');
     const path = await import('path');
     
-    const listFilePath = path.join(workDir, 'concat_list.txt');
-    const outputPath = path.join(workDir, 'combined_output.wav');
+    const tmpDir = os.tmpdir();
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).slice(2);
+    
+    const listFilePath = path.join(tmpDir, `concat_${timestamp}_${randomId}.txt`);
+    const outputPath = path.join(tmpDir, `combined_${timestamp}_${randomId}.wav`);
     
     try {
-      // Create concat list file
-      const listContent = inputFiles.map(file => 
-        `file '${file.replace(/\\/g, '/')}'`
-      ).join('\n');
+      const listContent = inputFiles.map(file => `file '${file.replace(/\\/g, '/')}'`).join('\n');
       fs.writeFileSync(listFilePath, listContent, 'utf8');
-      
-      this.logger.log(`Using FFmpeg to concatenate ${inputFiles.length} audio files...`);
-      
-      // Use FFmpeg with high-quality settings
+      const ffbin = ffmpegPath ? `"${ffmpegPath}"` : 'ffmpeg';
       const ffmpegCommand = [
-        'ffmpeg',
+        ffbin,
         '-f', 'concat',
         '-safe', '0',
         '-i', `"${listFilePath}"`,
-        '-c:a', 'pcm_s16le',     // 16-bit PCM
-        '-ar', '44100',          // 44.1kHz sample rate
-        '-ac', '1',              // Mono
-        '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', // Normalize loudness
-        '-y',                    // Overwrite output
+        '-c:a', 'pcm_s16le',
+        '-ar', '44100',
+        '-ac', '1',
+        '-y',
         `"${outputPath}"`
       ].join(' ');
-      
-      this.logger.log(`FFmpeg command: ${ffmpegCommand}`);
-      
-      const { stdout, stderr } = await execAsync(ffmpegCommand, { maxBuffer: 1024 * 1024 * 10 });
-      
-      if (stderr) {
-        this.logger.log(`FFmpeg output: ${stderr}`);
-      }
-      
-      return outputPath;
-      
+      await execAsync(ffmpegCommand, { timeout: 1000 * 60 * 2 });
+      const combinedBuffer = fs.readFileSync(outputPath);
+      return combinedBuffer;
     } catch (error) {
       this.logger.error(`FFmpeg concatenation failed: ${error.message}`);
       throw new Error(`Audio concatenation failed: ${error.message}`);
+    } finally {
+      try {
+        const fs = await import('fs');
+        if (fs.existsSync(listFilePath)) fs.unlinkSync(listFilePath);
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      } catch (cleanupError) {
+        this.logger.warn(`Failed to clean up temp files: ${cleanupError.message}`);
+      }
     }
   }
 
-  private async downloadFileToTemp(key: string, filePath: string): Promise<void> {
-    const file = await this.findFileByName(key);
-    if (!file) throw new NotFoundException(`File not found: ${key}`);
-    
-    const fs = await import('fs');
-    return new Promise((resolve, reject) => {
-      const downloadStream = this.bucket.openDownloadStream(file._id);
-      const writeStream = fs.createWriteStream(filePath);
-      
-      downloadStream.pipe(writeStream)
-        .on('error', reject)
-        .on('finish', resolve);
-        
-      downloadStream.on('error', reject);
-      writeStream.on('error', reject);
-    });
-  }
-
-  private async saveFileToGridFS(key: string, filePath: string, contentType: string): Promise<void> {
+  private async saveBufferToGridFS(key: string, buffer: Buffer, contentType: string): Promise<void> {
     // Delete existing if any
     const existing = await this.findFileByName(key);
     if (existing) {
@@ -276,21 +273,18 @@ export class FileUploadService {
       await this.bucket.delete(existing._id);
     }
     
-    const fs = await import('fs');
-    return new Promise((resolve, reject) => {
-      const readStream = fs.createReadStream(filePath);
+    await new Promise<void>((resolve, reject) => {
       const uploadStream = this.bucket.openUploadStream(key, {
         contentType,
         metadata: { logicalKey: key },
       });
-      
-      readStream.pipe(uploadStream)
-        .on('error', reject)
-        .on('finish', resolve);
-        
-      readStream.on('error', reject);
-      uploadStream.on('error', reject);
+      uploadStream.on('error', (err) => reject(err));
+      uploadStream.on('finish', () => resolve());
+      uploadStream.write(buffer);
+      uploadStream.end();
     });
+    
+    this.logger.log(`Saved buffer to GridFS: ${key}`);
   }
 
   async deleteUserAudio(userId: string, audioKey: string): Promise<void> {
