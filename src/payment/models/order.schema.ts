@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { Level_Name } from '../../common/shared/enums';
-import { PaymentStatus } from '../types';
+import { PaymentStatus, OrderAccessStatus } from '../types';
 import { User } from '../../user/models/user.schema';
 import { AbstractDocument } from '../../common/database/abstract.schema';
 
@@ -26,6 +26,13 @@ export class Order extends AbstractDocument {
 
   @Prop({ unique: true, sparse: true })
   paymentId?: string;
+
+  // Access window tracking (for admin dashboard visibility)
+  @Prop({ type: String, enum: OrderAccessStatus, default: OrderAccessStatus.ACTIVE })
+  accessStatus: OrderAccessStatus;
+
+  @Prop()
+  accessExpiresAt?: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

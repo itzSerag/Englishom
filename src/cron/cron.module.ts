@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { InactiveUserCronService } from './inactive-user-cron.service';
+import { OrderAccessCronService } from './order-access-cron.service';
 import { CronController } from './cron.controller';
 import { UserModule } from '../user/user.module';
 import { MailModule } from '../common/mail/mail.module';
 import { AdminModule } from '../admin/admin.module';
 import { ConfigModule } from '../common/config/config.module';
+import { PaymentModule } from '../payment/paymob.module';
 
 @Module({
   imports: [
@@ -14,9 +16,10 @@ import { ConfigModule } from '../common/config/config.module';
     MailModule,
     AdminModule,
     ConfigModule,
+    PaymentModule,
   ],
   controllers: [CronController],
-  providers: [InactiveUserCronService],
-  exports: [InactiveUserCronService],
+  providers: [InactiveUserCronService, OrderAccessCronService],
+  exports: [InactiveUserCronService, OrderAccessCronService],
 })
 export class CronModule {}

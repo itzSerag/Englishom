@@ -6,6 +6,7 @@ import { Role, UserStatus } from '../common/shared';
 import { TimeService } from '../common/config/time.service';
 import { EmailMessages } from '../common/shared/const';
 import { UserProcessingResult } from './interface/user-proccessing-result.interface';
+import { OrderRepo } from '../payment/repo/order.repo';
 
 @Injectable()
 export class InactiveUserCronService {
@@ -17,6 +18,7 @@ export class InactiveUserCronService {
     private readonly userRepo: UserRepo,
     private readonly emailService: MailService,
     private readonly timeService: TimeService,
+    private readonly orderRepo: OrderRepo,
   ) {
       this.emailTemplate =this.getEmailTemplate();
       this.suspensionEmailTemplate = this.getSuspensionEmailTemplate();
@@ -196,22 +198,36 @@ private async processSingleUser(user: any): Promise<UserProcessingResult> {
 
 
   private async sendMotivationalEmail(user: any): Promise<void> {
-    // Replace template variables
+    // Compute remaining days for latest purchased level (simple heuristic)
+    let daysLeftText = 'some days';
+    try {
+      const { LevelAccessService } = await import('../common/services/level-access.service');
+      const { OrderRepo } = await import('../payment/repo/order.repo');
+      // Manually construct service to keep change minimal
+      const orderRepo = (this as any).orderRepo instanceof OrderRepo ? (this as any).orderRepo : null;
+      const accessService = new LevelAccessService(orderRepo as any);
+      const info = await accessService.getLatestAccessInfo(user._id.toString());
+      if (info) {
+        daysLeftText = `${info.daysLeft} days`;
+      }
+    } catch (e) {
+      // Fallback silently if repo not available in this context
+    }
+
     const personalizedEmail = this.emailTemplate
       .replaceAll('{{userName}}', user.firstName || 'there')
+      .replaceAll('{{daysLeft}}', daysLeftText)
       .replaceAll(
         '{{loginUrl}}',
         process.env.FRONTEND_URL || 'https://englishom.com/login',
       );
 
-    // Prepare email data
     const mailOptions = {
       to: user.email,
       subject: EmailMessages.weMissYouMessage,
       htmlContent: personalizedEmail,
     };
 
-    // Send email using the existing email service
     await this.sendCustomEmail(mailOptions);
   }
 
@@ -307,6 +323,7 @@ private async processSingleUser(user: any): Promise<UserProcessingResult> {
             <p>Hi {{userName}},</p>
             
             <p>We noticed you haven't been active on Englishom lately, and we wanted to reach out because your English learning journey is important to us! 🌟</p>
+            <p><strong>Heads up:</strong> You have {{daysLeft}} left in your current level access.</p>
             
             <p><strong>Don't let your progress slip away!</strong> Every day you practice English is a step closer to your goals. Whether you're preparing for exams, career advancement, or personal growth, consistency is key to success.</p>
             

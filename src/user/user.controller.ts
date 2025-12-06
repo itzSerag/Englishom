@@ -35,6 +35,7 @@ import { IpService } from '../common/services/ip.service';
 import { Request } from 'express';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { cleanResponse } from '../common/utils/response.utils';
+import { Level_Name } from '../common/shared/enums';
 
 @UseGuards(UserJwtGuard)
 @Controller('users')
@@ -87,6 +88,15 @@ export class UserController {
     return await this.userService.getUserCompletedLevelNames(
       user._id.toString(),
     );
+  }
+
+  // Simple API: level access details (purchase, expiry, days left)
+  @Get('level-details')
+  async getLevelAccessDetails(
+    @CurrentUser('_id') userId: string,
+    @Query('levelName') levelName?: Level_Name,
+  ) {
+    return await this.userService.getLevelAccessDetails(userId, levelName);
   }
 
   @Patch(':id')

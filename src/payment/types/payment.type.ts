@@ -77,3 +77,8 @@ export enum PaymentStatus {
   FAILED = 'FAILED',
   REFUNDED = 'REFUNDED',
 }
+
+export enum OrderAccessStatus {
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+}

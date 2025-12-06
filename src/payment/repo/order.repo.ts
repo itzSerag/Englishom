@@ -4,7 +4,7 @@ import { Order } from '../models/order.schema';
 import { ClientSession, Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Level_Name } from '../../common/shared/enums';
-import { PaymentStatus } from '../types';
+import { PaymentStatus, OrderAccessStatus } from '../types';
 import { OrderService } from '../../common/shared/services/order.service';
 import { toObjectId } from '../../common/utils/mongoose.utils';
 
@@ -109,6 +109,14 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       updateData.paymentId = paymentId;
     }
 
+    // When marking as COMPLETED, initialize accessExpiresAt (60 days from paymentDate)
+    if (status === PaymentStatus.COMPLETED) {
+      const now = new Date();
+      updateData.paymentDate = now;
+      updateData.accessStatus = OrderAccessStatus.ACTIVE;
+      updateData.accessExpiresAt = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+    }
+
     return await this.orderModel.findByIdAndUpdate(
       orderIdObjectId,
       updateData,
@@ -161,6 +169,7 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
           amount,
           paymentStatus: PaymentStatus.PENDING,
           paymentDate: new Date(),
+          accessStatus: OrderAccessStatus.ACTIVE,
         },
         session,
       );
@@ -207,5 +216,56 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       .sort({ createdAt: -1, paymentDate: -1 })
       .limit(limit)
       .exec();
+  }
+
+  // Bulk mark orders as EXPIRED where cutoff reached
+  async markExpiredOrdersCutoff(cutoffDate: Date): Promise<number> {
+    const res = await this.orderModel.updateMany(
+      {
+        paymentStatus: PaymentStatus.COMPLETED,
+        accessStatus: OrderAccessStatus.ACTIVE,
+        accessExpiresAt: { $lte: cutoffDate },
+      },
+      {
+        $set: { accessStatus: OrderAccessStatus.EXPIRED },
+      },
+    );
+    return res.modifiedCount || 0;
+  }
+
+  async findExpiredOrders(page: number = 1, limit: number = 20, levelName?: Level_Name): Promise<Order[]> {
+    const filter: any = {
+      paymentStatus: PaymentStatus.COMPLETED,
+      accessStatus: OrderAccessStatus.EXPIRED,
+    };
+    if (levelName) filter.levelName = levelName;
+
+    return await this.orderModel
+      .find(filter)
+      .populate({ path: 'userId', select: 'firstName lastName email' })
+      .sort({ accessExpiresAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .exec();
+  }
+
+  async countOrdersByAccessStatus(): Promise<{ ACTIVE: number; EXPIRED: number }> {
+    const agg = await this.orderModel.aggregate([
+      {
+        $match: { paymentStatus: PaymentStatus.COMPLETED },
+      },
+      {
+        $group: {
+          _id: '$accessStatus',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    const result = { ACTIVE: 0, EXPIRED: 0 } as { ACTIVE: number; EXPIRED: number };
+    for (const row of agg) {
+      if (row._id === OrderAccessStatus.ACTIVE) result.ACTIVE = row.count;
+      if (row._id === OrderAccessStatus.EXPIRED) result.EXPIRED = row.count;
+    }
+    return result;
   }
 }
