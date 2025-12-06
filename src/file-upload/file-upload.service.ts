@@ -123,6 +123,25 @@ export class FileUploadService {
   }
 
   /**
+   * Return combined level audio URL if present; otherwise null.
+   */
+  async getCombinedUserLevelAudio(
+    userId: string,
+    levelName: string,
+    totalDays = 50,
+  ): Promise<{ url: string } | null> {
+    const combinedKey = `UserAudios/${userId}/${levelName}/combined/level_${levelName}_days_1-${totalDays}.wav`;
+    try {
+      const file = await this.findFileByName(combinedKey);
+      if (!file) return null;
+      return { url: this.buildPublicUrl(combinedKey) };
+    } catch (error) {
+      this.logger.error(`Failed to get combined audio: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(`Failed to get combined audio: ${error.message}`);
+    }
+  }
+
+  /**
    * Combine all day audios for a user across a given level range (1..50) into a single MP3.
    * Assumes daily audios stored at: UserAudios/<userId>/<levelName>/<day>/today_audio.mp3
    * Returns URL of combined file. If any day is missing, skips it (at least one required).

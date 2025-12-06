@@ -81,7 +81,7 @@ export class FileUploadController {
   }
 
   @UseGuards(UserJwtGuard)
-  @Get('user-audio/:levelName')
+  @Get('user-audio/level/:levelName')
   async getUserAudiosByLevel(
     @CurrentUser() user: User,
     @Param('levelName') levelName: string,
@@ -99,7 +99,7 @@ export class FileUploadController {
   }
 
   @UseGuards(UserJwtGuard)
-  @Get('user-audio/:levelName/:day')
+  @Get('user-audio/level/:levelName/:day')
   async getUserDayAudio(
     @CurrentUser() user: User,
     @Param('levelName') levelName: Level_Name,
@@ -204,19 +204,23 @@ export class FileUploadController {
 
   // Combine user's daily audios for a level into a single audio (restricted to when day 50 is open)
   @UseGuards(UserJwtGuard)
-  @Post('user-audio/combine-level/:levelName')
+  @Post('user-audio/combine-level')
   async combineUserLevelAudios(
     @CurrentUser() user: User,
-    @Param('levelName') levelName: string,
+    @Body() body: { levelName: Level_Name },
     @Req() req: Request,
   ) {
     if (!user?._id) {
       throw new BadRequestException('User not authenticated or invalid user data');
     }
+    const levelName = body?.levelName as Level_Name;
+    if (!levelName) {
+      throw new BadRequestException('levelName is required in request body');
+    }
     // completedDays returns the max completed day number (0 if none). Day 50 is open for audio combine if completedDays >= 49.
     const completedDays = await this.userService.getCompletedDaysInLevel(
       user._id.toString(),
-      levelName as Level_Name,
+      levelName,
     );
     if (completedDays < 49) {
       throw new BadRequestException('Day 50 is not open yet for this level');
@@ -227,6 +231,28 @@ export class FileUploadController {
       50,
     );
     return this.rewriteToLocalOrigin({ url: result.url }, req);
+  }
+
+  // Retrieve combined audio for a level if it exists
+  @UseGuards(UserJwtGuard)
+  @Get('user-audio/combine-level/:levelName')
+  async getCombinedUserLevelAudio(
+    @CurrentUser() user: User,
+    @Param('levelName') levelName: Level_Name,
+    @Req() req: Request,
+  ) {
+    if (!user?._id) {
+      throw new BadRequestException('User not authenticated or invalid user data');
+    }
+    const result = await this.uploadService.getCombinedUserLevelAudio(
+      user._id.toString(),
+      levelName,
+      50,
+    );
+    if (!result) {
+      throw new NotFoundException('Combined audio not found.');
+    }
+    return this.rewriteToLocalOrigin(result, req);
   }
 
   // Content upload - OPERATOR+ can upload content
