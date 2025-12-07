@@ -16,6 +16,7 @@ import { AdminRole, Role, UserStatus } from '../shared';
 import { OtpCause } from '../../user-auth/enum/otp-cause.enum';
 import { PaymentStatus } from '../../payment/types';
 import { LESSONS, Level_Name, Strategy } from '../shared/enums';
+import { ClusterHelper } from '../services/cluster-helper.service';
 
 @Injectable()
 export class SeederService implements OnModuleInit {
@@ -30,11 +31,20 @@ export class SeederService implements OnModuleInit {
     private readonly orderRepo: OrderRepo,
     private readonly otpRepo: OtpRepo,
     private readonly certificateRepo: CertificateRepo,
+    // PREVENT SEED JOB INTERFERENCE
+    private readonly clusterHelper: ClusterHelper,
   ) {
     this.isDevelopment = this.configService.get('NODE_ENV') !== 'production';
   }
 
   async onModuleInit() {
+
+    // run seeds only on primary instance
+    if (!this.clusterHelper.isPrimary()) {
+      this.logger.log('Skipping SeederService on non-primary instance');
+      return;
+    }
+
     if (this.isDevelopment) {
       this.logger.log('🌱 Checking if development seeding is needed...');
       const needsSeeding = await this.checkIfSeedingNeeded();
@@ -54,6 +64,7 @@ export class SeederService implements OnModuleInit {
           this.logger.warn('Failed ensuring super test user:', err?.message || err);
         }
       }
+      
     }
   }
 

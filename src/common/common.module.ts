@@ -4,6 +4,7 @@ import { FrontendRedirectService } from './services/frontend-redirect.service';
 import { TransformersAudioTranscribe } from './services/transformers-audio-transcribe.service';
 import { LevelAccessService } from './services/level-access.service';
 import { PaymentModule } from '../payment/paymob.module';
+import { ClusterHelper } from './services/cluster-helper.service';
 
 @Global() // Makes this module available everywhere without importing
 @Module({
@@ -13,6 +14,7 @@ import { PaymentModule } from '../payment/paymob.module';
     FrontendRedirectService,
     TransformersAudioTranscribe,
     LevelAccessService,
+    ClusterHelper
     // Add other common services here
   ],
   exports: [
@@ -20,6 +22,7 @@ import { PaymentModule } from '../payment/paymob.module';
     FrontendRedirectService,
     TransformersAudioTranscribe,
     LevelAccessService,
+    ClusterHelper
     // Export services you want to share
   ],
 })

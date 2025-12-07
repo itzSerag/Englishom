@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { UserRepo } from '../user/repo/user.repo';
 import { MailService } from '../common/mail/mail.service';
@@ -6,212 +6,207 @@ import { Role, UserStatus } from '../common/shared';
 import { TimeService } from '../common/config/time.service';
 import { EmailMessages } from '../common/shared/const';
 import { UserProcessingResult } from './interface/user-proccessing-result.interface';
-import { OrderRepo } from '../payment/repo/order.repo';
+import { LevelAccessService } from '../common/services/level-access.service'; // FIXED: Import properly
+import { ClusterHelper } from '../common/services/cluster-helper.service';
 
 @Injectable()
 export class InactiveUserCronService {
   private readonly logger = new Logger(InactiveUserCronService.name);
   private readonly emailTemplate: string;
   private readonly suspensionEmailTemplate: string;
+  
+  private readonly BATCH_SIZE = 100;
+  private readonly DB_BATCH_DELAY_MS = 2000; // 2 seconds between DB batches
+  private readonly EMAIL_DELAY_MS = 100; // 100ms between emails
+  private readonly EMAIL_RETRY_COUNT = 3;
 
   constructor(
     private readonly userRepo: UserRepo,
     private readonly emailService: MailService,
     private readonly timeService: TimeService,
-    private readonly orderRepo: OrderRepo,
+    private readonly levelAccessService: LevelAccessService, // FIXED: Inject properly
+    private readonly clusterHelper: ClusterHelper, // PREVENT CRON JOB INTERFERENCE
   ) {
-      this.emailTemplate =this.getEmailTemplate();
-      this.suspensionEmailTemplate = this.getSuspensionEmailTemplate();
+    this.emailTemplate = this.getEmailTemplate();
+    this.suspensionEmailTemplate = this.getSuspensionEmailTemplate();
   }
 
   /**
-   * 
-   * 5 AM every day, Riyadh time -- Traffic is low at this time
+   * 5 AM every day, Riyadh time
    * Sends motivational emails to users inactive for 7+ days
    * Suspends accounts inactive for 65+ days
    */
+  @Cron(CronExpression.EVERY_DAY_AT_5AM, {
+    name: 'check-inactive-users',
+    timeZone: 'Asia/Riyadh',
+  })
+  async handleInactiveUsers() {
 
 
-  
+    // inverted check to exit early
+    if(!this.clusterHelper.isPrimary()) {
+      this.logger.log('Skipping check-inactive-users job on non-primary instance');
+      return;
+    }
 
- @Cron(CronExpression.EVERY_DAY_AT_5AM, {
-  name: 'check-inactive-users',
-  timeZone: 'Asia/Riyadh',
-})
-@Cron(CronExpression.EVERY_DAY_AT_5AM, {
-  name: 'check-inactive-users',
-  timeZone: 'Asia/Riyadh',
-})
-async handleInactiveUsers() {
-  const startTime = this.timeService.createDate();
-  this.logger.log('🔄 Starting inactive user management job...');
+    const startTime = this.timeService.createDate();
+    this.logger.log('🔄 Starting inactive user management job...');
 
-  try {
-    // Configuration
-    const BATCH_SIZE = 50; // Process 50 users in parallel
-    const BATCH_DELAY_MS = 1000; // 1 second between batches
-    const EMAIL_DELAY_MS = 100; // 100ms between individual emails
+    try {
+      // Calculate dates correctly
+      const now = startTime;
+      const sixtyFiveDaysAgo = new Date(now.getTime() - 65 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // 65 days ago (for suspension)
-    const sixtyFiveDaysAgo = new Date(
-      startTime.getTime() - 65 * 24 * 60 * 60 * 1000,
-    );
+      // Stats tracking
+      const stats = {
+        motivationSuccess: 0,
+        motivationFailure: 0,
+        suspensionSuccess: 0,
+        suspensionFailure: 0,
+        totalProcessed: 0,
+        dbQueries: 0,
+      };
 
-    // Find all users inactive for up to 65+ days
-    const inactiveUsers = await this.userRepo.find({
-      lastActivity: { $lt: startTime, $gte: sixtyFiveDaysAgo },
-      role: { $ne: Role.ADMIN },
-      isVerified: true,
-      status: UserStatus.ACTIVE,
-    });
+      // Process in batches to prevent memory issues
+      let skip = 0;
+      let hasMoreUsers = true;
 
-    this.logger.log(`📊 Found ${inactiveUsers.length} inactive users to check`);
+      while (hasMoreUsers) {
+        stats.dbQueries++;
+        
+        // Get batch of users
+        const allInactiveUsers = await this.userRepo.find({
+          lastActivity: { $lt: sevenDaysAgo }, // Inactive for 7+ days
+          role: { $ne: Role.ADMIN },
+          isVerified: true,
+          status: UserStatus.ACTIVE,
+        });
 
-    let motivationSuccessCount = 0;
-    let motivationFailureCount = 0;
-    let suspensionSuccessCount = 0;
-    let suspensionFailureCount = 0;
+        const users = allInactiveUsers
+          .sort((a, b) => new Date(a.lastActivity).getTime() - new Date(b.lastActivity).getTime()) // Process oldest first
+          .slice(skip, skip + this.BATCH_SIZE);
 
-    // Process users in batches
-    for (let i = 0; i < inactiveUsers.length; i += BATCH_SIZE) {
-      const batch = inactiveUsers.slice(i, i + BATCH_SIZE);
-      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(inactiveUsers.length / BATCH_SIZE);
-      
-      this.logger.log(`🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} users)`);
+        if (users.length === 0) {
+          hasMoreUsers = false;
+          break;
+        }
 
-      // Process current batch in parallel
-      const batchResults = await Promise.allSettled(
-        batch.map(async (user) => {
-          const userResult = await this.processSingleUser(user);
+        this.logger.log(`📊 Processing batch ${Math.floor(skip/this.BATCH_SIZE) + 1} (${users.length} users)`);
+
+        // Process batch
+        for (const user of users) {
+          stats.totalProcessed++;
+          const result = await this.processSingleUser(user, now, sixtyFiveDaysAgo);
           
-          // Small delay between email sends within the same batch
-          if (userResult.sentEmail) {
-            await this.delay(EMAIL_DELAY_MS);
+          // Update stats
+          if (result.motivation?.success) stats.motivationSuccess++;
+          if (result.motivation?.failure) stats.motivationFailure++;
+          if (result.suspension?.success) stats.suspensionSuccess++;
+          if (result.suspension?.failure) stats.suspensionFailure++;
+          
+          // Rate limiting between emails
+          if (result.sentEmail) {
+            await this.delay(this.EMAIL_DELAY_MS);
           }
-          
-          return userResult;
-        })
-      );
+        }
 
-
-      // Count results from this batch
-      for (const result of batchResults) {
-        if (result.status === 'fulfilled') {
-          const userResult = result.value;
-          if (userResult.motivation?.success) motivationSuccessCount++;
-          if (userResult.motivation?.failure) motivationFailureCount++;
-          if (userResult.suspension?.success) suspensionSuccessCount++;
-          if (userResult.suspension?.failure) suspensionFailureCount++;
-        } else {
-          // If the entire user processing failed, count it as both motivation and suspension failure
-          motivationFailureCount++;
-          suspensionFailureCount++;
-          this.logger.error(`❌ Failed to process user in batch: ${('' + (result as any).reason)}`);
+        skip += this.BATCH_SIZE;
+        
+        // Rate limiting between database batches
+        if (hasMoreUsers) {
+          await this.delay(this.DB_BATCH_DELAY_MS);
         }
       }
 
-      // Delay between batches (but not after the last batch)
-      if (i + BATCH_SIZE < inactiveUsers.length) {
-        await this.delay(BATCH_DELAY_MS);
+      // Log completion
+      const duration = (Date.now() - startTime.getTime()) / 1000;
+      this.logger.log(`✅ Job completed in ${duration.toFixed(2)}s`);
+      this.logger.log(`📊 Database queries: ${stats.dbQueries}`);
+      this.logger.log(`👥 Total users processed: ${stats.totalProcessed}`);
+      this.logger.log(`📧 Motivation emails: ${stats.motivationSuccess} sent, ${stats.motivationFailure} failed`);
+      this.logger.log(`⚠️ Suspensions: ${stats.suspensionSuccess} successful, ${stats.suspensionFailure} failed`);
+      
+      if (stats.totalProcessed > 0) {
+        const successRate = ((stats.motivationSuccess + stats.suspensionSuccess) / 
+                           stats.totalProcessed * 100).toFixed(1);
+        this.logger.log(`🎯 Success rate: ${successRate}%`);
+      }
+
+    } catch (error) {
+      this.logger.error(`💥 Critical error in inactive user job: ${error.message}`);
+      this.logger.error(error.stack);
+    }
+  }
+
+  /**
+   * Process a single user
+   */
+  private async processSingleUser(
+    user: any, 
+    now: Date, 
+    sixtyFiveDaysAgo: Date
+  ): Promise<UserProcessingResult> {
+    const userLastActivity = new Date(user.lastActivity);
+    const diffInDays = Math.floor(
+      (now.getTime() - userLastActivity.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    const result: UserProcessingResult = {
+      sentEmail: false,
+      motivation: null,
+      suspension: null
+    };
+
+    // --- Suspension check (>= 65 days) ---
+    if (diffInDays >= 65) {
+      try {
+        await this.userRepo.findOneAndUpdate(
+          { _id: user._id },
+          {
+            status: UserStatus.SUSPENDED,
+            suspendedAt: now,
+            suspensionReason: EmailMessages.SuspensionReasonMessage,
+          },
+        );
+
+        await this.sendSuspensionEmail(user);
+        result.suspension = { success: true };
+        result.sentEmail = true;
+        this.logger.debug(`⚠️ User suspended: ${user.email} (${diffInDays} days inactive)`);
+      } catch (error) {
+        result.suspension = { failure: true, error: error.message };
+        this.logger.error(`❌ Failed to suspend ${user.email}: ${error.message}`);
+      }
+      return result;
+    }
+
+    // --- Motivational email check (every 7 days) ---
+    if (diffInDays >= 7 && diffInDays % 7 === 0) {
+      try {
+        await this.sendMotivationalEmail(user);
+        result.motivation = { success: true };
+        result.sentEmail = true;
+        this.logger.debug(`✉️ Motivational email sent to: ${user.email} (${diffInDays} days inactive)`);
+      } catch (error) {
+        result.motivation = { failure: true, error: error.message };
+        this.logger.error(`❌ Failed to send email to ${user.email}: ${error.message}`);
       }
     }
 
-    const endTime = this.timeService.createDate();
-    const duration = (endTime.getTime() - startTime.getTime()) / 1000;
-
-    this.logger.log(`✅ Inactive user job completed in ${duration}s`);
-    this.logger.log(
-      `📧 Motivation: ${motivationSuccessCount} sent, ${motivationFailureCount} failed`,
-    );
-    this.logger.log(
-      `⚠️ Suspensions: ${suspensionSuccessCount} done, ${suspensionFailureCount} failed`,
-    );
-
-    // Log performance summary
-    const totalProcessed = motivationSuccessCount + motivationFailureCount + suspensionSuccessCount + suspensionFailureCount;
-    const successRate = totalProcessed > 0 
-      ? ((motivationSuccessCount + suspensionSuccessCount) / totalProcessed * 100).toFixed(1)
-      : '0';
-    this.logger.log(`📊 Overall success rate: ${successRate}%`);
-
-  } catch (error) {
-    this.logger.error(`💥 Error in inactive user job: ${error.message}`);
-  }
-}
-
-
-  /**
- * Process a single user and determine what action to take
- */
-private async processSingleUser(user: any): Promise<UserProcessingResult> {
-  const now = this.timeService.createDate();
-  const diffInDays = Math.floor(
-    (now.getTime() - new Date(user.lastActivity).getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  const result: UserProcessingResult = {
-    sentEmail: false,
-    motivation: null,
-    suspension: null
-  };
-
-  // --- Suspension check (>= 65 days) ---
-  if (diffInDays >= 65) {
-    try {
-      await this.userRepo.findOneAndUpdate(
-        { _id: user._id },
-        {
-          status: UserStatus.SUSPENDED,
-          suspendedAt: now,
-          suspensionReason: EmailMessages.SuspensionReasonMessage,
-        },
-      );
-
-      await this.sendSuspensionEmail(user);
-      result.suspension = { success: true };
-      result.sentEmail = true;
-      this.logger.debug(`⚠️ User suspended: ${user.email}`);
-    } catch (error) {
-      result.suspension = { failure: true, error: error.message };
-      this.logger.error(`❌ Failed to suspend ${user.email}: ${error.message}`);
-    }
     return result;
   }
 
-  // --- Motivational email check (every 7 days: 7, 14, 21...) ---
-  if (diffInDays > 0 && diffInDays % 7 === 0 ) {
-    try {
-      await this.sendMotivationalEmail(user);
-      result.motivation = { success: true };
-      result.sentEmail = true;
-      this.logger.debug(`✉️ Motivational email sent to: ${user.email}`);
-    } catch (error) {
-      result.motivation = { failure: true, error: error.message };
-      this.logger.error(`❌ Failed to send email to ${user.email}: ${error.message}`);
-    }
-  }
-
-  return result;
-}
-
-
-
   private async sendMotivationalEmail(user: any): Promise<void> {
-    // Compute remaining days for latest purchased level (simple heuristic)
     let daysLeftText = 'some days';
+    
     try {
-      const { LevelAccessService } = await import('../common/services/level-access.service');
-      const { OrderRepo } = await import('../payment/repo/order.repo');
-      // Manually construct service to keep change minimal
-      const orderRepo = (this as any).orderRepo instanceof OrderRepo ? (this as any).orderRepo : null;
-      const accessService = new LevelAccessService(orderRepo as any);
-      const info = await accessService.getLatestAccessInfo(user._id.toString());
-      if (info) {
+      const info = await this.levelAccessService.getLatestAccessInfo(user._id.toString());
+      if (info && info.daysLeft > 0) {
         daysLeftText = `${info.daysLeft} days`;
       }
-    } catch (e) {
-      // Fallback silently if repo not available in this context
+    } catch (error) {
+      this.logger.warn(`Could not get level access info for ${user.email}: ${error.message}`);
     }
 
     const personalizedEmail = this.emailTemplate
@@ -222,17 +217,14 @@ private async processSingleUser(user: any): Promise<UserProcessingResult> {
         process.env.FRONTEND_URL || 'https://englishom.com/login',
       );
 
-    const mailOptions = {
+    await this.sendEmailWithRetry({
       to: user.email,
       subject: EmailMessages.weMissYouMessage,
       htmlContent: personalizedEmail,
-    };
-
-    await this.sendCustomEmail(mailOptions);
+    });
   }
 
   private async sendSuspensionEmail(user: any): Promise<void> {
-    // Create suspension email template
     const suspensionEmail = this.suspensionEmailTemplate
       .replaceAll('{{userName}}', user.firstName || 'there')
       .replaceAll(
@@ -240,19 +232,28 @@ private async processSingleUser(user: any): Promise<UserProcessingResult> {
         process.env.FRONTEND_URL || 'https://englishom.com/contact',
       );
 
-    // Prepare email data
-    const mailOptions = {
+    await this.sendEmailWithRetry({
       to: user.email,
       subject: EmailMessages.AccountSuspendedMessage,
       htmlContent: suspensionEmail,
-    };
-
-    await this.sendCustomEmail(mailOptions);
+    });
   }
 
-  private async sendCustomEmail(mailOptions: any): Promise<void> {
-    // Use the new sendCustomEmail method from EmailService
-    await this.emailService.sendCustomEmail(mailOptions);
+  private async sendEmailWithRetry(
+    mailOptions: any, 
+    retries = this.EMAIL_RETRY_COUNT
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        await this.emailService.sendCustomEmail(mailOptions);
+        return;
+      } catch (error) {
+        if (attempt === retries) {
+          throw new Error(`Failed to send email after ${retries} attempts: ${error.message}`);
+        }
+        await this.delay(1000 * attempt); // Exponential backoff
+      }
+    }
   }
 
   private delay(ms: number): Promise<void> {
