@@ -281,4 +281,13 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
     }
     return result;
   }
+
+  // Delete pending orders older than the specified date
+  async deletePendingOrdersOlderThan(cutoffDate: Date): Promise<number> {
+    const result = await this.orderModel.deleteMany({
+      paymentStatus: PaymentStatus.PENDING,
+      createdAt: { $lt: cutoffDate },
+    });
+    return result.deletedCount || 0;
+  }
 }
