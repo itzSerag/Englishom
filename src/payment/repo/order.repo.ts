@@ -62,6 +62,19 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       .session(session || null);
   }
 
+  // Get most recent pending order for a user, used as a fallback when exact match fails
+  async findMostRecentPendingOrder(
+    userId: string,
+    session?: ClientSession,
+  ): Promise<Order | null> {
+    const userIdObjectId = toObjectId(userId);
+
+    return await this.orderModel
+      .findOne({ userId: userIdObjectId, paymentStatus: PaymentStatus.PENDING })
+      .session(session || null)
+      .sort({ updatedAt: -1, createdAt: -1 });
+  }
+
   async findCompletedOrder(
     userId: string,
     levelName: Level_Name | string,

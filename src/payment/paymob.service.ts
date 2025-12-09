@@ -252,8 +252,11 @@ export class PaymobService {
         throw new BadRequestException('User email is required');
       }
 
+      // Normalize email to avoid case-sensitivity issues from provider payload
+      const normalizedEmail = userEmail.trim().toLowerCase();
+
       // Get user by email - do this first to fail fast if user doesn't exist
-      const user = await this.userRepo.findOne({ email: userEmail });
+      const user = await this.userRepo.findOne({ email: normalizedEmail });
       if (!user) {
         this.logger.error(`User not found with email: ${userEmail}`);
         throw new NotFoundException('User not found');
@@ -293,15 +296,31 @@ export class PaymobService {
         'Payment successful, looking for pending order to complete',
       );
 
-      // Find the pending order for this user and amount
-      const pendingOrder = await this.orderRepo.findOne(
+      const paymentId = orderId?.toString();
+
+      // Primary lookup: pending order for this user and amount (whole currency)
+      let pendingOrder = await this.orderRepo.findOne(
         {
           userId: user._id,
           paymentStatus: PaymentStatus.PENDING,
-          amount: Math.round(amount / 100), // Convert cents from payment provider to whole currency
+          amount: Math.round(amount / 100),
         },
         session,
       );
+
+      // If not found, fall back to most recent pending order for this user (handles equal-amount collisions)
+      if (!pendingOrder) {
+        pendingOrder = await this.orderRepo.findMostRecentPendingOrder(
+          user._id.toString(),
+          session,
+        );
+
+        if (pendingOrder) {
+          this.logger.warn(
+            `Fallback matched most recent pending order ${pendingOrder._id} for user ${user._id} when amount match failed`,
+          );
+        }
+      }
 
       if (!pendingOrder) {
         this.logger.error(
@@ -321,6 +340,10 @@ export class PaymobService {
           this.logger.error(
             `Order already exists with status: ${existingOrder.paymentStatus}`,
           );
+          // If already completed with same amount, treat as idempotent
+          if (existingOrder.paymentStatus === PaymentStatus.COMPLETED) {
+            return true;
+          }
           throw new BadRequestException(
             `Order already exists with status: ${existingOrder.paymentStatus}`,
           );
@@ -337,7 +360,7 @@ export class PaymobService {
       await this.orderRepo.updateOrderStatus(
         pendingOrder._id.toString(),
         PaymentStatus.COMPLETED,
-        orderId.toString(),
+        paymentId,
         session,
       );
 
