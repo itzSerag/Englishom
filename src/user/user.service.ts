@@ -471,10 +471,20 @@ export class UserService {
             isCompleted = false;
           }
 
+          // Get level access details (purchase date, expiry, days left)
+          const accessInfo = await this.levelAccessService.getLatestAccessInfo(
+            userId,
+            levelName,
+          );
+
           return {
             levelName,
             currentDay,
             isCompleted,
+            purchaseDate: accessInfo?.purchaseDate || null,
+            expiresAt: accessInfo?.expiresAt || null,
+            daysLeft: accessInfo?.daysLeft || 0,
+            isExpired: accessInfo?.isExpired || false,
           };
         }),
       );
