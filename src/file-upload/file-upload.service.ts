@@ -198,13 +198,33 @@ export class FileUploadService {
         this.logger.log(`Downloading ${key} -> ${tempPath}`);
         const fileDoc = await this.findFileByName(key);
         if (!fileDoc) throw new NotFoundException(`Missing audio: ${key}`);
+        
+        // Download file from GridFS
         await new Promise<void>((resolve, reject) => {
           const writeStream = fs.createWriteStream(tempPath);
+          let hasData = false;
+          
           this.bucket.openDownloadStream(fileDoc._id)
-            .on('error', (err) => reject(err))
-            .on('end', () => resolve())
+            .on('data', () => { hasData = true; })
+            .on('error', (err) => {
+              this.logger.error(`Failed to download ${key}: ${err.message}`);
+              reject(new InternalServerErrorException(`File data missing for ${key}. The file may have been corrupted or chunks deleted.`));
+            })
+            .on('end', () => {
+              if (!hasData) {
+                reject(new InternalServerErrorException(`No data available for ${key}. File chunks may be missing.`));
+              } else {
+                resolve();
+              }
+            })
             .pipe(writeStream);
         });
+        
+        // Verify file was written
+        if (!fs.existsSync(tempPath) || fs.statSync(tempPath).size === 0) {
+          throw new InternalServerErrorException(`Failed to download ${key} - file is empty or missing`);
+        }
+        
         inputTempFiles.push(tempPath);
       }
       
