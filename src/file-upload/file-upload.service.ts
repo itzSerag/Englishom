@@ -502,7 +502,9 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
   private buildPublicUrl(key: string): string {
     // Frontend expects a direct URL; we expose a streaming endpoint /api/files/raw?key=<encodedKey>
     const encodedKey = encodeURIComponent(key);
-    return `${this.baseUrl}/api/files/raw?key=${encodedKey}`;
+    // Force HTTPS for resource URLs
+    const secureBaseUrl = this.baseUrl.replace(/^http:/, 'https:');
+    return `${secureBaseUrl}/api/files/raw?key=${encodedKey}`;
   }
 
   async streamFile(key: string, res: Response): Promise<void> {
