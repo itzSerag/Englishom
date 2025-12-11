@@ -36,6 +36,7 @@ export class FileUploadService {
     // Force HTTPS for base URL
     const configUrl = this.configService.get<string>('BASE_URL')?.replace(/\/$/, '') || '';
     this.baseUrl = configUrl.replace(/^http:/, 'https:');
+    this.logger.log(`FileUploadService initialized with baseUrl: ${this.baseUrl} (from config: ${configUrl})`);
     // Configure ffmpeg binary path if available
     if (ffmpegPath) {
       ffmpeg.setFfmpegPath(ffmpegPath);
