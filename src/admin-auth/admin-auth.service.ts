@@ -9,6 +9,7 @@ import { AdminRepo } from '../admin/repo/admin.repo';
 import { IAdminPayload } from '../common/shared/interfaces/payload.interface';
 import { Admin } from '../admin/models/admin.schema';
 import { AdminLoginDto } from './dto';
+import { AuthMessages } from '../common/shared/const';
 
 @Injectable()
 export class AdminAuthService {
@@ -23,14 +24,14 @@ export class AdminAuthService {
   async login(adminLoginDto : AdminLoginDto): Promise<{ access_token: string; admin: Admin }> {
     const admin = await this.adminRepo.findByEmail(adminLoginDto.email);
 
-    if (!admin && admin?.isActive) {
-      throw new NotFoundException('Invalid credentials or Admin is deactivated');
+    if (!admin || !admin.isActive) {
+      throw new UnauthorizedException(AuthMessages.INVALID_CREDENTIALS);
     }
 
     const isValidPassword = await bcrypt.compare(adminLoginDto.password, admin.password);
 
     if (!isValidPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(AuthMessages.INVALID_CREDENTIALS);
     }
 
     await this.adminRepo.findOneAndUpdate(

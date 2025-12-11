@@ -1,6 +1,6 @@
  export const AuthMessages =
 {
-    USER_NOT_FOUND: 'User not found or inactive',
+    INVALID_CREDENTIALS: 'Invalid credentials',
     INVALID_SESSION: 'Session expired. Please login again.',
     FACEBOOK_NO_DATA: 'No user data received from Facebook',
     GOOGLE_NO_DATA: 'No user data received from Google',

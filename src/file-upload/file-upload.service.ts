@@ -33,7 +33,9 @@ export class FileUploadService {
     this.bucket = new GridFSBucket(this.connection.db, {
       bucketName: 'appFiles',
     });
-    this.baseUrl = this.configService.get<string>('BASE_URL')?.replace(/\/$/, '') || '';
+    // Force HTTPS for base URL
+    const configUrl = this.configService.get<string>('BASE_URL')?.replace(/\/$/, '') || '';
+    this.baseUrl = configUrl.replace(/^http:/, 'https:');
     // Configure ffmpeg binary path if available
     if (ffmpegPath) {
       ffmpeg.setFfmpegPath(ffmpegPath);

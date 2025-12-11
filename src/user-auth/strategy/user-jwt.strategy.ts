@@ -25,7 +25,7 @@ export class UserJwtStrategy extends PassportStrategy(Strategy, 'user-jwt') {
       const user = await this.userAuthService.validateUser(payload.sub);
 
       if (!user) {
-        throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
+        throw new UnauthorizedException(AuthMessages.INVALID_CREDENTIALS);
       }
 
       // Validate session ID - single device login enforcement
