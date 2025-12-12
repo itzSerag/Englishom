@@ -31,13 +31,14 @@ export class UserResultsController {
 
   /////
   // NOTE: consider wrapping this into a reusable function and using it across the backend
-    const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
+    // Check for ACTIVE order - expired orders should not allow access
+    const existingActiveOrder = await this.orderRepo.findActiveCompletedOrder(
       user._id.toString(),
       speakCompareTranscriptsDto.level_name,
     );
 
-    if (!existingCompletedOrder) {
-      throw new BadRequestException('User has not purchased this level');
+    if (!existingActiveOrder) {
+      throw new BadRequestException('User has not purchased this level or access has expired');
     }
     /////
     

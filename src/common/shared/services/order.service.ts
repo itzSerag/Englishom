@@ -12,4 +12,10 @@ export abstract class OrderService {
     levelName: Level_Name,
     session?: ClientSession,
   ): Promise<any | null>;
+
+  abstract findActiveCompletedOrder(
+    userId: string,
+    levelName: Level_Name,
+    session?: ClientSession,
+  ): Promise<any | null>;
 }

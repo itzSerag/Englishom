@@ -133,16 +133,17 @@ export class DashboardService {
         );
       }
 
-      // Check if user already has this course completed
-      const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
+      // Check if user already has this course with ACTIVE access
+      // Allow reassignment if the previous order has expired
+      const existingActiveOrder = await this.orderRepo.findActiveCompletedOrder(
         userId,
         level_name,
         session,
       );
 
-      if (existingCompletedOrder) {
+      if (existingActiveOrder) {
         throw new BadRequestException(
-          `User already has access to ${level_name} level`,
+          `User already has active access to ${level_name} level`,
         );
       }
 

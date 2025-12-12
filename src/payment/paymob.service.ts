@@ -187,14 +187,15 @@ export class PaymobService {
 
       const levelName = paymentRequest.items[0].name;
 
-      // Check for existing completed order using transaction session
-      const existingCompletedOrder = await this.orderRepo.findCompletedOrder(
+      // Check for existing ACTIVE completed order using transaction session
+      // This allows users to repurchase expired courses
+      const existingActiveOrder = await this.orderRepo.findActiveCompletedOrder(
         userId,
         levelName,
         session,
       );
 
-      if (existingCompletedOrder) {
+      if (existingActiveOrder) {
         throw new BadRequestException('User already has this level');
       }
 
