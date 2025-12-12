@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotAcceptableException, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UploadDTO, UploadFileDTO } from './dto';
+import { UploadDTO, UploadJsonFileDTO } from './dto';
 import { v4 as uuid } from 'uuid';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 import { InjectConnection } from '@nestjs/mongoose';
@@ -9,6 +9,8 @@ import { GridFSBucket, ObjectId } from 'mongodb';
 import { Response } from 'express';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
+import { UploadFileDTO } from './dto/get-content-aws';
+import { FileUploadMessages } from '../common/shared/const';
 
 enum FileType {
   IMAGE = 'Images',
@@ -48,14 +50,14 @@ export class FileUploadService {
    */
   async uploadSingleFile(
     file: Express.Multer.File,
-    uploadFileDTO: UploadFileDTO,
+    uploadJsonFileDTO: UploadFileDTO,
   ): Promise<{ url: string }> {
     this.validateFile(file);
 
     const fileTypePath = this.determineFileType(file.mimetype);
     const key = this.generateFileKey(
       fileTypePath,
-      uploadFileDTO,
+      uploadJsonFileDTO,
       file.originalname.trim().replaceAll(/\s+/g, '_'),
     );
 
@@ -532,7 +534,8 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
 
   async streamFile(key: string, res: Response): Promise<void> {
     const file = await this.findFileByName(key);
-    if (!file) throw new NotFoundException('File not found');
+
+    if (!file) throw new NotFoundException(FileUploadMessages.FILE_NOT_FOUND);
     const contentType = file.contentType || 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
 
@@ -543,15 +546,11 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
     const dispositionType = inlineTypes.some((t) => contentType.startsWith(t))
       ? 'inline'
       : 'attachment';
+      
     res.setHeader(
       'Content-Disposition',
       `${dispositionType}; filename="${originalName}"`
     );
-
-    // Optional length header for client progress (if available)
-    if (typeof file.length === 'number') {
-      res.setHeader('Content-Length', file.length.toString());
-    }
 
     return await new Promise<void>((resolve, reject) => {
       this.bucket.openDownloadStream(file._id)

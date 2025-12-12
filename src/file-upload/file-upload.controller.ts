@@ -18,7 +18,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
-import { UploadDTO, UploadFileDTO, validateData } from './dto';
+import { UploadDTO, UploadJsonFileDTO, validateData } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
@@ -30,6 +30,8 @@ import { AdminRoles } from 'src/admin-auth/decorators';
 import { AdminRoleGuard, AdminJwtGuard } from '../admin-auth/guards';
 import { UserJwtGuard } from '../user-auth/guards';
 import { UserService } from '../user/user.service';
+import { UploadFileDTO } from './dto/get-content-aws';
+import { FileUploadMessages } from '../common/shared/const';
 
 // The UserJwtGuard ensures that only authenticated users can access certain endpoints.
 // And not applied for all the endpoints in this controller,
@@ -48,9 +50,11 @@ export class FileUploadController {
   @Get('raw')
   async streamRaw(@Query('key') key: string, @Res() res: Response) {
     if (!key) {
-      throw new BadRequestException('key query param is required');
+      throw new BadRequestException(FileUploadMessages.FILE_KEY_IS_REQUIRED);
     }
+    // Decode the key to handle any URL encoding issues like spaces or special characters
     const decodedKey = decodeURIComponent(key);
+
     try {
       await this.uploadService.streamFile(decodedKey, res);
     } catch (error) {
@@ -279,11 +283,11 @@ export class FileUploadController {
   )
   async uploadSingleFile(
     @UploadedFile() file: Express.Multer.File,
-    @Body() uploadFileDTO: UploadFileDTO,
+    @Body() uploadJsonFileDTO: UploadJsonFileDTO,
     @Req() req: Request,
   ) {
     this.validateMediaFile(file);
-    const result = await this.uploadService.uploadSingleFile(file, uploadFileDTO);
+    const result = await this.uploadService.uploadSingleFile(file, uploadJsonFileDTO);
     return this.rewriteToLocalOrigin(result, req);
   }
 
@@ -299,13 +303,13 @@ export class FileUploadController {
   private rewriteToLocalOrigin(result: { url: string }, req: Request): { url: string } {
     try {
       const url = new URL(result.url);
-      const origin = `${req.protocol}://${req.get('host')}`;
+      const origin = `https://${req.get('host')}`;
       const rebuilt = `${origin}${url.pathname}${url.search}`;
       return { url: rebuilt };
     } catch {
       const keyMatch = /[?&]key=([^&]+)/.exec(result.url);
       const key = keyMatch ? keyMatch[1] : '';
-      const origin = `${req.protocol}://${req.get('host')}`;
+      const origin = `https://${req.get('host')}`;
       return { url: `${origin}/api/files/raw?key=${key}` };
     }
   }

@@ -114,7 +114,7 @@ export class UploadDTO {
   data: any[];
 }
 
-export class UploadFileDTO {
+export class UploadJsonFileDTO {
   @IsNotEmpty()
   @IsEnum(LESSONS)
   lesson_name: LESSONS;
