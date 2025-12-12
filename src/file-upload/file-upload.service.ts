@@ -1,6 +1,13 @@
-import { Injectable, InternalServerErrorException, NotAcceptableException, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import { 
+  Injectable,
+  InternalServerErrorException,
+  NotAcceptableException,
+  NotFoundException,
+  Logger,
+  BadRequestException
+ } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UploadDTO, UploadJsonFileDTO } from './dto';
+import { UploadDTO } from './dto';
 import { v4 as uuid } from 'uuid';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
 import { InjectConnection } from '@nestjs/mongoose';
@@ -68,7 +75,7 @@ export class FileUploadService {
       return { url: this.buildPublicUrl(key) };
     } catch (error) {
       this.logger.error(`Failed to upload file: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to upload file: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_UPLOAD_FILE}: ${error.message}`);
     }
   }
 
@@ -89,7 +96,7 @@ export class FileUploadService {
       return { url: this.buildPublicUrl(key) };
     } catch (error) {
       this.logger.error(`Failed to upload user audio: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to upload user audio: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_UPLOAD_USER_AUDIO}: ${error.message}`);
     }
   }
 
@@ -123,7 +130,7 @@ export class FileUploadService {
       return { url: this.buildPublicUrl(key) };
     } catch (error) {
       this.logger.error(`Error retrieving day audio: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to retrieve day audio: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_RETRIEVE_DAY_AUDIO}: ${error.message}`);
     }
   }
 
@@ -142,7 +149,7 @@ export class FileUploadService {
       return { url: this.buildPublicUrl(combinedKey) };
     } catch (error) {
       this.logger.error(`Failed to get combined audio: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to get combined audio: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_GET_COMBINED_AUDIO}: ${error.message}`);
     }
   }
 
@@ -153,8 +160,8 @@ export class FileUploadService {
    */
  async combineUserLevelAudios(userId: string, levelName: string, totalDays = 50): Promise<{ url: string; combinedKey: string; daysCombined: number }> {
    
-    if (!userId) throw new BadRequestException('userId required');
-    if (!levelName) throw new BadRequestException('levelName required');
+    if (!userId) throw new BadRequestException(FileUploadMessages.USER_ID_REQUIRED);
+    if (!levelName) throw new BadRequestException(FileUploadMessages.LEVEL_NAME_REQUIRED);
 
     const inputKeys: string[] = [];
     
@@ -163,7 +170,6 @@ export class FileUploadService {
     // Only look for WAV files for consistency
     for (let day = 1; day <= totalDays; day++) {
       const wavKey = `UserAudios/${userId}/${levelName}/${day}/today_audio.wav`;
-      this.logger.log(`Checking for file: ${wavKey}`);
       const wavFile = await this.findFileByName(wavKey);
       
       if (wavFile) {
@@ -175,7 +181,7 @@ export class FileUploadService {
     }
     
     if (inputKeys.length === 0) {
-      throw new NotFoundException('No daily WAV audios found to combine');
+      throw new NotFoundException(FileUploadMessages.NO_DAILY_AUDIOS_FOUND);
     }
     
     this.logger.log(`==== SUMMARY: Found ${inputKeys.length} WAV files to combine ====`);
@@ -199,7 +205,7 @@ export class FileUploadService {
         const tempPath = path.join(tmpDir, `gfs_${timestamp}_${i}_${randomId}.wav`);
         this.logger.log(`Downloading ${key} -> ${tempPath}`);
         const fileDoc = await this.findFileByName(key);
-        if (!fileDoc) throw new NotFoundException(`Missing audio: ${key}`);
+        if (!fileDoc) throw new NotFoundException(`${FileUploadMessages.MISSING_AUDIO}: ${key}`);
         
         // Download file from GridFS
         await new Promise<void>((resolve, reject) => {
@@ -210,11 +216,11 @@ export class FileUploadService {
             .on('data', () => { hasData = true; })
             .on('error', (err) => {
               this.logger.error(`Failed to download ${key}: ${err.message}`);
-              reject(new InternalServerErrorException(`File data missing for ${key}. The file may have been corrupted or chunks deleted.`));
+              reject(new InternalServerErrorException(`File data missing for ${key}. ${FileUploadMessages.FILE_DATA_MISSING}`));
             })
             .on('end', () => {
               if (!hasData) {
-                reject(new InternalServerErrorException(`No data available for ${key}. File chunks may be missing.`));
+                reject(new InternalServerErrorException(`No data available for ${key}. ${FileUploadMessages.NO_DATA_AVAILABLE}`));
               } else {
                 resolve();
               }
@@ -224,7 +230,7 @@ export class FileUploadService {
         
         // Verify file was written
         if (!fs.existsSync(tempPath) || fs.statSync(tempPath).size === 0) {
-          throw new InternalServerErrorException(`Failed to download ${key} - file is empty or missing`);
+          throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_DOWNLOAD_FILE}: ${key}`);
         }
         
         inputTempFiles.push(tempPath);
@@ -241,7 +247,7 @@ export class FileUploadService {
       return { url: this.buildPublicUrl(combinedKey), combinedKey, daysCombined: inputKeys.length };
     } catch (error) {
       this.logger.error(`Failed combining user audios: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to combine audios: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_COMBINE_AUDIOS}: ${error.message}`);
     } finally {
       // Cleanup temp input files
       try {
@@ -297,7 +303,7 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
       return combinedBuffer;
     } catch (error) {
       this.logger.error(`FFmpeg concatenation failed: ${error.message}`);
-      throw new Error(`Audio concatenation failed: ${error.message}`);
+      throw new Error(`${FileUploadMessages.AUDIO_CONCATENATION_FAILED}: ${error.message}`);
     } finally {
       try {
         const fs = await import('fs');
@@ -334,23 +340,23 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
   async deleteUserAudio(userId: string, audioKey: string): Promise<void> {
     const key = audioKey.startsWith('UserAudios/') ? audioKey : `UserAudios/${audioKey}`;
     const file = await this.findFileByName(key);
-    if (!file) throw new NotFoundException(`Audio file not found: ${key}`);
+    if (!file) throw new NotFoundException(`${FileUploadMessages.AUDIO_FILE_NOT_FOUND}: ${key}`);
     try {
       await this.bucket.delete(file._id);
       this.logger.debug(`Successfully deleted audio file: ${key}`);
     } catch (error) {
       this.logger.error(`Failed to delete audio file: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to delete user audio: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_DELETE_USER_AUDIO}: ${error.message}`);
     }
   }
 
   private validateFile(file: Express.Multer.File): void {
     if (!file) {
-      throw new NotAcceptableException('File is required');
+      throw new NotAcceptableException(FileUploadMessages.FILE_REQUIRED);
     }
     const fileTypePath = this.determineFileType(file.mimetype);
     if (!fileTypePath) {
-      throw new NotAcceptableException('Unsupported file type. Only images and audio files are allowed.');
+      throw new NotAcceptableException(FileUploadMessages.UNSUPPORTED_FILE_TYPE);
     }
   }
 
@@ -366,7 +372,7 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
       await this.saveJsonToGridFS(key, jsonData);
     } catch (error) {
       this.logger.error(`Failed to insert object into JSON data array: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to insert object into JSON data array: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_INSERT_JSON}: ${error.message}`);
     }
   }
 
@@ -378,13 +384,13 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
       const initialLength = jsonData.data.length;
       jsonData.data = jsonData.data.filter((item) => item.id !== objectId.toString());
       if (jsonData.data.length === initialLength) {
-        throw new NotFoundException(`Object with ID ${objectId} not found`);
+        throw new NotFoundException(FileUploadMessages.OBJECT_NOT_FOUND.replace('{{id}}', objectId.toString()));
       }
       await this.saveJsonToGridFS(key, jsonData);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       this.logger.error('Error in deleteFromJsonDataArray:', error);
-      throw new InternalServerErrorException(`Failed to delete object: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_DELETE_OBJECT}: ${error.message}`);
     }
   }
 
@@ -397,7 +403,7 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
       return { deleted: true };
     } catch (error) {
       this.logger.error(`Failed to delete file: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to delete file: ${error.message}`);
+      throw new InternalServerErrorException(`${FileUploadMessages.FAILED_TO_DELETE_FILE}: ${error.message}`);
     }
   }
 
@@ -407,14 +413,14 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
       const jsonData = await this.getOrInitializeJsonData(key);
       return jsonData?.data ? jsonData : { data: [] };
     } catch (error) {
-      this.logger.error(`Failed to get content by name: ${error.message}`, error.stack);
+      this.logger.error(`${FileUploadMessages.FAILED_TO_GET_CONTENT}: ${error.message}`, error.stack);
       return { data: [] };
     }
   }
 
   async getAudioBufferFromGridFS(key: string): Promise<Buffer> {
     const file = await this.findFileByName(key);
-    if (!file) throw new NotFoundException('Audio file not found');
+    if (!file) throw new NotFoundException(FileUploadMessages.AUDIO_FILE_NOT_FOUND);
     const chunks: Buffer[] = [];
     return await new Promise<Buffer>((resolve, reject) => {
       this.bucket.openDownloadStream(file._id)
@@ -481,7 +487,7 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
       return;
     }
     if (!Array.isArray(jsonData.data)) {
-      throw new InternalServerErrorException('Invalid JSON structure: "data" is not an array');
+      throw new InternalServerErrorException(FileUploadMessages.INVALID_JSON_STRUCTURE);
     }
   }
 
@@ -551,6 +557,11 @@ private async concatenateAudioFiles(inputFiles: string[]): Promise<Buffer> {
       'Content-Disposition',
       `${dispositionType}; filename="${originalName}"`
     );
+
+    // Optional length header for client progress (if available)
+    if (typeof file.length === 'number') {
+      res.setHeader('Content-Length', file.length.toString());
+    }
 
     return await new Promise<void>((resolve, reject) => {
       this.bucket.openDownloadStream(file._id)
