@@ -94,7 +94,7 @@ export class PaymobService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Payment Successful!</h1>
+            <h1>Payment Successful!</h1>
           </div>
           <div class="content">
             <p>Hi {{userName}},</p>

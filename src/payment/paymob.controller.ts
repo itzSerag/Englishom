@@ -27,6 +27,7 @@ import { PaymentStatus } from './types';
 import { UserJwtGuard } from '../user-auth/guards/user-jwt.guard';
 import { PaymobCallbackData } from './types/callback';
 import * as crypto from 'crypto';
+import { AdminJwtGuard } from '../admin-auth/guards';
 
 @Controller('payment')
 export class PaymobController {
@@ -256,7 +257,26 @@ export class PaymobController {
     }
   }
 
-  @Get('debug/order/:userId')
+
+  // search orders for a specific id payment - ADMIN ONLY
+  @UseGuards(AdminJwtGuard)
+  @Get('orders/:paymentId')
+  async getOrdersByPaymentId(@Param('paymentId') paymentId: number )
+  {
+    // if there is no paymentId list all the orders with pagination
+    if(!paymentId){
+      throw new BadRequestException('paymentId query parameter is required');
+    }
+    const order = await this.paymobService.orderRepo.find({
+      paymentId: paymentId,
+    }); 
+    return { order };
+  }
+
+
+  // Search orders for a specific user - ADMIN ONLY
+  @UseGuards(AdminJwtGuard)
+  @Get('orders/search/:userId')
   async debugUserOrders(
     @Param('userId') userId: string,
     @Query('levelName') levelName?: Level_Name,
@@ -292,11 +312,14 @@ export class PaymobController {
             paymentId: order.paymentId,
             createdAt: order.createdAt,
             paymentDate: order.paymentDate,
-          })) || [],
+            userId: order.userId,
+            ExpiresAt : order.accessExpiresAt,
+            PaymentStatus : order.paymentStatus,            
+            
+          })) || [], 
       };
     } catch (error) {
-      this.logger.error(`Debug orders failed: ${error.message}`, error.stack);
-      throw new BadRequestException(`Debug failed: ${error.message}`);
+      throw new InternalServerErrorException(`failed: ${error.message}`);
     }
   }
 
