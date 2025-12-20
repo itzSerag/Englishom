@@ -28,6 +28,8 @@ import { UserJwtGuard } from '../user-auth/guards/user-jwt.guard';
 import { PaymobCallbackData } from './types/callback';
 import * as crypto from 'crypto';
 import { AdminJwtGuard } from '../admin-auth/guards';
+import { AuthMessages } from '../common/shared/const';
+import { log } from 'console';
 
 @Controller('payment')
 export class PaymobController {
@@ -277,46 +279,31 @@ export class PaymobController {
   // Search orders for a specific user - ADMIN ONLY
   @UseGuards(AdminJwtGuard)
   @Get('orders/search/:userId')
-  async debugUserOrders(
+  async getUserOrdersDetails(
     @Param('userId') userId: string,
-    @Query('levelName') levelName?: Level_Name,
   ) {
+
+    /// Validate userId format
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new BadRequestException('Invalid userId format');
+    }
+
+    // validate user existence
+    const user =  await this.userService.findById(userId);
+    if(!user){
+      throw new NotFoundException(AuthMessages.USER_NOT_FOUND_OR_INACTIVE);
+    }
+
     try {
-      const allOrders = await this.paymobService.orderRepo.find({
-        userId: userId,
-        ...(levelName && { levelName }),
+      const allUserOrders = await this.paymobService.orderRepo.find({
+        userId: user._id,
       });
-
-      const pendingOrders = await this.paymobService.orderRepo.find({
-        userId: userId,
-        paymentStatus: PaymentStatus.PENDING,
-        ...(levelName && { levelName }),
-      });
-
-      const completedOrders = await this.paymobService.orderRepo.find({
-        userId: userId,
-        paymentStatus: PaymentStatus.COMPLETED,
-        ...(levelName && { levelName }),
-      });
-
+      
+      log(userId)
+      log(allUserOrders)
       return {
-        total: allOrders?.length || 0,
-        pending: pendingOrders?.length || 0,
-        completed: completedOrders?.length || 0,
-        orders:
-          allOrders?.map((order) => ({
-            id: order._id,
-            levelName: order.levelName,
-            status: order.paymentStatus,
-            amount: order.amount, // Now using whole currency amount
-            paymentId: order.paymentId,
-            createdAt: order.createdAt,
-            paymentDate: order.paymentDate,
-            userId: order.userId,
-            ExpiresAt : order.accessExpiresAt,
-            PaymentStatus : order.paymentStatus,            
-            
-          })) || [], 
+        total: allUserOrders?.length || 0,
+        orders: [...allUserOrders]
       };
     } catch (error) {
       throw new InternalServerErrorException(`failed: ${error.message}`);
