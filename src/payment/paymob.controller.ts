@@ -30,6 +30,7 @@ import * as crypto from 'crypto';
 import { AdminJwtGuard } from '../admin-auth/guards';
 import { AuthMessages } from '../common/shared/const';
 import { log } from 'console';
+import { OrderSearchDto } from './dto/order-search.dto';
 
 @Controller('payment')
 export class PaymobController {
@@ -259,7 +260,57 @@ export class PaymobController {
     }
   }
 
+  // ADMIN: get all orders for a specific user (no reports, just that user's history)
+  @UseGuards(AdminJwtGuard)
+  @Get('orders/user/:userId')
+  async getUserOrdersDetails(@Param('userId') userId: string) {
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new BadRequestException('Invalid userId format');
+    }
 
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException(AuthMessages.USER_NOT_FOUND_OR_INACTIVE);
+    }
+
+    try {
+      const orders = await this.paymobService.orderRepo.find({
+        userId: user._id,
+      });
+
+      return {
+        total: orders?.length || 0,
+        orders,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(`failed: ${error.message}`);
+    }
+  }
+
+  
+  // Search orders with pagination / filters - ADMIN ONLY
+  @UseGuards(AdminJwtGuard)
+  @Get('orders/search-orders')
+  async searchOrders(@Query() searchDto: OrderSearchDto) {
+    const { userId } = searchDto;
+
+    // If userId is provided, validate and ensure user exists
+    if (userId) {
+      const user = await this.userService.findById(userId);
+      if (!user) {
+        throw new NotFoundException(AuthMessages.USER_NOT_FOUND_OR_INACTIVE);
+      }
+    }
+
+    try {
+      // Returns { data, total, page, limit, totalPages }
+      return await this.paymobService.searchOrders(searchDto);
+    } catch (error) {
+      throw new InternalServerErrorException(`failed: ${error.message}`);
+    }
+  }
+
+  
   // search orders for a specific id payment - ADMIN ONLY
   @UseGuards(AdminJwtGuard)
   @Get('orders/:paymentId')
@@ -276,39 +327,7 @@ export class PaymobController {
   }
 
 
-  // Search orders for a specific user - ADMIN ONLY
-  @UseGuards(AdminJwtGuard)
-  @Get('orders/search/:userId')
-  async getUserOrdersDetails(
-    @Param('userId') userId: string,
-  ) {
-
-    /// Validate userId format
-    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
-      throw new BadRequestException('Invalid userId format');
-    }
-
-    // validate user existence
-    const user =  await this.userService.findById(userId);
-    if(!user){
-      throw new NotFoundException(AuthMessages.USER_NOT_FOUND_OR_INACTIVE);
-    }
-
-    try {
-      const allUserOrders = await this.paymobService.orderRepo.find({
-        userId: user._id,
-      });
-      
-      log(userId)
-      log(allUserOrders)
-      return {
-        total: allUserOrders?.length || 0,
-        orders: [...allUserOrders]
-      };
-    } catch (error) {
-      throw new InternalServerErrorException(`failed: ${error.message}`);
-    }
-  }
+  
 
   @Post('refund')
   async refundOrder(@Req() req: any, @Body('levelName') levelName: Level_Name) {

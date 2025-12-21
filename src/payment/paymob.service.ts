@@ -16,6 +16,8 @@ import { MailService } from '../common/mail/mail.service';
 import { FrontendRedirectService } from '../common/services/frontend-redirect.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import { OrderSearchDto, OrderPeriod } from './dto/order-search.dto';
+import { toObjectId } from '../common/utils/mongoose.utils';
 
 @Injectable()
 export class PaymobService {
@@ -517,6 +519,111 @@ export class PaymobService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  /**
+   * Search orders for admin with pagination, optional paymentId, userId and period filters
+   */
+  async searchOrders(searchDto: OrderSearchDto) {
+    const {
+      page = 1,
+      limit = 10,
+      paymentId,
+      userId,
+      period,
+      date,
+    } = searchDto;
+
+    const filter: any = {};
+
+    if (paymentId) {
+      // Partial / case-insensitive search on paymentId
+      filter.paymentId = { $regex: paymentId, $options: 'i' };
+    }
+
+    if (userId) {
+      // Convert to ObjectId so it matches stored type
+      filter.userId = toObjectId(userId);
+    }
+
+    if (period) {
+      const baseDate = date ? new Date(date) : new Date();
+      if (isNaN(baseDate.getTime())) {
+        throw new BadRequestException('Invalid date format');
+      }
+
+      const { start, end } = this.getPeriodRange(period, baseDate);
+      filter.paymentDate = { $gte: start, $lte: end };
+    }
+
+    const result = await this.orderRepo.findWithUserPagination(
+      filter,
+      page,
+      limit,
+    );
+
+    // Replace populated userId with a clean `user` object in the response
+    return {
+      ...result,
+      data: result.data.map((order: any) => {
+        const { userId, ...rest } = order;
+        return {
+          ...rest,
+          user: userId,
+        };
+      }),
+    };
+  }
+
+  private getPeriodRange(
+    period: OrderPeriod,
+    baseDate: Date,
+  ): { start: Date; end: Date } {
+    const start = new Date(baseDate);
+    const end = new Date(baseDate);
+
+    switch (period) {
+      case OrderPeriod.DAILY:
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+
+      case OrderPeriod.WEEKLY: {
+        // Consider Monday as the first day of the week
+        const currentDay = baseDate.getDay(); // 0 (Sun) - 6 (Sat)
+        const diffToMonday = (currentDay + 6) % 7; // 0 for Mon, 6 for Sun
+
+        start.setDate(baseDate.getDate() - diffToMonday);
+        start.setHours(0, 0, 0, 0);
+
+        end.setTime(start.getTime());
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        break;
+      }
+
+      case OrderPeriod.MONTHLY:
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+
+        // Last day of month: set to first day of next month, then go back one day
+        end.setMonth(start.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+
+      case OrderPeriod.YEARLY:
+        start.setMonth(0, 1); // January 1st
+        start.setHours(0, 0, 0, 0);
+
+        end.setMonth(11, 31); // December 31st
+        end.setHours(23, 59, 59, 999);
+        break;
+
+      default:
+        throw new BadRequestException('Invalid period value');
+    }
+
+    return { start, end };
   }
 
   /**

@@ -254,6 +254,42 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       .exec();
   }
 
+  // Generic pagination with populated user for admin search/reporting
+  async findWithUserPagination(
+    filter: Record<string, any>,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    data: any[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.orderModel
+        .find(filter)
+        .populate({ path: 'userId', select: 'firstName lastName email' })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(true),
+      this.orderModel.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: data || [],
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
   // Bulk mark orders as EXPIRED where cutoff reached
   async markExpiredOrdersCutoff(cutoffDate: Date): Promise<number> {
     const res = await this.orderModel.updateMany(
