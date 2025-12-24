@@ -86,7 +86,7 @@ export class UserAuthService {
     // Check if the user is using local strategy
     if (user.strategy !== 'local') {
       throw new ConflictException(
-        'This email has signed-up with a different method ' + user.strategy,
+        'This email has signed-up with a different method '
       );
     }
 

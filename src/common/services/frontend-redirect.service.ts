@@ -12,8 +12,7 @@ export class FrontendRedirectService {
    */
   private getDefaultFrontendUrl(): string {
     return (
-      this.configService.get<string>('FRONTEND_URL') ||
-      'https://serag-eldien.site'
+      this.configService.getOrThrow<string>('FRONTEND_URL')
     );
   }
 
