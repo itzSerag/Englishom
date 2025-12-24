@@ -143,7 +143,9 @@ export class UserAuthController {
         user,
         req,
       );
-      const jwt = this.userAuthService.generateToken(newUser);
+      const jwt = await this.userAuthService.createSessionAndGenerateToken(
+        newUser,
+      );
 
       // Redirect back to frontend with token
       const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl();
@@ -156,14 +158,6 @@ export class UserAuthController {
         `Facebook OAuth login failed: ${err.message}`,
         err.stack,
       );
-
-      // Redirect back with error
-      const errorRedirectUrl =
-        this.frontendRedirectService.getOAuthErrorRedirectUrl(
-          'auth_failed',
-          err.message || 'Authentication failed',
-        );
-      return res.redirect(errorRedirectUrl);
     }
   }
 
@@ -191,7 +185,9 @@ export class UserAuthController {
         user,
         req,
       );
-      const jwt = this.userAuthService.generateToken(newUser);
+      const jwt = await this.userAuthService.createSessionAndGenerateToken(
+        newUser,
+      );
 
       // Redirect back to frontend with token
       const redirectUrl = this.frontendRedirectService.getOAuthRedirectUrl();

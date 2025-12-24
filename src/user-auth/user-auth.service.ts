@@ -257,14 +257,30 @@ export class UserAuthService {
     }
   }
 
+  /**
+   * Create a new session for the user (single-device login) and
+   * generate a JWT that embeds the same session ID (jti).
+   * Used for OAuth logins so that the token is accepted by UserJwtStrategy.
+   */
+  async createSessionAndGenerateToken(user: User): Promise<string> {
+    const jti =
+      Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+    await this.userRepo.findOneAndUpdate(
+      { _id: user._id },
+      {
+        lastActivity: this.timeService.createDate(),
+        activeSessionId: jti,
+      },
+    );
+
+    return this.generateTokenWithJti(user, jti);
+  }
+
   async findOrCreateOAuthUser(profile: any, req?: any) {
     const { email, strategy, firstName, lastName } = profile;
 
     const user = await this.userService.findByEmail(email);
-
-    // Generate new session ID for OAuth login
-    const jti =
-      Math.random().toString(36).substring(2) + Date.now().toString(36);
 
     if (!user) {
       const password = Math.random().toString(36).slice(-8);
@@ -284,7 +300,6 @@ export class UserAuthService {
         isVerified: true,
         lastActivity: this.timeService.createDate(),
         country,
-        activeSessionId: jti,
       });
 
       return newUser;
@@ -298,7 +313,6 @@ export class UserAuthService {
 
     const updateData: any = {
       lastActivity: this.timeService.createDate(),
-      activeSessionId: jti, // Invalidate previous sessions
     };
 
     if (user.firstName !== firstName || user.lastName !== lastName) {
@@ -306,9 +320,12 @@ export class UserAuthService {
       updateData.lastName = lastName;
     }
 
-    await this.userRepo.findOneAndUpdate({ _id: user._id }, updateData);
+    const updatedUser = await this.userRepo.findOneAndUpdate(
+      { _id: user._id },
+      updateData,
+    );
 
-    return user;
+    return updatedUser;
   }
 
   async getUserLevels(userId: string) {
