@@ -254,6 +254,16 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
       .exec();
   }
 
+  // Find all orders with populated user (no pagination) for reports
+  async findWithUsers(filter: Record<string, any>): Promise<any[]> {
+    return await this.orderModel
+      .find(filter)
+      .populate({ path: 'userId', select: 'firstName lastName email' })
+      .sort({ createdAt: -1 })
+      .lean(true)
+      .exec();
+  }
+
   // Generic pagination with populated user for admin search/reporting
   async findWithUserPagination(
     filter: Record<string, any>,

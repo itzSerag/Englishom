@@ -659,13 +659,23 @@ export class SeederService implements OnModuleInit {
         const course = courses[Math.floor(Math.random() * courses.length)];
         const status =
           orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
-        const daysAgo = Math.floor(Math.random() * 90);
+
+        // Generate a payment date within the current calendar year
+        const now = new Date();
+        const daysAgo = Math.floor(Math.random() * 90); // up to ~3 months back
+        const paymentDate = new Date(
+          now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
+        );
+        if (paymentDate.getFullYear() < now.getFullYear()) {
+          // Clamp to current year so test data stays in the active year
+          paymentDate.setFullYear(now.getFullYear());
+        }
         const orderData = {
           userId: user._id as any, // Type assertion for ObjectId compatibility
           levelName: course.level_name,
           amount: course.price, // Use whole currency amount directly
           paymentStatus: status,
-          paymentDate: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+          paymentDate,
           ...(status === PaymentStatus.COMPLETED && {
             paymentId: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           }),

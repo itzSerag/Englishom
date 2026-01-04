@@ -16,7 +16,7 @@ import { MailService } from '../common/mail/mail.service';
 import { FrontendRedirectService } from '../common/services/frontend-redirect.service';
 import * as fs from 'fs';
 import * as path from 'path';
-import { OrderSearchDto, OrderPeriod } from './dto/order-search.dto';
+import { OrderSearchDto, OrderPeriod, OrderReportDto } from './dto/order-search.dto';
 import { toObjectId } from '../common/utils/mongoose.utils';
 
 @Injectable()
@@ -572,6 +572,37 @@ export class PaymobService {
           user: userId,
         };
       }),
+    };
+  }
+
+  /**
+   * Reports endpoint: takes only a required period (daily/weekly/monthly/yearly)
+   * and returns all matching orders for that period (no pagination),
+   * calculated relative to "now" with no base date parameter.
+   */
+  async getOrdersReport(reportDto: OrderReportDto) {
+    const { period } = reportDto;
+
+    const baseDate = new Date();
+    const { start, end } = this.getPeriodRange(period, baseDate);
+
+    const filter: any = {
+      paymentDate: { $gte: start, $lte: end },
+    };
+
+    const orders = await this.orderRepo.findWithUsers(filter);
+
+    const data = orders.map((order: any) => {
+      const { userId, ...rest } = order;
+      return {
+        ...rest,
+        user: userId,
+      };
+    });
+
+    return {
+      total: data.length,
+      data,
     };
   }
 

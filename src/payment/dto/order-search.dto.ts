@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { PaginationDto } from '../../user/dto/pagination.dto';
 
 export enum OrderPeriod {
@@ -26,4 +26,11 @@ export class OrderSearchDto extends PaginationDto {
   @IsOptional()
   @IsDateString()
   date?: string;
+}
+
+// Simplified DTO for reports: require period, no user/date filters
+export class OrderReportDto {
+  @IsNotEmpty()
+  @IsEnum(OrderPeriod)
+  period: OrderPeriod;
 }

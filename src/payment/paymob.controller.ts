@@ -30,7 +30,7 @@ import * as crypto from 'crypto';
 import { AdminJwtGuard } from '../admin-auth/guards';
 import { AuthMessages } from '../common/shared/const';
 import { log } from 'console';
-import { OrderSearchDto } from './dto/order-search.dto';
+import { OrderSearchDto, OrderReportDto } from './dto/order-search.dto';
 
 @Controller('payment')
 export class PaymobController {
@@ -305,6 +305,18 @@ export class PaymobController {
     try {
       // Returns { data, total, page, limit, totalPages }
       return await this.paymobService.searchOrders(searchDto);
+    } catch (error) {
+      throw new InternalServerErrorException(`failed: ${error.message}`);
+    }
+  }
+
+  // Reports endpoint: same filters (paymentId, userId, period, date) but returns all records
+  @UseGuards(AdminJwtGuard)
+  @Get('orders/reports')
+  async getOrdersReport(@Query() reportDto: OrderReportDto) {
+    try {
+      // Returns a plain array of orders with embedded `user` object
+      return await this.paymobService.getOrdersReport(reportDto);
     } catch (error) {
       throw new InternalServerErrorException(`failed: ${error.message}`);
     }
