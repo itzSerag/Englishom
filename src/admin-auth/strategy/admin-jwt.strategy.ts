@@ -23,8 +23,11 @@ export class AdminJwtStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
     try {
       const admin = await this.adminAuthService.validateAdmin(payload.sub);
 
-      if (!admin && !admin.isActive) {
-        throw new UnauthorizedException('Admin not found or Admin is deactivated');
+      // If admin does not exist OR is not active, reject the request
+      if (!admin || !admin.isActive) {
+        throw new UnauthorizedException(
+          'Admin not found or Admin is deactivated',
+        );
       }
 
       // Return cleaned admin object (password will be removed by cleanResponse)
