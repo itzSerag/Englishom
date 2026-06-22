@@ -71,17 +71,7 @@ export class UserController {
     return cleanResponse(user);
   }
 
-  // Admin endpoint with pagination support
-  @UseGuards(AdminJwtGuard)
-  @Get('all')
-  async findAll(@Query() paginationDto: PaginationDto) {
-    const result = await this.userService.findAllWithPagination(paginationDto);
 
-    return {
-      ...result,
-      data: result.data.map((user) => cleanResponse(user)),
-    };
-  }
 
   @Get('levels')
   async getUserLevels(@CurrentUser() user: User) {
@@ -104,15 +94,7 @@ export class UserController {
     return this.userService.findOneAndUpdate(id, updateUserDto);
   }
 
-  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
-  @Delete(':id')
-  async remove(@CurrentUser() user: User, @Param('id') id: string) {
-    if (id === 'admin' && user._id.toString() === id) {
-      throw new BadRequestException('Admin cannot be deleted');
-    }
 
-    return await this.userService.deleteUser(id);
-  }
 
   @Get('certificate/:level_name')
   async getUserCertificate(
@@ -205,10 +187,5 @@ export class UserController {
     };
   }
 
-  /// MUST BE AT THE END AND ADMIN ONLY
-  @UseGuards(AdminJwtGuard)
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findById(id);
-  }
+
 }

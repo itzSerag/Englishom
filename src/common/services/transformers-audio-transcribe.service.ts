@@ -1,9 +1,7 @@
 import { Injectable, Logger, BadRequestException, OnModuleInit } from '@nestjs/common';
-import { Pipeline, quantize_embeddings } from '@xenova/transformers';
 @Injectable()
 export class TransformersAudioTranscribe implements OnModuleInit {
-  private readonly logger = new Logger(TransformersAudioTranscribe.name);
-  
+  private readonly logger = new Logger(TransformersAudioTranscribe.name); 
   private inFlight = 0;
   private readonly MAX_CONCURRENCY = 20;
   private transcriber: any | null = null;

@@ -56,11 +56,4 @@ export class AdminAuthService {
     return this.jwtService.sign(payload);
   }
 
-  /**
-   * Validate admin by ID for JWT strategy
-   */
-  async validateAdmin(adminId: string): Promise<Admin | null> {
-    const admin = await this.adminRepo.findOne({ _id: adminId });
-    return admin;
-  }
 }

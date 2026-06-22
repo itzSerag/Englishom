@@ -3,7 +3,8 @@ import { UserRepo } from '../../user/repo/user.repo';
 import { AdminRepo } from '../../admin/repo/admin.repo';
 import { User } from '../../user/models/user.schema';
 import { Admin } from '../../admin/models/admin.schema';
-import { UserStatus } from '../shared';
+import { UserStatus, Role } from '../shared';
+import { AuthMessages } from '../shared/const';
 
 @Injectable()
 export class GlobalAuthenticationService {
@@ -57,7 +58,7 @@ export class GlobalAuthenticationService {
   async updateLastActivity(user: User | Admin): Promise<void> {
     const now = Date.now();
 
-    if (user instanceof User) {
+    if (user.role === Role.USER) {
       await this.userRepo.findOneAndUpdate(
         { _id: user._id },
         { lastActivity: now },
@@ -78,7 +79,7 @@ export class GlobalAuthenticationService {
     const now = Date.now();
     const updateData: any = { lastActivity: now };
 
-    if (user instanceof User) {
+    if (user.role === Role.USER) {
       await this.userRepo.findOneAndUpdate({ _id: user._id }, updateData);
     } else {
       await this.adminRepo.findOneAndUpdate({ _id: user._id }, updateData);
@@ -92,6 +93,7 @@ export class GlobalAuthenticationService {
   async validateAndGetUser(payload: {
     sub: string;
     email: string;
+    jti?: string;
   }): Promise<User | Admin> {
     const user = await this.findUserById(payload.sub);
 
@@ -99,9 +101,9 @@ export class GlobalAuthenticationService {
       throw new UnauthorizedException('User not found');
     }
 
-    // For regular users, check account status
-    if (user instanceof User) {
-      const userEntity = user;
+    // For regular users, check account status and session ID
+    if (user.role === Role.USER) {
+      const userEntity = user as User;
       if (userEntity.status === UserStatus.SUSPENDED) {
         throw new UnauthorizedException({
           message:
@@ -121,11 +123,19 @@ export class GlobalAuthenticationService {
           error: 'Account Blocked',
         });
       }
+
+      // Validate session ID - single device login enforcement
+      if (payload.jti && userEntity.activeSessionId !== payload.jti) {
+        throw new UnauthorizedException(AuthMessages.INVALID_SESSION);
+      }
     }
 
     // For admins, check if account is still active
-    if (user instanceof Admin && !user.isActive) {
-      throw new UnauthorizedException('Admin account is deactivated');
+    if (user.role === Role.ADMIN) {
+      const adminEntity = user as Admin;
+      if (!adminEntity.isActive) {
+        throw new UnauthorizedException('Admin account is deactivated');
+      }
     }
 
     // Update activity if stale
@@ -137,8 +147,10 @@ export class GlobalAuthenticationService {
   }
 
   private isActivityStale(lastActivityTime: Date, staleMinutes = 1): boolean {
+    if (!lastActivityTime) return true;
     const currentTime = Date.now();
     const staleThreshold = new Date(currentTime - staleMinutes * 60000);
     return lastActivityTime < staleThreshold;
   }
 }
+

@@ -523,48 +523,18 @@ export class UserService {
     }
 
     // Otherwise return details for all user purchases (grouped by level)
-    const orders = await this.orderRepo.findUserCompletedOrders(userId);
-    if (!orders || orders.length === 0) {
+    const accessInfos = await this.levelAccessService.getAllAccessInfo(userId);
+    if (accessInfos.length === 0) {
       return { hasPurchase: false, levels: [] };
     }
 
-    // Build a simple mapping per level using the most recent order per level
-    const latestByLevel = new Map<string, typeof orders[0]>();
-    for (const order of orders) {
-      const key = String(order.levelName);
-      const existing = latestByLevel.get(key);
-      if (!existing || (order.paymentDate as any) > (existing.paymentDate as any)) {
-        latestByLevel.set(key, order);
-      }
-    }
-
-    const levels = [] as Array<{
-      levelName: string;
-      purchaseDate: Date;
-      expiresAt: Date;
-      daysLeft: number;
-      isExpired: boolean;
-    }>;
-
-    for (const [lvl, ord] of latestByLevel.entries()) {
-      const purchaseDate = new Date(ord.paymentDate || ord.createdAt);
-      const expiresAt = new Date(
-        purchaseDate.getTime() + 60 * 24 * 60 * 60 * 1000,
-      );
-      const now = new Date();
-      const daysElapsed = Math.max(
-        0,
-        Math.floor((now.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24)),
-      );
-      const daysLeft = Math.max(0, 60 - daysElapsed);
-      levels.push({
-        levelName: lvl,
-        purchaseDate,
-        expiresAt,
-        daysLeft,
-        isExpired: daysLeft <= 0,
-      });
-    }
+    const levels = accessInfos.map((info) => ({
+      levelName: info.levelName,
+      purchaseDate: info.purchaseDate,
+      expiresAt: info.expiresAt,
+      daysLeft: info.daysLeft,
+      isExpired: info.isExpired,
+    }));
 
     return { hasPurchase: true, levels };
   }

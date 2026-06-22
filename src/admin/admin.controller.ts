@@ -10,6 +10,8 @@ import {
   Req,
   Query,
   ConflictException,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import {
@@ -164,6 +166,20 @@ export class AdminController {
       updateStatusDto,
     );
     return cleanResponse(user);
+  }
+
+  // Delete user - SUPER and MANAGER can delete users
+  @AdminRoles(AdminRole.SUPER, AdminRole.MANAGER)
+  @Delete('users/:id')
+  async deleteUser(@Param('id') userId: string) {
+    if (userId === 'admin') {
+      throw new BadRequestException('Admin cannot be deleted');
+    }
+    const deletedUser = await this.userService.deleteUser(userId);
+    if (!deletedUser) {
+      throw new NotFoundException('User not found');
+    }
+    return { message: 'User deleted successfully', user: cleanResponse(deletedUser) };
   }
 
   // Get admin by ID - SUPER and MANAGER can view admin details

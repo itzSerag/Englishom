@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { AdminRole, Level_Name } from '../common/shared/enums';
-import { Public } from '../user-auth/decorator/public.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { AdminRoles } from '../admin-auth/decorators';
 
 @Controller('courses')

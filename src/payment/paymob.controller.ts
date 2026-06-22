@@ -20,7 +20,7 @@ import { UserService } from '../user/user.service';
 import { CurrentUser } from '../user-auth/decorator/get-curr-user.decorator';
 import { User } from '../user/models/user.schema';
 import { ConfigService } from '@nestjs/config';
-import { Public } from '../user-auth/decorator/public.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CourseService } from '../course/course.service';
 import { Course } from '../course/models/course.schema';
 import { PaymentStatus } from './types';

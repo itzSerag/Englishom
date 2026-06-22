@@ -46,9 +46,8 @@ export class UserAuthService {
       ipAddress = this.ipService.getRealIp(req);
     }
     if (ipAddress) {
-      createUserDto.ipAddress = ipAddress;
-      createUserDto.country = await this.ipService.getCountryFromIp(ipAddress);
-    }
+       createUserDto.ipAddress = ipAddress;
+     }
 
     const user = await this.userService.create(createUserDto);
 
@@ -375,27 +374,6 @@ export class UserAuthService {
       }
       throw error;
     }
-  }
-
-  /**
-   * Validate user by ID for JWT strategy
-   */
-  async validateUser(userId: string): Promise<User | null> {
-    const user = await this.userRepo.findOne({ _id: userId });
-
-    if (!user) {
-      return null;
-    }
-
-    // Check account status
-    if (
-      user.status === UserStatus.SUSPENDED ||
-      user.status === UserStatus.BLOCKED
-    ) {
-      return null;
-    }
-
-    return user;
   }
 
   private async generateAndSendOtp(email: string, cause: OtpCause) {
