@@ -50,12 +50,12 @@ async function bootstrap() {
     app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
     const port = process.env.PORT ?? 3000;
+    // On bare-metal: bind to 127.0.0.1 (Nginx proxies in externally).
+    // Inside Docker: PM2 env_production sets HOST=0.0.0.0 so the app is
+    // reachable from the Nginx container on the shared bridge network.
+    const host = process.env.HOST ?? '127.0.0.1';
 
-    // ON SERVER:
-    // 127.0.0.1 run only locally for security reasons
-    // 0.0.0.0 to run on all interfaces (less secure)
-
-    await app.listen(port, '127.0.0.1');
+    await app.listen(port, host);
 
     logger.log(`Server successfully started on port ${port} ${Date.now()}`);
   } catch (error) {

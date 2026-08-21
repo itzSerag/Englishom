@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   ConflictException,
   ValidationPipe,
   Query,
@@ -26,11 +25,7 @@ import { SkipVerifiedGuard } from '../user-auth/guards/skip-verified.guard';
 import { CompleteLevelDto } from './dto/complete-level.dto';
 import { GetCertificateDto } from './dto/get-certificate';
 import { Admin } from '../admin/models/admin.schema';
-import { AdminRole } from 'src/common/shared';
 import { UserJwtGuard } from '../user-auth/guards/user-jwt.guard';
-import { AdminJwtGuard } from '../admin-auth/guards/admin-jwt.guard';
-import { AdminRoles } from '../admin-auth/decorators';
-import { PaginationDto } from './dto/pagination.dto';
 import { IpService } from '../common/services/ip.service';
 import { Request } from 'express';
 import { ResetPasswordDto } from './dto/reset-password.dto';

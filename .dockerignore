@@ -1,0 +1,48 @@
+# ── Version Control ──────────────────────────────────────────
+.git
+.gitignore
+.github
+
+# ── Dependencies ─────────────────────────────────────────────
+node_modules
+
+# ── Build artifacts (rebuilt inside container) ───────────────
+dist
+coverage
+
+# ── Environment / Secrets ────────────────────────────────────
+# Never bake secrets into the image
+.env
+.env.*
+!.env.example         # Keep the example template
+
+# ── Logs ─────────────────────────────────────────────────────
+logs
+*.log
+npm-debug.log*
+
+# ── Docker files (no need to copy into the image) ────────────
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# ── Editor / OS artifacts ────────────────────────────────────
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Docs / Dev tooling ───────────────────────────────────────
+docs
+README.md
+*.txt
+*.md
+!package.json
+!package-lock.json
+
+# ── Test files ───────────────────────────────────────────────
+**/*.spec.ts
+**/*.test.ts
+test

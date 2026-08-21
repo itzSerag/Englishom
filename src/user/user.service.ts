@@ -19,7 +19,7 @@ import { GetCertificateDto } from './dto/get-certificate';
 import { PaginationDto } from './dto/pagination.dto';
 import { IpService } from '../common/services/ip.service';
 import { User } from './models/user.schema';
-import { Admin } from 'src/admin/models/admin.schema';
+import { Admin } from '../admin/models/admin.schema';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserStatus } from '../common/shared';

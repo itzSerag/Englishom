@@ -1,6 +1,7 @@
 // cleanup-orphaned-files.js
 // Run this script to clean up orphaned GridFS file metadata after deleting chunks
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { MongoClient } = require('mongodb');
 
 async function cleanupOrphanedFiles() {
