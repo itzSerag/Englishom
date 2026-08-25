@@ -359,4 +359,21 @@ export class OrderRepo extends AbstractRepo<Order> implements OrderService {
     });
     return result.deletedCount || 0;
   }
+
+  async calculateTotalRevenue(): Promise<number> {
+    const result = await this.orderModel.aggregate([
+      { $match: { paymentStatus: PaymentStatus.COMPLETED } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    return result[0]?.total || 0;
+  }
+
+  async countDistinctSubscribedUsers(): Promise<number> {
+    const result = await this.orderModel.aggregate([
+      { $match: { paymentStatus: PaymentStatus.COMPLETED } },
+      { $group: { _id: '$userId' } },
+      { $count: 'total' },
+    ]);
+    return result[0]?.total || 0;
+  }
 }

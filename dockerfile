@@ -15,7 +15,7 @@ COPY nest-cli.json ./
 COPY tsconfig*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm ci --frozen-lockfile
+RUN npm ci 
 
 # Copy source code
 COPY src/ ./src/

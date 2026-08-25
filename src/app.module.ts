@@ -9,8 +9,8 @@ import { DatabaseModule } from './common/database/database.module';
 import { CommonModule } from './common/common.module';
 import { PaymentModule } from './payment/paymob.module';
 import { CronModule } from './cron/cron.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ObjectIdTransformInterceptor } from './common/interceptors/objectid-transform.interceptor';
 import { UserAuthModule } from './user-auth/user-auth.module';
@@ -45,6 +45,10 @@ import { SeederModule } from './common/seeds/seeder.module';
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: ObjectIdTransformInterceptor,

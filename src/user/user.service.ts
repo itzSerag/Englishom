@@ -110,23 +110,6 @@ export class UserService {
     return certificate;
   }
 
-  async resetPassword(user: User | Admin, restPasswordDto: ResetPasswordDto) {
-    // hash the new password
-    const { newPassword, oldPassword } = restPasswordDto;
-    //compare the old password and new password
-
-    const isValid = await bcrypt.compare(oldPassword, user.password);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid old password');
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    return await this.userRepo.findOneAndUpdate(
-      { _id: user._id },
-      { password: hashedPassword },
-    );
-  }
-
   async getUserCompletedOrders(userId: string) {
     const userLevels = await this.orderService.findUserCompletedOrders(userId);
     return userLevels;
@@ -537,5 +520,32 @@ export class UserService {
     }));
 
     return { hasPurchase: true, levels };
+  }
+
+  async resetPassword(
+    user: User | Admin,
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<void> {
+    const existingUser = await this.userRepo.findOne({ _id: user._id });
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isMatch = await bcrypt.compare(
+      resetPasswordDto.oldPassword,
+      existingUser.password,
+    );
+    if (!isMatch) {
+      throw new BadRequestException('Incorrect current password');
+    }
+
+    const hashedPassword = await bcrypt.hash(resetPasswordDto.newPassword, 10);
+    await this.userRepo.findOneAndUpdate(
+      { _id: user._id },
+      {
+        password: hashedPassword,
+        lastActivity: this.timeService.createDate(),
+      },
+    );
   }
 }

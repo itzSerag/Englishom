@@ -17,8 +17,8 @@ export class OrderAccessCronService {
   async handleMarkExpiredOrders() {
 
     if (!this.clusterHelper.isPrimary()) {
-      this.logger.log('Running mark-expired-orders job on primary instance');
-      return
+      this.logger.log('Skipping mark-expired-orders job on non-primary instance');
+      return;
     }
     
     try {

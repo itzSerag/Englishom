@@ -88,9 +88,13 @@ export class PaymobController {
       this.logger.log(`Calculated HMAC: ${calculatedHMAC}`);
       this.logger.log(`Provided HMAC: ${providedHMAC}`);
 
-      // Compare the HMACs (case-insensitive)
+      // Compare the HMACs using constant-time comparison
+      const calcBuf = Buffer.from(calculatedHMAC.toLowerCase(), 'utf-8');
+      const provBuf = Buffer.from((providedHMAC || '').toLowerCase(), 'utf-8');
+
       const isValid =
-        calculatedHMAC.toLowerCase() === providedHMAC.toLowerCase();
+        calcBuf.length === provBuf.length &&
+        crypto.timingSafeEqual(calcBuf, provBuf);
 
       if (!isValid) {
         this.logger.error('HMAC validation failed - signatures do not match');

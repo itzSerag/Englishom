@@ -158,6 +158,13 @@ export class UserAuthController {
         `Facebook OAuth login failed: ${err.message}`,
         err.stack,
       );
+
+      const errorRedirectUrl =
+        this.frontendRedirectService.getOAuthErrorRedirectUrl(
+          'auth_failed',
+          err.message || 'Facebook authentication failed',
+        );
+      return res.redirect(errorRedirectUrl);
     }
   }
 

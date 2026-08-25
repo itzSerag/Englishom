@@ -85,7 +85,16 @@ export class UserController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() currentUser: User | Admin,
+  ) {
+    const currentUserId = currentUser._id?.toString();
+    const isAdmin = currentUser instanceof Admin || !!(currentUser as any).adminRole;
+    if (currentUserId !== id && !isAdmin) {
+      throw new BadRequestException('You do not have permission to update this profile');
+    }
     return this.userService.findOneAndUpdate(id, updateUserDto);
   }
 
@@ -173,7 +182,7 @@ export class UserController {
   @Post('reset-password')
   async resetPassword(
     @CurrentUser() user: User | Admin,
-    resetPasswordDto: ResetPasswordDto,
+    @Body() resetPasswordDto: ResetPasswordDto,
   ) {
     await this.userService.resetPassword(user, resetPasswordDto);
 

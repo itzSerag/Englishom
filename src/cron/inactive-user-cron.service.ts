@@ -68,53 +68,56 @@ export class InactiveUserCronService {
         dbQueries: 0,
       };
 
-      // Process in batches to prevent memory issues
-      let skip = 0;
+      // Process in batches using DB-level pagination to prevent memory issues
+      let page = 1;
       let hasMoreUsers = true;
 
       while (hasMoreUsers) {
         stats.dbQueries++;
-        
-        // Get batch of users
-        const allInactiveUsers = await this.userRepo.find({
-          lastActivity: { $lt: sevenDaysAgo }, // Inactive for 7+ days
-          role: { $ne: Role.ADMIN },
-          isVerified: true,
-          status: UserStatus.ACTIVE,
-        });
 
-        const users = allInactiveUsers
-          .sort((a, b) => new Date(a.lastActivity).getTime() - new Date(b.lastActivity).getTime()) // Process oldest first
-          .slice(skip, skip + this.BATCH_SIZE);
+        // Query only the current batch from MongoDB directly
+        const result = await this.userRepo.findWithPagination(
+          {
+            lastActivity: { $lt: sevenDaysAgo }, // Inactive for 7+ days
+            role: { $ne: Role.ADMIN },
+            isVerified: true,
+            status: UserStatus.ACTIVE,
+          },
+          page,
+          this.BATCH_SIZE,
+        );
 
-        if (users.length === 0) {
+        const users = result.data;
+
+        if (!users || users.length === 0) {
           hasMoreUsers = false;
           break;
         }
 
-        this.logger.log(`📊 Processing batch ${Math.floor(skip/this.BATCH_SIZE) + 1} (${users.length} users)`);
+        this.logger.log(`📊 Processing batch ${page} of ${result.totalPages} (${users.length} users)`);
 
         // Process batch
         for (const user of users) {
           stats.totalProcessed++;
           const result = await this.processSingleUser(user, now, sixtyFiveDaysAgo);
-          
+
           // Update stats
           if (result.motivation?.success) stats.motivationSuccess++;
           if (result.motivation?.failure) stats.motivationFailure++;
           if (result.suspension?.success) stats.suspensionSuccess++;
           if (result.suspension?.failure) stats.suspensionFailure++;
-          
+
           // Rate limiting between emails
           if (result.sentEmail) {
             await this.delay(this.EMAIL_DELAY_MS);
           }
         }
 
-        skip += this.BATCH_SIZE;
-        
-        // Rate limiting between database batches
-        if (hasMoreUsers) {
+        if (page >= result.totalPages) {
+          hasMoreUsers = false;
+        } else {
+          page++;
+          // Rate limiting between database batches
           await this.delay(this.DB_BATCH_DELAY_MS);
         }
       }

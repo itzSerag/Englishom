@@ -379,37 +379,15 @@ export class DashboardService {
   }
 
   private async getTotalRevenue(): Promise<number> {
-    const orders = await this.orderRepo.find({
-      paymentStatus: PaymentStatus.COMPLETED,
-    });
-    if (!orders) return 0;
-
-    return orders.reduce((total, order) => total + order.amount, 0);
+    return await this.orderRepo.calculateTotalRevenue();
   }
 
   private async getTotalSubscribedUsers(): Promise<number> {
-    const orders = await this.orderRepo.find({
-      paymentStatus: PaymentStatus.COMPLETED,
-    });
-
-    if (!orders || orders.length === 0) return 0;
-
-    // Get unique user IDs from the orders
-    const uniqueUserIds = [
-      ...new Set(orders.map((order) => order.userId.toString())),
-    ];
-
-    // Now check which of these users actually exist in the User collection
-    const existingUsers = await this.userRepo.find({
-      _id: { $in: uniqueUserIds },
-    });
-
-    return existingUsers.length;
+    return await this.orderRepo.countDistinctSubscribedUsers();
   }
 
   private async getTotalCourses(): Promise<number> {
-    const courses = await this.courseRepo.find({});
-    return courses ? courses.length : 0;
+    return await this.courseRepo.count({});
   }
 
   private async getRecentOrders(limit: number = 10) {
