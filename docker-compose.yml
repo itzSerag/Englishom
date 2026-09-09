@@ -1,209 +1,82 @@
-# ============================================================
-# Englishom — Docker Compose (Production)
-# Services: app, mongodb (optional local), nginx (reverse proxy)
-# ============================================================
-
-name: englishom
-
 services:
-
-  # ----------------------------------------------------------
-  # NestJS Application
-  # ----------------------------------------------------------
+  # Englishom NestJS API
   app:
     build:
       context: .
       dockerfile: Dockerfile
-      target: runner          # Only build the final production stage
-    image: englishom-api:latest
-    container_name: englishom-app
+    container_name: englishom-api
     restart: unless-stopped
-
+    ports:
+      - "${PORT:-3000}:3000"
     env_file:
-      - .env.production       # Never commit .env.production — use secrets manager in CI/CD
-
+      - path: .env
+        required: false
+      - path: .env.production
+        required: false
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Override the bind address so the app listens on all interfaces inside the container
-      # (main.ts listens on 127.0.0.1 by default — nginx will proxy into it)
       HOST: 0.0.0.0
-
-    ports:
-      # Only expose to localhost — nginx terminates TLS and proxies here
-      - "127.0.0.1:3000:3000"
-
-    volumes:
-      # Persist transformers model cache so it isn't re-downloaded on restart
-      - transformers_cache:/app/.cache
-      # Persist PM2 logs for debugging
-      - pm2_logs:/app/logs
-
+      TRANSFORMERS_CACHE: /app/.cache
     depends_on:
       mongodb:
         condition: service_healthy
-
+        required: false
+    volumes:
+      # Cache downloaded AI models across container restarts
+      - model_cache:/app/.cache
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - backend
 
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-    # Limit resources to prevent runaway memory from ML models
-    deploy:
-      resources:
-        limits:
-          cpus: "2.0"
-          memory: 2G
-        reservations:
-          cpus: "0.5"
-          memory: 512M
-
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
-
-  # ----------------------------------------------------------
-  # MongoDB (optional — comment out if using Atlas or a remote DB)
-  # ----------------------------------------------------------
+  # MongoDB Database (used if DATABASE_URL points to mongodb://mongodb:27017)
   mongodb:
     image: mongo:7-jammy
-    container_name: englishom-mongo
+    container_name: englishom-mongodb
     restart: unless-stopped
-
-    env_file:
-      - .env.production
-
+    ports:
+      - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-Englishom}
-
-    ports:
-      # Only expose locally — never expose MongoDB to the public internet
-      - "127.0.0.1:27017:27017"
-
     volumes:
       - mongo_data:/data/db
-      - mongo_config:/data/configdb
-      # Optional: place custom mongod.conf here
-      # - ./mongo/mongod.conf:/etc/mongo/mongod.conf
-
-    networks:
-      - backend
-
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 15s
+    networks:
+      - backend
 
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # ----------------------------------------------------------
-  # Nginx — Reverse proxy & TLS termination
-  # ----------------------------------------------------------
+  # Optional Nginx Reverse Proxy (start with: docker compose --profile proxy up -d)
   nginx:
     image: nginx:1.27-alpine
     container_name: englishom-nginx
     restart: unless-stopped
-
+    profiles:
+      - proxy
     ports:
       - "80:80"
-      - "443:443"
-
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      # TLS certificates managed by Certbot (Let's Encrypt)
-      - certbot_certs:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot:ro
-      - nginx_logs:/var/log/nginx
-
     depends_on:
-      app:
-        condition: service_healthy
-
+      - app
     networks:
       - backend
 
-    healthcheck:
-      test: ["CMD", "nginx", "-t"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
-
-  # ----------------------------------------------------------
-  # Certbot — Auto-renew Let's Encrypt TLS certificates
-  # ----------------------------------------------------------
-  certbot:
-    image: certbot/certbot:latest
-    container_name: englishom-certbot
-    restart: "no"             # Only runs on-demand for renewal
-
-    volumes:
-      - certbot_certs:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-
-    # Dry-run on first start; replace --dry-run with your real domain and email
-    command: >
-      certonly --webroot
-      --webroot-path=/var/www/certbot
-      --email admin@yourdomain.com
-      --agree-tos
-      --no-eff-email
-      --dry-run
-      -d yourdomain.com
-      -d www.yourdomain.com
-
-    depends_on:
-      - nginx
-
-    networks:
-      - backend
-
-
-# ============================================================
-# Named Volumes
-# ============================================================
 volumes:
   mongo_data:
-    driver: local
-  mongo_config:
-    driver: local
-  transformers_cache:
-    driver: local
-  pm2_logs:
-    driver: local
-  certbot_certs:
-    driver: local
-  certbot_www:
-    driver: local
-  nginx_logs:
-    driver: local
+  model_cache:
 
-
-# ============================================================
-# Networks
-# ============================================================
 networks:
   backend:
     driver: bridge
-    name: englishom_backend

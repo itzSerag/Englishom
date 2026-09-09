@@ -1,134 +1,195 @@
-# Online Courses Backend
+# Englishom Backend API
 
-A robust backend system for managing online courses, built with NestJS and Prisma ORM. This project provides secure user authentication, course progress tracking, payment processing, and file uploads, ensuring a seamless learning experience.
+Production backend service for the Englishom learning platform, built with NestJS and MongoDB. The system provides user authentication, course progression tracking, automated speech transcription via machine learning models, payment handling, and media management.
 
-## 🌟 Features
+## Features
 
-- **User Authentication**: Secure JWT-based authentication with support for Facebook and Google OAuth.
-- **OTP Verification**: Email-based OTP handling for account verification.
-- **Payment Integration**: Seamless payment processing with Paymob API.
-- **Course Management**: Track user progress, completed tasks, and levels.
-- **File Uploads**: Secure file uploads to AWS S3 with pre-signed URLs.
-- **Admin Controls**: Role-based access for managing users and content.
-- **Scalable Architecture**: Modular design for easy scalability and maintainability.
+- Authentication and Authorization: JWT-based authentication supporting email/password, email OTP verification, and OAuth2 integration (Google and Facebook).
+- Course Management: Structured course modules, level progression, and task completion tracking.
+- Audio and Speech ML: In-container audio processing and transcription powered by Transformers.js (Whisper) and FFmpeg.
+- Payment Integration: Paymob payment gateway integration with HMAC webhook validation.
+- File and Media Storage: Hybrid storage supporting AWS S3 pre-signed URLs and MongoDB GridFS.
+- Production Security: Helmet HTTP security headers, Throttler rate limiting, non-root container user execution, and graceful process shutdown.
 
-## 🛠 Tech Stack
+## Tech Stack
 
-- **Framework**: [NestJS](https://nestjs.com/)
-- **Database**: [PostgreSQL](https://www.postgresql.org/) with [Prisma ORM](https://www.prisma.io/)
-- **Authentication**: [Passport.js](http://www.passportjs.org/) with JWT, Facebook, and Google strategies
-- **File Storage**: [AWS S3](https://aws.amazon.com/s3/)
-- **Payment Gateway**: [Paymob](https://paymob.com/)
-- **Testing**: [Jest](https://jestjs.io/)
-- **Deployment**: [Vercel](https://vercel.com)
+- Runtime: Node.js 22
+- Framework: NestJS 11
+- Database: MongoDB with Mongoose ODM
+- Speech Processing: @xenova/transformers, fluent-ffmpeg
+- Cloud Storage: AWS S3 SDK v3
+- Payments: Paymob API
+- Containerization: Docker (multi-stage Alpine) and Docker Compose
 
-## 🚀 Quick Start
+## Prerequisites
 
-### Prerequisites
+- Node.js 20.x or higher
+- npm 10.x or higher
+- Docker and Docker Compose (v2 or higher)
+- MongoDB instance (local or MongoDB Atlas)
 
-- Node.js >= 20.0.0
-- npm >= 10.0.0
-- PostgreSQL instance
-- AWS S3 bucket
-- Paymob account
+## Environment Configuration
 
-### Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
-
-```env
-PORT=5000
-JWT_SECRET=your_jwt_secret
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_REGION=your_aws_region
-AWS_S3_BUCKET=your_s3_bucket_name
-PAYMOB_SECRET_KEY=your_paymob_secret_key
-PAYMOB_PUBLIC_KEY=your_paymob_public_key
-PAYMOB_INTEGRATION_ID=your_paymob_integration_id
-```
-
-### Installation
-
-1. Clone the repository:
+Create a `.env` file in the project root based on `.env.example`:
 
 ```bash
-git clone https://github.com/itzSerag/Online_Courses_Backend.git
-cd Online_Courses_Backend
+cp .env.example .env
 ```
 
-2. Install dependencies:
+Key environment variables:
+
+| Variable | Description | Example / Default |
+| --- | --- | --- |
+| NODE_ENV | Application environment | `production` or `development` |
+| PORT | HTTP server port | `3000` |
+| HOST | Bind host address | `0.0.0.0` |
+| DATABASE_URL | MongoDB connection string | `mongodb://mongodb:27017/Englishom` |
+| JWT_SECRET | Secret key for user tokens | Secure random string (min 64 chars) |
+| JWT_EXPIRATION_TIME | User token lifetime | `10d` |
+| JWT_ADMIN_SECRET | Secret key for admin tokens | Secure random string (min 64 chars) |
+| JWT_ADMIN_EXPIRATION_TIME | Admin token lifetime | `10d` |
+| PAYMOB_API_KEY | Paymob API key | Paymob credential |
+| PAYMOB_HMAC_SECRET | Paymob webhook HMAC key | Paymob HMAC secret |
+| AWS_ACCESS_KEY_ID | AWS credentials | AWS Access Key |
+| AWS_SECRET_ACCESS_KEY | AWS credentials | AWS Secret Key |
+| AWS_REGION | S3 bucket region | `eu-central-1` |
+| AWS_S3_BUCKET_NAME | Target S3 bucket name | S3 bucket identifier |
+| BREVO_API_KEY | Brevo/Sendinblue API key | Transactional email key |
+
+## Local Development
+
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. Run database migrations:
-
-```bash
-npx prisma migrate dev
-```
-
-4. Start the development server:
+2. Start the development server with live reload:
 
 ```bash
 npm run start:dev
 ```
 
-The server will start on http://localhost:5000/api.
+3. Build the application for production:
 
-## 📄 API Documentation
+```bash
+npm run build
+```
 
-### Authentication Endpoints
+4. Run the production build locally:
 
-- `POST /api/auth/signup`: Register a new user
-- `POST /api/auth/login`: Login user
-- `POST /api/auth/reset-password`: Reset user password
-- `POST /api/auth/verify-otp`: Verify OTP for account activation
-- `POST /api/auth/logout`: Logout user
+```bash
+npm run start:prod
+```
 
-### User Endpoints
+## Production Deployment with Docker
 
-- `GET /api/users/me`: Get current user details
-- `GET /api/users/all`: Get all users (Admin only)
-- `POST /api/users/complete-day`: Mark a day as completed
-- `POST /api/users/complete-task`: Mark a task as completed
+### Method 1: Docker Compose (Recommended)
 
-### Payment Endpoints
+Docker Compose manages the application container, the MongoDB instance, and volume persistence for ML model caching and data storage.
 
-- `POST /api/payment/process-payment`: Process a payment
-- `POST /api/payment/refund`: Refund a payment
-- `POST /api/payment/callback`: Handle payment callback
+1. Ensure `.env` is configured with your production secrets.
 
-### Upload Endpoints
+2. Start the application and database:
 
-- `POST /api/files`: Upload course content
-- `GET /api/files`: Retrieve course content
-- `DELETE /api/files`: Delete course content
+```bash
+docker compose up -d
+```
 
-## 🔌 WebSocket Events
+3. Check container status:
 
-- `connection`: Client connects to WebSocket server
-- `disconnect`: Client disconnects from WebSocket server
+```bash
+docker compose ps
+```
 
-## 🔗 Related Repositories
+4. View streaming application logs:
 
-- Frontend Repository: [Online Courses Frontend](https://github.com/itzSerag/Online_Courses_Frontend)
+```bash
+docker compose logs -f app
+```
 
-## 📝 License
+5. Stop all services:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```bash
+docker compose down
+```
 
-## 👨‍💻 Author
+#### Using an External Database (MongoDB Atlas)
 
-- [@itzSerag](https://github.com/itzSerag)
+If using MongoDB Atlas or an external database cluster:
+1. Set `DATABASE_URL` in `.env` to your Atlas URI (`mongodb+srv://...`).
+2. Start only the application service:
 
-## 🤝 Contributing
+```bash
+docker compose up -d app
+```
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/itzSerag/Online_Courses_Backend/issues).
+#### Running with the Nginx Reverse Proxy
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+To run the application behind the bundled Nginx reverse proxy on port 80:
+
+```bash
+docker compose --profile proxy up -d
+```
+
+### Method 2: Standalone Docker Image
+
+1. Build the production Docker image:
+
+```bash
+docker build -t englishom-api:latest .
+```
+
+2. Run the container:
+
+```bash
+docker run -d \
+  --name englishom-api \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  --env-file .env \
+  -v englishom_cache:/app/.cache \
+  englishom-api:latest
+```
+
+## Health Checks and Process Management
+
+- Health Check Endpoint: `GET /api`
+  Returns HTTP 200 with an operational status string.
+- Reverse Proxy Health Check: `GET /health` (routed to `/api`).
+- Process Management: The container uses `dumb-init` as PID 1 to properly handle `SIGTERM` and `SIGINT` signals, ensuring clean connection draining and graceful application shutdown.
+- Non-Root Security: The container runs under the unprivileged `node` user (UID 1000).
+
+## API Endpoints Summary
+
+### Authentication
+- `POST /api/auth/signup`: User registration
+- `POST /api/auth/login`: User login
+- `POST /api/auth/verify-otp`: Account email verification
+- `POST /api/auth/reset-password`: Password reset request
+- `POST /api/auth/logout`: User session termination
+
+### User Management
+- `GET /api/users/me`: Current user profile
+- `GET /api/users/all`: User list (Admin only)
+- `POST /api/users/complete-day`: Mark learning day completed
+- `POST /api/users/complete-task`: Mark task completed
+
+### Courses
+- `GET /api/courses`: List available courses
+- `GET /api/courses/:id`: Course details and modules
+- `POST /api/courses`: Create course (Admin only)
+
+### File Upload and Speech Processing
+- `POST /api/files`: Upload media files (GridFS or S3)
+- `POST /api/files/transcribe`: Audio transcription with Whisper ML model
+- `GET /api/files/:id`: Stream or download media file
+
+### Payments
+- `POST /api/payment/process-payment`: Create payment intention
+- `POST /api/payment/callback`: Paymob webhook callback handler
+- `POST /api/payment/refund`: Process refund (Admin only)
+
+## License
+
+This project is licensed under the MIT License.
